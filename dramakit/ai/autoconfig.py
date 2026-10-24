@@ -108,15 +108,21 @@ def probe(cfg: Optional[Config] = None) -> dict:
             gpus = [{"name": d.get("name"),
                      "vram_gb": round(d.get("vram_total", 0) / (1024**3), 1)}
                     for d in devices]
+            t2i_rep = c.validate_workflow(cfg.comfyui.t2i_workflow, cfg.comfyui.t2i_nodes)
+            i2v_rep = c.validate_workflow(cfg.comfyui.i2v_workflow, cfg.comfyui.i2v_nodes)
+            flf_rep = (c.validate_workflow(cfg.comfyui.flf_workflow, cfg.comfyui.i2v_nodes)
+                       if cfg.comfyui.flf_workflow else None)
             report["comfyui"] = {
                 "reachable": True, "base_url": cfg.comfyui.base_url,
                 "version": sysinfo.get("comfyui_version", ""),
                 "gpus": gpus,
                 "checkpoints": c.list_checkpoints()[:40],
-                "t2i_ok": c.validate_workflow(cfg.comfyui.t2i_workflow,
-                                              cfg.comfyui.t2i_nodes).get("ok", False),
-                "i2v_ok": c.validate_workflow(cfg.comfyui.i2v_workflow,
-                                              cfg.comfyui.i2v_nodes).get("ok", False),
+                "t2i_ok": t2i_rep.get("ok", False),
+                "i2v_ok": i2v_rep.get("ok", False),
+                "flf_ok": (flf_rep or {}).get("ok"),
+                "t2i_report": t2i_rep,
+                "i2v_report": i2v_rep,
+                "flf_report": flf_rep,
             }
         else:
             report["comfyui"] = {"reachable": False, "base_url": cfg.comfyui.base_url}

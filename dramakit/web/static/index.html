@@ -1,18 +1,60 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>DramaKit 制作台</title>
+<script>
+try{
+  if(localStorage.getItem("dk-theme")==="dark") document.documentElement.dataset.theme="dark";
+}catch(e){}
+</script>
 <style>
   :root{
+    color-scheme:light;
+    --bg:#f4f6f9; --bg2:#ffffff; --bg3:#eef2f7; --bg4:#dfe6ee;
+    --line:#dbe2ea; --line2:#c3ceda;
+    --fg:#1b2733; --fg2:#475569; --fg3:#64748b;
+    --go:#1a7f37; --go2:#238636; --danger:#cf222e; --danger2:#c4302b;
+    --confirm:#0969da; --confirm2:#0969da; --warn:#9a6700; --ai:#8250df;
+    --chip:#eef2f7; --r:6px;
+    --rail:#f9fbfd; --rail-on:#e8f1ff;
+    --proj-on:#e8f1ff; --proj-on-line:#b9d4f7;
+    --ai-soft-bg:#f4efff; --ai-soft-line:#dcccf8; --ai-soft-fg:#6b46c1;
+    --ai-btn-bg:#f1eaff; --ai-btn-line:#cbb6f2; --ai-btn-fg:#5b3fbf;
+    --pcard-on:#edf5ff;
+    --done-bg:#e9f7ee; --done-line:#b5e2c0; --done-fg:#17692f;
+    --partial-bg:#fff7e0; --partial-line:#ebd49c; --partial-fg:#7a5600;
+    --badge-done-line:#b5e2c0; --badge-run-line:#b3d4f7; --badge-fail-line:#f0b8b4;
+    --flf-bg:#f3edff; --flf-line:#d8c6f7; --flf-fg:#6b46c1;
+    --media-bg:#e6ecf3; --ph1:#edf1f6; --ph2:#f7f9fb;
+    --dash:#e4eaf1; --scrim:rgba(0,0,0,.62); --overlay:rgba(15,23,42,.32);
+    --shadow:rgba(15,23,42,.18); --scroll:#c3ceda;
+    --ai-focus:rgba(130,80,223,.18); --brand-shadow:rgba(58,110,240,.25);
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  html[data-theme="dark"]{
+    color-scheme:dark;
     --bg:#0c1015; --bg2:#121820; --bg3:#1a222c; --bg4:#202b37;
     --line:#27313d; --line2:#334250;
     --fg:#e8eef5; --fg2:#9fb0c1; --fg3:#697b8d;
     --go:#248a3d; --go2:#3fb950; --danger:#c93636; --danger2:#f0645c;
     --confirm:#1f6feb; --confirm2:#4c9aff; --warn:#c9971c; --ai:#8b5cf6;
-    --chip:#1d2732; --r:6px;
-    --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+    --chip:#1d2732;
+    --rail:#090d11; --rail-on:#17222e;
+    --proj-on:#17222e; --proj-on-line:#2b4a70;
+    --ai-soft-bg:#201735; --ai-soft-line:#4b3a7a; --ai-soft-fg:#b79cff;
+    --ai-btn-bg:#3b2a63; --ai-btn-line:#5b3fa0; --ai-btn-fg:#d8c9ff;
+    --pcard-on:#16233a;
+    --done-bg:#122117; --done-line:#2a5533; --done-fg:#9be2a8;
+    --partial-bg:#1e1a10; --partial-line:#574a22; --partial-fg:#f0d38a;
+    --badge-done-line:#264d2e; --badge-run-line:#243b5e; --badge-fail-line:#5e2626;
+    --flf-bg:#201735; --flf-line:#4b3a7a; --flf-fg:#c4a5ff;
+    --media-bg:#000000; --ph1:#11161d; --ph2:#151b23;
+    --dash:#1e262f; --scrim:rgba(0,0,0,.72); --overlay:rgba(4,7,11,.5);
+    --shadow:rgba(0,0,0,.55); --scroll:#2b3745;
+    --ai-focus:rgba(139,92,246,.15); --brand-shadow:rgba(58,110,240,.35);
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
@@ -21,24 +63,24 @@
     overflow:hidden}
   a{color:var(--confirm2);text-decoration:none}
   ::-webkit-scrollbar{width:9px;height:9px}
-  ::-webkit-scrollbar-thumb{background:#2b3745;border-radius:5px}
+  ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:5px}
   ::-webkit-scrollbar-track{background:transparent}
 
   #app{display:flex;height:100%}
 
   /* ---------- icon rail ---------- */
-  #rail{width:68px;flex:0 0 auto;background:#090d11;border-right:1px solid var(--line);
+  #rail{width:68px;flex:0 0 auto;background:var(--rail);border-right:1px solid var(--line);
     display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px}
   .brand{width:38px;height:38px;border-radius:9px;background:linear-gradient(145deg,#2c6bed,#7c3aed);
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;
-    letter-spacing:.5px;color:#fff;margin-bottom:10px;box-shadow:0 4px 14px rgba(58,110,240,.35)}
+    letter-spacing:.5px;color:#fff;margin-bottom:10px;box-shadow:0 4px 14px var(--brand-shadow)}
   .railbtn{width:54px;padding:7px 0 5px;border:0;background:transparent;color:var(--fg3);
     display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:8px;
     cursor:pointer;font-size:10px;font-family:inherit}
   .railbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;
     stroke-linecap:round;stroke-linejoin:round}
   .railbtn:hover{background:var(--bg3);color:var(--fg2)}
-  .railbtn.on{background:#17222e;color:var(--confirm2)}
+  .railbtn.on{background:var(--rail-on);color:var(--confirm2)}
   .railbtn.on::before{content:"";position:absolute;left:0;width:2px;height:26px;background:var(--confirm2);border-radius:2px}
   .railbtn{position:relative}
   .rail-sp{flex:1}
@@ -62,10 +104,10 @@
   #cmdbar{display:flex;gap:8px;padding:7px 14px;background:var(--bg2);
     border-bottom:1px solid var(--line);align-items:center;flex:0 0 auto}
   #cmdbar .lbl{font-size:11px;color:var(--ai);font-weight:650;white-space:nowrap;
-    border:1px solid #4b3a7a;background:#201735;border-radius:4px;padding:2px 7px}
+    border:1px solid var(--ai-soft-line);background:var(--ai-soft-bg);color:var(--ai-soft-fg);border-radius:4px;padding:2px 7px}
   #cmd{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--fg);
     border-radius:var(--r);padding:7px 11px;font-size:12.5px;outline:none;font-family:inherit}
-  #cmd:focus{border-color:var(--ai);box-shadow:0 0 0 2px rgba(139,92,246,.15)}
+  #cmd:focus{border-color:var(--ai);box-shadow:0 0 0 2px var(--ai-focus)}
   #cmdproj{background:var(--bg);border:1px solid var(--line);color:var(--fg2);
     border-radius:var(--r);padding:6px 8px;font-size:12px;max-width:160px}
 
@@ -81,7 +123,7 @@
   .proj{padding:7px 9px;border-radius:var(--r);cursor:pointer;border:1px solid transparent;
     margin-bottom:3px}
   .proj:hover{background:var(--bg3)}
-  .proj.on{background:#17222e;border-color:#2b4a70}
+  .proj.on{background:var(--proj-on);border-color:var(--proj-on-line)}
   .proj .pn{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .proj .pm{color:var(--fg3);font-size:10.5px;margin-top:1px}
   .tagfilter{display:flex;flex-wrap:wrap;gap:4px}
@@ -100,9 +142,14 @@
   .btn.confirm{background:var(--confirm);border-color:var(--confirm);color:#fff}
   .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
   .btn.ghost{background:transparent}
-  .btn.ai{background:#3b2a63;border-color:#5b3fa0;color:#d8c9ff}
+  .btn.ai{background:var(--ai-btn-bg);border-color:var(--ai-btn-line);color:var(--ai-btn-fg)}
   .btn.sm{padding:3px 9px;font-size:11.5px}
   .btn.xs{padding:1px 7px;font-size:10.5px;border-radius:4px}
+  #themeBtn{display:flex;align-items:center;justify-content:center;width:30px;padding:0}
+  #themeBtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  html[data-theme="light"] #themeBtn .ico-sun{display:none}
+  html[data-theme="dark"] #themeBtn .ico-moon{display:none}
 
   /* ---------- general ---------- */
   h1.page{font-size:17px;margin:0 0 3px;font-weight:700;letter-spacing:.2px}
@@ -127,16 +174,16 @@
   .pcard{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r);
     padding:9px 12px;cursor:pointer;min-width:120px}
   .pcard:hover{border-color:var(--fg3)}
-  .pcard.on{border-color:var(--confirm);background:#16233a}
+  .pcard.on{border-color:var(--confirm);background:var(--pcard-on)}
   .pcard .pl{font-weight:650;font-size:12.5px}
   .pcard .pd{color:var(--fg3);font-size:10.5px;margin-top:1px}
   .preset{display:flex;gap:8px;flex-wrap:wrap}
   .badge{font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);
     color:var(--fg2);background:var(--chip)}
-  .badge.done{color:var(--go2);border-color:#264d2e}
-  .badge.run{color:var(--confirm2);border-color:#243b5e}
-  .badge.fail{color:var(--danger2);border-color:#5e2626}
-  .badge.flf{color:#c4a5ff;border-color:#4b3a7a;background:#201735}
+  .badge.done{color:var(--go2);border-color:var(--badge-done-line)}
+  .badge.run{color:var(--confirm2);border-color:var(--badge-run-line)}
+  .badge.fail{color:var(--danger2);border-color:var(--badge-fail-line)}
+  .badge.flf{color:var(--flf-fg);border-color:var(--flf-line);background:var(--flf-bg)}
   .muted{color:var(--fg3)}
   .empty{color:var(--fg3);text-align:center;padding:38px 10px;font-size:12.5px}
   .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--fg3);
@@ -148,7 +195,7 @@
     border-radius:9px;padding:0 6px;color:var(--fg3);display:inline-block}
   .toast{position:fixed;bottom:18px;right:18px;background:var(--bg3);border:1px solid var(--line);
     border-left:3px solid var(--confirm2);border-radius:var(--r);padding:10px 15px;
-    font-size:12.5px;max-width:380px;box-shadow:0 6px 24px rgba(0,0,0,.55);z-index:200;
+    font-size:12.5px;max-width:380px;box-shadow:0 6px 24px var(--shadow);z-index:200;
     opacity:0;transform:translateY(8px);transition:.2s}
   .toast.show{opacity:1;transform:none}
   .toast.err{border-left-color:var(--danger2)}
@@ -157,7 +204,7 @@
   /* ---------- workbench ---------- */
   .hero{display:flex;gap:16px;align-items:flex-start;margin-bottom:14px}
   .hero .cover{width:96px;height:170px;flex:0 0 auto;border-radius:7px;overflow:hidden;
-    background:#000;border:1px solid var(--line)}
+    background:var(--media-bg);border:1px solid var(--line)}
   .hero .cover img{width:100%;height:100%;object-fit:cover}
   .hero .hb{flex:1;min-width:0}
   .hero .ht{font-size:19px;font-weight:750;margin:0 0 2px}
@@ -172,8 +219,8 @@
     border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11.5px;
     color:var(--fg2);cursor:pointer}
   .stg:hover{border-color:var(--fg3)}
-  .stg.done{color:#9be2a8;border-color:#2a5533;background:#122117}
-  .stg.partial{color:#f0d38a;border-color:#574a22;background:#1e1a10}
+  .stg.done{color:var(--done-fg);border-color:var(--done-line);background:var(--done-bg)}
+  .stg.partial{color:var(--partial-fg);border-color:var(--partial-line);background:var(--partial-bg)}
   .stg.pending{color:var(--fg2)}
   .stg .num{font-family:var(--mono);font-size:10px;opacity:.7}
   .epgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
@@ -211,20 +258,20 @@
   .shotcard{background:var(--bg);border:1px solid var(--line);border-radius:6px;
     overflow:hidden;cursor:pointer;position:relative}
   .shotcard:hover{border-color:var(--confirm)}
-  .shotcard .media{height:200px;background:#000;position:relative}
+  .shotcard .media{height:200px;background:var(--media-bg);position:relative}
   .shotcard .media img,.shotcard .media video{width:100%;height:100%;object-fit:cover;display:block}
   .shotcard .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
     color:var(--fg3);font-size:11px;
-    background:repeating-linear-gradient(45deg,#11161d,#11161d 6px,#151b23 6px,#151b23 12px)}
+    background:repeating-linear-gradient(45deg,var(--ph1),var(--ph1) 6px,var(--ph2) 6px,var(--ph2) 12px)}
   .shotcard .cap{padding:5px 7px;font-size:10.5px;color:var(--fg2);line-height:1.35}
   .shotcard .cap b{color:var(--fg);font-weight:600;font-size:11px}
-  .shotcard .sidx{position:absolute;left:5px;top:5px;background:rgba(0,0,0,.72);
+  .shotcard .sidx{position:absolute;left:5px;top:5px;background:var(--scrim);
     color:#fff;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:3px}
-  .shotcard .sfl{position:absolute;right:5px;top:5px;background:rgba(45,26,80,.9);
-    color:#d4bcff;font-size:9.5px;padding:1px 6px;border-radius:3px}
+  .shotcard .sfl{position:absolute;right:5px;top:5px;background:var(--flf-bg);
+    color:var(--flf-fg);border:1px solid var(--flf-line);font-size:9.5px;padding:1px 6px;border-radius:3px}
   .shotcard .sst{position:absolute;right:5px;bottom:5px}
   .lines{padding:0 12px 10px}
-  .line{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed #1e262f;font-size:12px;
+  .line{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed var(--dash);font-size:12px;
     align-items:flex-start}
   .line:last-child{border-bottom:0}
   .line .sp{color:var(--confirm2);min-width:58px;font-weight:600;font-size:11.5px}
@@ -240,7 +287,7 @@
   .castcard{background:var(--bg2);border:1px solid var(--line);border-radius:7px;overflow:hidden}
   .casttop{display:flex;gap:10px;padding:10px;border-bottom:1px solid var(--line)}
   .casttop .ref{width:88px;height:132px;flex:0 0 auto;border-radius:5px;overflow:hidden;
-    background:#000;border:1px solid var(--line)}
+    background:var(--media-bg);border:1px solid var(--line)}
   .casttop .ref img{width:100%;height:100%;object-fit:cover}
   .casttop .cb{flex:1;min-width:0}
   .casttop .cn{font-size:14px;font-weight:700}
@@ -260,7 +307,7 @@
   /* ---------- assets ---------- */
   .assetgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
   .asset{background:var(--bg2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
-  .asset .am{height:180px;background:#000;display:flex;align-items:center;justify-content:center}
+  .asset .am{height:180px;background:var(--media-bg);display:flex;align-items:center;justify-content:center}
   .asset .am img,.asset .am video{width:100%;height:100%;object-fit:cover}
   .asset .am .at{color:var(--fg3);font-size:11px;text-align:center;padding:6px}
   .asset .ab{padding:6px 8px}
@@ -268,7 +315,7 @@
   .asset .ameta{font-size:10px;color:var(--fg3);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap}
   .res{display:flex;gap:10px;padding:9px;border:1px solid var(--line);border-radius:var(--r);
     margin-bottom:7px;background:var(--bg2);align-items:flex-start}
-  .res .thumb{width:56px;height:80px;flex:0 0 auto;border-radius:4px;overflow:hidden;background:#000}
+  .res .thumb{width:56px;height:80px;flex:0 0 auto;border-radius:4px;overflow:hidden;background:var(--media-bg)}
   .res .thumb img,.res .thumb video{width:100%;height:100%;object-fit:cover}
   .res .rb{flex:1;min-width:0}
   .res .rt{font-weight:600;font-size:12.5px}
@@ -286,8 +333,86 @@
   .switch{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg2);
     margin-top:6px;cursor:pointer}
 
+  /* ---------- guide ---------- */
+  .guide-hero{display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+    background:linear-gradient(135deg,var(--bg2),var(--ai-soft-bg));
+    border:1px solid var(--ai-soft-line);border-radius:8px;padding:15px 17px;margin-bottom:12px}
+  .guide-hero h1{font-size:20px;margin:0 0 3px;letter-spacing:.2px}
+  .guide-hero .gsub{color:var(--fg2);font-size:12.5px;line-height:1.55;max-width:640px}
+  .guide-hero .gh-side{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .guide-stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px}
+  .guide-stats b{display:block;font-size:16px;line-height:1.2}
+  .guide-stats span{font-size:10.5px;color:var(--fg3)}
+  .gab{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--ai-soft-bg);
+    border:1px solid var(--ai-soft-line);color:var(--ai-soft-fg);border-radius:6px;
+    padding:8px 11px;font-size:12px;margin-bottom:10px}
+  .arch{display:flex;flex-direction:column;gap:8px}
+  .arch-lane{display:flex;align-items:stretch;gap:4px;flex-wrap:wrap;background:var(--bg);
+    border:1px solid var(--line);border-radius:7px;padding:7px}
+  .arch-lbl{flex:0 0 44px;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:700;color:var(--fg3);background:var(--bg3);border-radius:5px;
+    letter-spacing:.5px;text-align:center}
+  .anode{flex:1 1 88px;min-width:84px;background:var(--bg2);border:1px solid var(--line);
+    border-radius:6px;padding:6px 8px;cursor:pointer;position:relative;transition:border-color .12s}
+  .anode:hover{border-color:var(--confirm2)}
+  .anode .ai{font-family:var(--mono);font-size:9px;color:var(--fg3)}
+  .anode b{display:block;font-size:11.5px;margin:1px 0}
+  .anode small{display:block;font-size:9.5px;color:var(--fg3);line-height:1.3}
+  .anode .adot{position:absolute;right:7px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--fg3)}
+  .anode.done{border-color:var(--done-line);background:var(--done-bg)}
+  .anode.done .adot{background:var(--go2)}
+  .anode.partial{border-color:var(--partial-line);background:var(--partial-bg)}
+  .anode.partial .adot{background:var(--warn)}
+  .anode.out{flex:1 1 110px;cursor:default;background:var(--bg3);border-style:dashed}
+  .anode.out:hover{border-color:var(--line)}
+  .aarrow{display:flex;align-items:center;color:var(--fg3);font-size:11px;padding:0 1px}
+  .arch-base{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .basechip{font-size:10.5px;color:var(--fg2);background:var(--bg3);border:1px solid var(--line);
+    border-radius:12px;padding:2px 9px}
+  .basechip b{color:var(--fg);font-weight:600}
+  .arch-note{font-size:11.5px;color:var(--fg2);line-height:1.6;margin-top:9px;
+    background:var(--bg);border-left:2px solid var(--ai-soft-line);padding:7px 10px;border-radius:0 5px 5px 0}
+  .gsteps{display:flex;flex-direction:column;gap:7px}
+  .gstep{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;
+    background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 11px}
+  .gstep.done{border-color:var(--done-line);background:var(--done-bg)}
+  .gstep.cur{border-color:var(--confirm);box-shadow:0 0 0 2px var(--ai-focus)}
+  .gnum{width:25px;height:25px;border-radius:50%;background:var(--bg4);color:var(--fg2);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px}
+  .gstep.done .gnum{background:var(--go);color:#fff}
+  .gstep.cur .gnum{background:var(--confirm);color:#fff}
+  .gstep .gt{font-weight:650;font-size:12.5px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .gstep .gd{color:var(--fg3);font-size:11px;margin-top:1px;line-height:1.5}
+  .gstep .ga{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .gbar{height:3px;background:var(--bg4);border-radius:2px;margin-top:6px;overflow:hidden;
+    width:min(260px,100%)}
+  .gbar i{display:block;height:100%;background:var(--go2)}
+  .gstep.cur .gbar i{background:var(--confirm2)}
+  .envchip{font-size:10px;border:1px solid var(--line);border-radius:10px;padding:1px 7px;
+    color:var(--fg3);background:var(--bg2)}
+  .envchip.ok{color:var(--done-fg);border-color:var(--done-line);background:var(--done-bg)}
+  .envchip.bad{color:var(--danger2);border-color:var(--badge-fail-line)}
+  .gcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+  .intg{background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:12px}
+  .intg .ih{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
+  .intg .ih b{font-size:13px}
+  .intg .im{font-size:11px;color:var(--fg3);word-break:break-all;margin-bottom:6px;line-height:1.5}
+  .intg ol{margin:6px 0 0;padding-left:17px;font-size:11.5px;color:var(--fg2);line-height:1.6}
+  .intg ol li{margin-bottom:2px}
+  .intg code{font-size:10.5px;word-break:break-all}
+  .intg-note{font-size:11px;color:var(--fg3);background:var(--bg);border-left:2px solid var(--line2);
+    padding:6px 8px;margin-top:8px;line-height:1.55;border-radius:0 4px 4px 0}
+  .intg-err{border-left-color:var(--danger2);color:var(--danger2)}
+  .flowgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:9px}
+  .flow{background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:10px 12px}
+  .flow b{font-size:12px;display:block;margin-bottom:3px}
+  .flow span{font-size:11.5px;color:var(--fg2);line-height:1.55}
+  .newform{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end}
+  .newform .grow{min-width:190px}
+  @media(max-width:760px){ .gstep{grid-template-columns:26px 1fr} .gstep .ga{grid-column:2;justify-content:flex-start} }
+
   /* ---------- drawer ---------- */
-  #drawerMask{position:fixed;inset:0;background:rgba(4,7,11,.5);opacity:0;pointer-events:none;
+  #drawerMask{position:fixed;inset:0;background:var(--overlay);opacity:0;pointer-events:none;
     transition:.18s;z-index:140}
   #drawerMask.show{opacity:1;pointer-events:auto}
   #drawer{position:fixed;top:0;right:0;height:100%;width:440px;max-width:94vw;
@@ -300,10 +425,10 @@
   .dfoot{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);
     background:var(--bg3)}
   .dprev{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-  .dprev .dp{width:92px;height:150px;border-radius:5px;overflow:hidden;background:#000;
+  .dprev .dp{width:92px;height:150px;border-radius:5px;overflow:hidden;background:var(--media-bg);
     border:1px solid var(--line);position:relative}
   .dprev .dp img,.dprev .dp video{width:100%;height:100%;object-fit:cover}
-  .dprev .dp span{position:absolute;left:3px;top:3px;background:rgba(0,0,0,.7);
+  .dprev .dp span{position:absolute;left:3px;top:3px;background:var(--scrim);
     font-size:9px;color:#fff;padding:0 4px;border-radius:2px}
   .dsec{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
   .dsec:first-child{border-top:0;margin-top:0;padding-top:0}
@@ -317,7 +442,11 @@
 <div id="app">
   <nav id="rail">
     <div class="brand">DK</div>
-    <button class="railbtn on" data-page="workbench" title="工作台">
+    <button class="railbtn on" data-page="guide" title="导引">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1 5.1-2.1z"/></svg>
+      <span>导引</span>
+    </button>
+    <button class="railbtn" data-page="workbench" title="工作台">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span>工作台</span>
     </button>
@@ -352,6 +481,10 @@
     <header>
       <div class="crumb"><b id="projTitle">DramaKit</b><span id="projMeta">制作台</span></div>
       <div class="hchips" id="hchips"></div>
+      <button class="btn sm ghost" id="themeBtn" title="切换到深色模式" aria-label="切换到深色模式">
+        <svg class="ico-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"/></svg>
+        <svg class="ico-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
       <button class="btn sm ghost" id="sideToggle" title="显示/隐藏项目栏">☰</button>
       <button class="btn sm ghost" id="refreshBtn" title="刷新">⟳</button>
     </header>
@@ -373,7 +506,8 @@
       </aside>
 
       <main id="main">
-        <section id="page-workbench" class="page"></section>
+        <section id="page-guide" class="page"></section>
+        <section id="page-workbench" class="page" style="display:none"></section>
         <section id="page-board" class="page" style="display:none"></section>
         <section id="page-cast" class="page" style="display:none"></section>
         <section id="page-pipeline" class="page" style="display:none"><div id="tab-run"></div></section>
@@ -413,14 +547,15 @@ const attr = s => esc(s).replace(/'/g,"&#39;");
 
 const STAGES=["ingest","analyze","character","segment","script","storyboard","promptgen","visual","voice","subtitle","music","compose"];
 const STAGE_ZH={ingest:"导入",analyze:"分析",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",visual:"画面",voice:"配音",subtitle:"字幕",music:"配乐",compose:"合成"};
+const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",character:"锚点 · 三视图",segment:"按钩子切集",script:"台词 · 旁白",storyboard:"场次 · 镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"逐句 TTS",subtitle:"跟着配音走",music:"情绪匹配 BGM",compose:"ffmpeg 成片"};
 
 const S = {
   state:null, templates:null, projects:[], current:"", tags:{}, tagSel:new Set(),
-  detail:null, health:null, activePage:"workbench", activeTag:"",
+  detail:null, health:null, activePage:"guide", activeTag:"",
   settings:null, modelEntries:[], modelDefault:"", modelRoles:[],
   boardEp:0, boardFilter:"all", assetKind:"", assetRows:[],
   drawer:{kind:"",ep:null,sc:null,shot:null,line:null},
-  production:null,
+  production:null, booted:false, guideBusy:null, guideProbing:false,
 };
 
 // ---------- api ----------
@@ -459,6 +594,7 @@ async function boot(){
   renderHeader(); renderCmdProj(); renderProjects(); renderTags();
   if(S.current) await selectProject(S.current, true); else { S.detail=null; renderAllPages(); }
   renderAllPages();
+  if(!S.booted){ S.activePage = S.projects.length ? "workbench" : "guide"; S.booted=true; }
   switchPage(S.activePage, true);
 }
 
@@ -490,6 +626,7 @@ function switchPage(name, force){
   $$(".railbtn[data-page]").forEach(b=>b.classList.toggle("on",b.dataset.page===name));
   $$(".page").forEach(p=>p.style.display=(p.id==="page-"+name?"":"none"));
   $("#main").scrollTop=0;
+  if(name==="guide") renderGuide();
   if(name==="workbench") renderWorkbench();
   if(name==="board") renderBoard();
   if(name==="cast") renderCast();
@@ -499,6 +636,17 @@ function switchPage(name, force){
 }
 $$(".railbtn[data-page]").forEach(b=>b.onclick=()=>switchPage(b.dataset.page));
 $("#sideToggle").onclick=()=>$("#side").classList.toggle("hide");
+
+// ---------- theme (light default, dark remembered) ----------
+const THEME_KEY="dk-theme";
+function applyTheme(t){
+  document.documentElement.dataset.theme=t;
+  try{localStorage.setItem(THEME_KEY,t)}catch(e){}
+  const b=$("#themeBtn");
+  if(b){b.title=t==="dark"?"切换到浅色模式":"切换到深色模式";b.setAttribute("aria-label",b.title);}
+}
+$("#themeBtn").onclick=()=>applyTheme(document.documentElement.dataset.theme==="dark"?"light":"dark");
+applyTheme(document.documentElement.dataset.theme||"light");
 
 // ---------- sidebar ----------
 function renderProjects(){
@@ -556,10 +704,361 @@ async function selectProject(slug, quiet){
 }
 
 function renderAllPages(){
+  renderGuide();
   renderWorkbench();
   if(S.activePage==="board") renderBoard();
   if(S.activePage==="cast") renderCast();
   if(S.activePage==="assets") loadAssets();
+}
+
+// ---------- guide ----------
+let guideTimer=null;
+function gEnvState(){
+  const h=S.health, p=(h&&h.probe)||{}, b=(h&&h.brain)||{};
+  const comfy=!!(p.comfyui&&p.comfyui.reachable);
+  const llm=!!(b.main&&b.main.ok)||!!((p.llm_endpoints||[]).length);
+  const tts=!!(p.tts&&p.tts.voice_count);
+  const ff=!!p.ffmpeg;
+  return {checked:!!h,ff,llm,comfy,tts,done:[ff,llm,comfy,tts].filter(Boolean).length};
+}
+function gStagesState(stages){
+  const eps=(S.detail&&S.detail.episodes)||[];
+  if(!eps.length) return {state:"pending",done:0,total:stages.length};
+  const done=stages.filter(s=>stageState(s)==="done").length;
+  return {state:done===stages.length?"done":done?"partial":"pending",done,total:stages.length};
+}
+function gArchNode(s){
+  const st=stageState(s), cls=st==="done"?"done":st==="partial"?"partial":"";
+  return `<div class="anode ${cls}" data-gstage="${s}" title="点击去流水线重跑「${STAGE_ZH[s]}」">
+    <span class="adot"></span><span class="ai">${String(STAGES.indexOf(s)+1).padStart(2,"0")}</span>
+    <b>${STAGE_ZH[s]}</b><small>${STAGE_HINT[s]||""}</small></div>`;
+}
+function gLane(label,stages,out){
+  return `<div class="arch-lane"><div class="arch-lbl">${label}</div>
+    ${stages.map(gArchNode).join('<span class="aarrow">→</span>')}${out?`<span class="aarrow">→</span>${out}`:""}</div>`;
+}
+const gbtn=(label,act,cls="ghost",extra="")=>`<button class="btn sm ${cls}" data-gact="${act}" ${extra}>${label}</button>`;
+function gStepHTML(o){
+  const st=o.st||{state:"pending",done:0,total:1};
+  const cur=o.cur&&st.state!=="done";
+  const cls=st.state==="done"?"done":cur?"cur":"";
+  const pct=st.total?Math.round(st.done/st.total*100):0;
+  const bst=st.state==="done"?"done":st.state==="partial"?"running":"pending";
+  return `<div class="gstep ${cls}">
+    <div class="gnum">${st.state==="done"?"✓":o.n}</div>
+    <div>
+      <div class="gt">${esc(o.title)} ${badge(bst)}
+        <span class="muted" style="font-weight:400;font-size:10.5px">${st.state==="done"?"本段完成":(st.done?`${st.done}/${st.total} 阶段完成`:`${st.total} 个阶段`)}</span></div>
+      <div class="gd">${o.desc}</div>
+      ${o.extra||""}
+      <div class="gbar"><i style="width:${pct}%"></i></div>
+    </div>
+    <div class="ga">${o.actions||""}</div>
+  </div>`;
+}
+function renderGuide(){
+  const box=$("#page-guide"); if(!box) return;
+  const d=S.detail, eps=(d&&d.episodes)||[];
+  const cs=(S.state&&S.state.config_summary)||{};
+  const env=gEnvState();
+  const shots=eps.reduce((a,e)=>a+e.scenes.reduce((x,s)=>x+s.shots.length,0),0);
+  const finals=eps.filter(e=>e.video).length;
+  const doneStages=STAGES.filter(s=>stageState(s)==="done").length;
+  const projReady=!!d;
+  const src=(d&&d.meta&&d.meta.source_file)||"";
+  const ingested=projReady&&(stageState("ingest")==="done"||!!src||eps.length>0);
+  const busy=!!S.guideBusy;
+  const dis=(!projReady||busy)?"disabled":"";
+  const ep=(d&&d.episodes||[]).find(e=>e.video)||null;
+
+  const envChip=(name,ok)=>`<span class="envchip ${env.checked?(ok?"ok":"bad"):""}">${name} ${env.checked?(ok?"✓":"✗"):"·"}</span>`;
+  const envChips=`<div class="chips" style="margin-top:5px">${envChip("ffmpeg",env.ff)}${envChip("大模型",env.llm)}${envChip("ComfyUI",env.comfy)}${envChip("TTS",env.tts)}
+    <span class="muted" style="font-size:10.5px;align-self:center">${env.checked?"上次探测结果":"还没探测，点「开始自检」"}</span></div>`;
+
+  const runBtn=(label,stages)=>gbtn(label,"run","go",`data-stages="${stages.join(",")}" data-label="${label}" ${dis}`);
+  const steps=[
+    {n:1,title:"环境与外部程序",desc:"ffmpeg、大模型、ComfyUI、TTS 各有一条可用通道。探测会顺带校验 ComfyUI 工作流里的节点 ID 是否对得上。",
+     st:{state:env.checked?(env.done===4?"done":env.done?"partial":"pending"):"pending",done:env.done,total:4},
+     extra:envChips,
+     actions:gbtn(env.checked?"重新自检":"开始自检","probe","confirm",S.guideProbing?"disabled":"")+gbtn("打开设置","settings")},
+    {n:2,title:"新建项目并导入小说",desc:src?`源文件：<code>${esc(src)}</code>。导入会清洗文本、识别章节，后面所有阶段都基于它。`:"支持 txt / md；docx 需装 <code>.[docx]</code> 扩展。导入只复制到项目里，不动原文件。",
+     st:{state:ingested?"done":projReady?"partial":"pending",done:ingested?1:0,total:1},
+     actions:projReady?gbtn("打开工作台","workbench")+(src?gbtn("重新导入","run","ghost",`data-stages="ingest" data-label="导入" ${dis}`):"")+gbtn("＋ 新建","new"):gbtn("去导入小说","new","confirm")},
+    {n:3,title:"AI 读懂故事 · 角色定妆",desc:"分析人物、世界观与主线，给每个角色生成固定英文锚点和三视图。<b>锚点之后会前置注入每个镜头</b>，跨集不换脸。",
+     st:gStagesState(["analyze","character"]),actions:runBtn("运行 分析→定妆",["analyze","character"])+gbtn("角色库","cast")},
+    {n:4,title:"分集 · 剧本 · 分镜",desc:"按目标时长和结尾钩子切集，生成台词/旁白/场次，再把每场拆成可生成的镜头。建议先跑到这里检查剧本。",
+     st:gStagesState(["segment","script","storyboard"]),actions:runBtn("运行 分集→分镜",["segment","script","storyboard"])+gbtn("分镜台","board")},
+    {n:5,title:"出画面（首帧 / 视频）",desc:"把分镜变成中英提示词，调用 ComfyUI 出首帧；配置了 i2v 就继续生成视频。单个镜头不满意可在分镜台单独返工。",
+     st:gStagesState(["promptgen","visual"]),actions:runBtn("运行 提示词→画面",["promptgen","visual"])+gbtn("分镜台","board")},
+    {n:6,title:"配音 · 字幕 · 配乐",desc:"逐句 TTS 拿到真实音频时长，字幕和镜头都跟着这条时间轴走；再按场景情绪匹配 BGM。",
+     st:gStagesState(["voice","subtitle","music"]),actions:runBtn("运行 配音→配乐",["voice","subtitle","music"])+gbtn("资产库","assets")},
+    {n:7,title:"合成成片",desc:"ffmpeg 拼接镜头、混人声/BGM、烧硬字幕、响度归一，输出 9:16 成片、封面和 srt。",
+     st:gStagesState(["compose"]),actions:(ep?`<a class="btn sm confirm" href="${attr(ep.video)}" target="_blank">▶ 看成片</a>`:"")+runBtn("运行 合成",["compose"])},
+  ];
+  let curSet=false;
+  steps.forEach(o=>{ o.cur=!curSet&&o.st.state!=="done"; if(o.cur)curSet=true; });
+
+  const p=(S.health&&S.health.probe)||{};
+  const b=(S.health&&S.health.brain)||{};
+  const comfy=p.comfyui||{};
+  const comfyOk=!!comfy.reachable;
+  const t2iOk=!!comfy.t2i_ok, i2vOk=!!comfy.i2v_ok, flfOk=!!comfy.flf_ok;
+  const llmOk=!!(b.main&&b.main.ok);
+  const llmDetail=S.health?(llmOk?"在线":"离线"+(b.main&&b.main.error?"："+b.main.error:"")):"未检测";
+  const probs=[].concat((comfy.t2i_report&&comfy.t2i_report.problems)||[],(comfy.i2v_report&&comfy.i2v_report.problems)||[],(comfy.flf_report&&comfy.flf_report.problems)||[]).slice(0,4);
+  const gpuTxt=(comfy.gpus||[]).map(g=>`${g.name} ${g.vram_gb}G`).join(" · ")||"—";
+  const ckptTxt=(comfy.checkpoints||[]).slice(0,3).join(" · ")||"—";
+
+  box.innerHTML=`
+    <div class="guide-hero">
+      <div>
+        <h1>从一本小说，到一条能发的竖屏短剧</h1>
+        <div class="gsub">十二个阶段串成一条流水线：AI 读故事、定角色、切集、写剧本、拆分镜、生成提示词，再交给 ComfyUI 出画面、TTS 配音、曲库配乐，最后 ffmpeg 合成。所有状态都在 <code>project.json</code>，断了能接着跑。</div>
+        <div class="guide-stats">
+          <div><b>${d?esc(d.meta.title||d.meta.name):"—"}</b><span>当前项目</span></div>
+          <div><b>${eps.length}</b><span>集</span></div>
+          <div><b>${shots}</b><span>分镜</span></div>
+          <div><b>${finals}</b><span>成片</span></div>
+          <div><b>${doneStages}/12</b><span>阶段完成</span></div>
+        </div>
+      </div>
+      <div class="gh-side">
+        <button class="btn go" data-gact="runall" ${dis}>▶ 一键跑完整流程</button>
+        <button class="btn confirm" data-gact="probe" ${S.guideProbing?"disabled":""}>${env.checked?"重新自检":"环境自检"}</button>
+        <button class="btn ghost" data-gact="new">＋ 新建项目</button>
+      </div>
+    </div>
+    ${S.guideProbing?'<div class="gab"><span class="spin"></span> 正在探测 ffmpeg / 大模型 / ComfyUI / TTS…（远程 ComfyUI 可能要十几秒）</div>':""}
+    ${busy?`<div class="gab"><span class="spin"></span> 正在后台运行：<b>${esc(S.guideBusy.label||"")}</b>。可以切到别的页面，任务不会中断。</div>`:""}
+
+    <div class="card">
+      <h3>整体架构 <span class="muted" style="font-weight:400;font-size:11px">一条文本链 → 三条生成链 → 一条合成链</span></h3>
+      ${gLane("文本",["ingest","analyze","character","segment","script","storyboard","promptgen"])}
+      ${gLane("生成",["visual","voice","subtitle","music"])}
+      ${gLane("后期",["compose"],'<div class="anode out"><b>成片 mp4</b><small>9:16 · 硬字幕 · 封面 · srt</small></div>')}
+      <div class="arch-base">
+        <span class="basechip">基座 · <b>project.json</b> 节点级状态</span>
+        <span class="basechip">基座 · <b>后台任务</b> 轮询进度</span>
+        <span class="basechip">基座 · <b>catalog.db</b> 资产标签/检索</span>
+        <span class="basechip">基座 · <b>Provider</b> LLM / ComfyUI / TTS / 音乐</span>
+      </div>
+      <div class="arch-note"><b>数据怎么流：</b>每个阶段只读上一步的产物、写回项目目录，路径固定在 <code>project.json</code> 里。画面看 <code>visual</code> 的图/视频，时间轴看 <code>voice</code> 的真实音频时长，字幕和镜头都按同一时间轴铺，所以人声、画面、字幕天然对齐。点任意阶段可以直接去流水线重跑它。</div>
+    </div>
+
+    <div class="card">
+      <h3>从小说到成片 · 7 步 <span class="muted" style="font-weight:400;font-size:11px">跟着高亮走；每步都可单独重跑</span></h3>
+      <div class="gsteps">${steps.map(gStepHTML).join("")}</div>
+    </div>
+
+    <div class="card" id="guide-new">
+      <h3>新建项目 · 导入小说 <span class="muted" style="font-weight:400;font-size:11px">文件路径是运行 dj serve 那台机器上的路径</span></h3>
+      <div class="newform">
+        <div class="grow"><label class="fl">项目名</label><input class="f" id="gName" placeholder="例如：战神归来"></div>
+        <div class="grow" style="flex:2"><label class="fl">小说 / 剧本文件（可留空，稍后导入）</label><input class="f" id="gSource" placeholder="D:/novels/战神归来.txt"></div>
+        <button class="btn go" id="gCreate">创建并导入</button>
+      </div>
+      <div class="muted" style="font-size:11px;margin-top:7px">支持 .txt / .md；.docx 需安装 <code>pip install -e ".[docx]"</code>。文件会复制进项目 <code>source/</code>，原文件不动。</div>
+    </div>
+
+    <h2 class="page" style="font-size:14px;margin:16px 0 8px">外挂程序怎么接</h2>
+    <div class="sub" style="margin-bottom:9px">系统不绑定任何一家：Provider 层把「大模型 / 画面 / 配音 / 配乐 / 合成」全部抽象成可替换适配器。换服务只改配置，不改代码。</div>
+    <div class="gcols">
+      <div class="intg">
+        <div class="ih"><b>ComfyUI（画面）</b><span class="dot ${S.health?(comfyOk?"ok":"bad"):"na"}"></span>
+          <span class="mini">${S.health?(comfyOk?"已连接":"未连接"):"未检测"}</span><span style="flex:1"></span>
+          ${gbtn("去设置","settings")}</div>
+        <div class="im">${esc(cs.comfyui||"http://127.0.0.1:8188")} · 模式 ${esc(cs.comfyui_mode||"image_then_video")}<br>
+          出图 <code>${esc((cs.t2i_workflow||"").split(/[\\/]/).pop()||"—")}</code> · 视频 <code>${esc((cs.i2v_workflow||"").split(/[\\/]/).pop()||"—")}</code></div>
+        ${S.health&&comfyOk?`<div class="im">GPU：${esc(gpuTxt)}<br>Checkpoint：${esc(ckptTxt)}</div>
+        <div class="chips">
+          <span class="envchip ${t2iOk?"ok":"bad"}">出图工作流 ${t2iOk?"✓":"未通过"}</span>
+          <span class="envchip ${i2vOk?"ok":"bad"}">视频工作流 ${i2vOk?"✓":"未通过"}</span>
+          ${cs.first_last_frame?`<span class="envchip ${flfOk?"ok":"bad"}">首尾帧 ${flfOk?"✓":"未通过"}</span>`:""}
+        </div>`:""}
+        ${probs.length?`<div class="intg-note intg-err">${probs.map(esc).join("<br>")}</div>`:""}
+        <ol>
+          <li>GPU 机器启动：<code>python main.py --listen 0.0.0.0 --port 8188</code>；本机可只监听 127.0.0.1。</li>
+          <li>搭好「文生图」「图生视频」两条工作流，各自 <b>Save (API Format)</b> 导出 JSON。</li>
+          <li>JSON 放进 <code>config/comfyui/</code>，在「设置 → 制作参数」填两条工作流路径。</li>
+          <li>把 JSON 里的节点编号填到 <code>comfyui.t2i_nodes / i2v_nodes</code>：正向、负向、seed、宽高、steps/cfg、checkpoint、LoadImage、frames/fps 各对应一个节点。</li>
+          <li>远程/反代：填 <code>base_url</code>；按需 <code>auth: basic|token|header</code>。<b>use_proxy 必须 false</b>，否则会走系统代理连不上。</li>
+          <li>点上方「环境自检」；工作流缺节点/插件会直接把问题列在这里。</li>
+        </ol>
+        <div class="intg-note">可选增强：角色参考图 → t2i 工作流加 <code>LoadImage</code>，填 <code>t2i_nodes.ref_image</code>，设 <code>consistency: ref</code>；首尾帧 → <code>flf_workflow</code> + <code>i2v_nodes.last_image</code> + <code>first_last_frame: true</code>。不配会自动退回单图流程，不报错。</div>
+      </div>
+
+      <div class="intg">
+        <div class="ih"><b>大模型 LLM（文本）</b><span class="dot ${S.health?(llmOk?"ok":"bad"):"na"}"></span>
+          <span class="mini">${esc(llmDetail)}</span><span style="flex:1"></span>
+          ${gbtn("去设置","settings")}</div>
+        <div class="im">默认 <b>${esc(cs.default_model||"—")}</b> @ <code>${esc(cs.default_base_url||"—")}</code></div>
+        <ol>
+          <li>本地：Ollama <code>http://localhost:11434/v1</code>（默认 qwen2.5:14b）或 LM Studio <code>http://localhost:1234/v1</code>，Key 随便填。</li>
+          <li>云端：DeepSeek / 通义 / Kimi / OpenAI / 智谱等任意 <b>OpenAI 兼容</b>端点，在「设置 → 模型清单」点预设添加。</li>
+          <li>填 <code>base_url</code>（含 /v1）、模型名、API Key；点「测试」会拉取端点上的真实模型列表供点选。</li>
+          <li>按任务勾选模型（分析/分集/剧本/分镜/提示词/配置/动作/检索/打标），列表越靠上优先级越高，未勾选任务由默认模型兜底。</li>
+        </ol>
+        <div class="intg-note">Key 建议走环境变量 <code>DRAMAKIT_LLM_API_KEY</code>；控制台只回显掩码，保存时原位写回 YAML 并保留注释。</div>
+      </div>
+
+      <div class="intg">
+        <div class="ih"><b>配音 TTS</b><span class="dot ${S.health?(p.tts&&p.tts.voice_count?"ok":"bad"):"na"}"></span>
+          <span class="mini">${S.health?((p.tts&&p.tts.voice_count)||0)+" 个音色":"未检测"}</span><span style="flex:1"></span>
+          ${gbtn("去设置","settings")}</div>
+        <div class="im">provider <b>${esc(cs.tts||"edge")}</b>${cs.tts_base_url?` @ <code>${esc(cs.tts_base_url)}</code>`:""}</div>
+        <ol>
+          <li><b>edge</b>（默认）：免费、无需 Key，装好依赖即可用；中文默认云希/云扬/晓晓。</li>
+          <li><b>cosyvoice</b>：本地启动 CosyVoice HTTP 服务，<code>base_url</code> 指向它，可克隆音色。</li>
+          <li><b>openai</b>：任意兼容 <code>/v1/audio/speech</code> 的服务；<b>minimax</b>：云端多情感音色。</li>
+          <li><code>voice_map</code> 给角色绑音色（如 林凡: zh-CN-YunxiNeural），<code>emotion_map</code> 给情绪风格。</li>
+        </ol>
+        <div class="intg-note">配音阶段会逐句生成音频并回填真实时长；后面字幕、镜头、合成全部用这条时间轴，不会出现“声画不同步”。</div>
+      </div>
+
+      <div class="intg">
+        <div class="ih"><b>配乐 BGM</b><span class="dot ${S.health?(p.music&&p.music.track_count?"ok":"na"):"na"}"></span>
+          <span class="mini">${S.health?((p.music&&p.music.track_count)||0)+" 首":"未检测"}</span><span style="flex:1"></span>
+          ${gbtn("去设置","settings")}</div>
+        <div class="im">provider <b>${esc(cs.music||"library")}</b> · <code>${esc(cs.music_library||"assets/music")}</code></div>
+        <ol>
+          <li><b>library</b>（默认）：把 mp3/wav 放进 <code>assets/music</code>，按情绪命名，或配 <code>mood_map</code> 显式映射。</li>
+          <li><b>musicgen</b>：本地/HTTP MusicGen 服务，填 <code>base_url</code> 按情绪生成。</li>
+          <li><b>suno</b>：Suno 兼容 API；<b>none</b>：不加 BGM。</li>
+          <li><code>loop_to_fit</code> 自动铺满整集，<code>duck_voice</code> 有人说话时自动压低 BGM。</li>
+        </ol>
+      </div>
+
+      <div class="intg">
+        <div class="ih"><b>ffmpeg（合成）</b><span class="dot ${S.health?(p.ffmpeg?"ok":"bad"):"na"}"></span>
+          <span class="mini">${S.health?(p.ffmpeg?"可用":"缺失"):"未检测"}</span><span style="flex:1"></span>
+          ${gbtn("环境自检","probe")}</div>
+        <div class="im">负责：拼接、烧硬字幕、混音、响度归一、抽封面</div>
+        <ol>
+          <li>装好 ffmpeg/ffprobe 并确保都在 PATH；终端执行 <code>ffmpeg -version</code> 能输出版本即可。</li>
+          <li>Windows 可用 winget/scoop/choco 安装，或解压后把 <code>bin</code> 加进 PATH；macOS <code>brew install ffmpeg</code>；Linux <code>sudo apt install ffmpeg</code>。</li>
+          <li>随时可用 <code>dj doctor</code> 或本页「环境自检」确认。</li>
+        </ol>
+        <div class="intg-note">合成参数在「设置 → 制作参数」：分辨率、码率、CRF、转场、硬字幕、响度、封面来源。</div>
+      </div>
+
+      <div class="intg">
+        <div class="ih"><b>其它程序 / 自定义协议</b><span style="flex:1"></span></div>
+        <div class="im">Provider 层是开放的</div>
+        <ol>
+          <li>任何 <b>OpenAI 兼容</b> LLM、TTS、Suno 兼容音乐 API 都能直接接。</li>
+          <li>画面服务只要是 ComfyUI 的 HTTP/WS 协议，就能复用现有适配器；换成别家 REST，实现 <code>providers/base.py</code> 的 <code>BaseImageVideo</code>（生成/等待/下载）即可。</li>
+          <li>TTS / 音乐同理实现 <code>BaseTTS</code> / <code>BaseMusic</code>，在 <code>providers/__init__.py</code> 的工厂里注册。</li>
+          <li>不需要改流水线：每个阶段只依赖抽象接口。</li>
+        </ol>
+      </div>
+    </div>
+
+    <h2 class="page" style="font-size:14px;margin:16px 0 8px">怎么做到“无缝”</h2>
+    <div class="flowgrid">
+      <div class="flow"><b>① 一条命令跑全链</b><span>十二阶段按固定顺序执行，已完成节点自动跳过；也可以只勾某几段重跑。</span></div>
+      <div class="flow"><b>② 断点续跑</b><span>所有状态写进 <code>project.json</code>，每个集/场/镜/台词都有 status。崩溃、换模型、换 ComfyUI 后直接重跑即可。</span></div>
+      <div class="flow"><b>③ 改一处，只废下游</b><span>改台词只作废这句配音/字幕/合成；改角色锚点会重置相关提示词；单镜返工只重出那一个镜头。</span></div>
+      <div class="flow"><b>④ 后台任务不堵界面</b><span>生成画面/视频可能跑几十分钟；任务在服务端线程里跑，浏览器轮询，随时可以切页面或关掉重开。</span></div>
+      <div class="flow"><b>⑤ 时间轴只认配音</b><span>每句台词的音频时长决定场景长度，镜头按比例铺满，字幕复用同一时间轴，合成时不会错位。</span></div>
+      <div class="flow"><b>⑥ 失败不连坐</b><span>ComfyUI 挂了只影响画面；AI 端点不可用时配置/打标/检索自动回退规则。其它阶段照跑。</span></div>
+    </div>
+
+    <details class="fold" style="margin-top:12px"><summary>CLI 等价命令（不想开控制台时）</summary>
+      <div class="inner">
+        <pre style="font-family:var(--mono);font-size:11px;line-height:1.7;margin:0;overflow:auto">dj serve                                   # 打开本控制台
+dj new 我的短剧 --source D:/novels/x.txt   # 建项目并复制小说
+dj run projects/我的短剧 --stop-after storyboard
+dj run projects/我的短剧 --stages voice,subtitle,compose --episodes 1-3
+dj status projects/我的短剧
+dj doctor                                  # ffmpeg / LLM / TTS / ComfyUI 自检
+dj comfy-test --gen                        # 远程 ComfyUI 自检 + 试生成一张图</pre>
+      </div>
+    </details>`;
+
+  $$("#page-guide [data-gact]").forEach(x=>x.onclick=()=>{
+    const a=x.dataset.gact;
+    if(a==="probe") return probeGuide();
+    if(a==="new"){
+      const n=$("#gName");
+      if(n){ n.scrollIntoView({behavior:"smooth",block:"center"}); n.focus(); }
+      return;
+    }
+    if(a==="run"){
+      const stages=(x.dataset.stages||"").split(",").filter(Boolean);
+      return startStages(stages,x.dataset.label||"阶段");
+    }
+    if(a==="runall") return startStages([...STAGES],"全流程");
+    switchPage(a);
+  });
+  $$("#page-guide .anode[data-gstage]").forEach(x=>x.onclick=()=>{
+    runSel=new Set([x.dataset.gstage]); switchPage("pipeline");
+  });
+  const gc=$("#gCreate"); if(gc) gc.onclick=createProjectFromGuide;
+}
+
+async function probeHealth(onDone){
+  const r=await getJSON("/api/health");
+  if(!r.ok||!r.job){ toast("环境探测提交失败","err"); onDone&&onDone(null); return; }
+  pollJob(r.job,res=>{ if(res) S.health=res; onDone&&onDone(res); });
+}
+function probeGuide(){
+  if(S.guideProbing) return;
+  S.guideProbing=true; renderGuide();
+  probeHealth(res=>{
+    S.guideProbing=false;
+    if(res){
+      const b=res.brain||{};
+      toast(`环境探测完成 · 大模型${b.main&&b.main.ok?"在线":"离线"}`,b.main&&b.main.ok?"ok":"");
+    } else toast("环境探测失败，看流水线/日志","err",6000);
+    if(S.activePage==="guide") renderGuide();
+  });
+}
+async function startStages(stages,label){
+  if(!S.current) return toast("先新建或选择一个项目","err");
+  if(S.guideBusy) return toast("已有任务在运行，等它结束再提交","err");
+  if(!stages||!stages.length) return toast("没有选择阶段","err");
+  runSel=new Set(stages);
+  const names=stages.map(s=>STAGE_ZH[s]||s).join(" → ");
+  S.guideBusy={stages,label:label||names};
+  renderGuide();
+  const r=await postJSON("/api/run",{project:S.current,episodes:[],stages,overrides:{}});
+  if(!r.ok){ S.guideBusy=null; renderGuide(); return toast("提交失败："+esc(r.error||""),"err"); }
+  toast("已提交："+esc(names),"",2400);
+  if(guideTimer) clearInterval(guideTimer);
+  guideTimer=setInterval(async()=>{
+    if(!S.current) return;
+    const d=await getJSON("/api/projects/"+encodeURIComponent(S.current));
+    if(d.ok){ S.detail=d; renderHeader(); if(S.activePage==="guide") renderGuide(); }
+  },2500);
+  pollJob(r.job,async res=>{
+    if(guideTimer){ clearInterval(guideTimer); guideTimer=null; }
+    S.guideBusy=null;
+    const failed=(stages||[]).filter(s=>res&&res[s]&&res[s].error);
+    if(!res) toast("任务失败，请到流水线查看输出","err",6000);
+    else if(failed.length) toast("部分阶段失败："+failed.map(s=>STAGE_ZH[s]||s).join("、"),"err",6000);
+    else toast((label||"阶段")+" 完成","ok");
+    await selectProject(S.current,true);
+    if(S.activePage==="guide") renderGuide();
+  });
+}
+async function createProjectFromGuide(){
+  const name=$("#gName").value.trim();
+  const source=$("#gSource").value.trim();
+  if(!name) return toast("请填项目名","err");
+  const btn=$("#gCreate"); const old=btn.textContent;
+  btn.disabled=true; btn.textContent="创建中…";
+  const r=await postJSON("/api/new",{name,source});
+  if(!r.ok){ btn.disabled=false; btn.textContent=old; return toast("创建失败："+esc(r.error||""),"err"); }
+  S.current=r.slug;
+  await boot();
+  S.activePage="guide"; switchPage("guide",true);
+  const d=S.detail;
+  if(source&&!(d&&d.meta&&d.meta.source_file)){
+    toast("项目已建，但源文件不可读；请检查路径后重试导入","err",6000);
+    return;
+  }
+  if(source){ toast("项目已创建，开始导入…","ok"); startStages(["ingest"],"导入"); }
+  else toast("项目已创建；补上小说路径后可跑「导入」","",3200);
 }
 
 // ---------- workbench ----------
@@ -596,7 +1095,7 @@ function renderWorkbench(){
         <span class="mini">${epProgress(ep)}% 完成</span>
         ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ↗</a>':""}
         ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ↗</a>':""}
-        ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:#9be2a8">有视频</span>':""}
+        ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:var(--go2)">有视频</span>':""}
       </div>
     </div>`).join("");
 
@@ -854,7 +1353,7 @@ function renderCast(){
       <div class="casttop">
         <div class="ref">${sheet?`<img src="${sheet}" loading="lazy">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px">无参考图</div>'}</div>
         <div class="cb">
-          <div class="cn">${esc(c.name)} ${c.locked?'<span class="mini" style="color:#9be2a8">已锁定</span>':""}</div>
+          <div class="cn">${esc(c.name)} ${c.locked?'<span class="mini" style="color:var(--go2)">已锁定</span>':""}</div>
           <div class="cr">${esc(c.role||"")} · ${esc(c.gender||"")} ${c.age?"· "+esc(c.age):""}</div>
           <div class="reflist">${(c.ref_urls||[]).slice(0,5).map(u=>`<img src="${u}" loading="lazy">`).join("")}</div>
         </div>
@@ -1011,9 +1510,9 @@ function renderRun(){
   const box=$("#tab-run");
   const projs=S.projects.map(p=>`<option value="${esc(p.slug)}" ${p.slug===S.current?"selected":""}>${esc(p.title)}</option>`).join("");
   const d=S.detail;
-  const overview=d?(d.episodes||[]).map(ep=>`<div class="line" style="border-bottom:1px dashed #1e262f">
+  const overview=d?(d.episodes||[]).map(ep=>`<div class="line" style="border-bottom:1px dashed var(--dash)">
       <span class="sp">第${ep.index}集</span>
-      <span class="tx">${STAGES.map(s=>`<span class="mini" style="margin:1px ${stageStateFor(ep,s)==="done"?"color:#9be2a8":""}">${STAGE_ZH[s]}</span>`).join("")}</span>
+      <span class="tx">${STAGES.map(s=>`<span class="mini" style="margin:1px ${stageStateFor(ep,s)==="done"?"color:var(--go2)":""}">${STAGE_ZH[s]}</span>`).join("")}</span>
     </div>`).join(""):"";
   box.innerHTML=`
     <h1 class="page">流水线</h1>
@@ -1345,12 +1844,10 @@ async function saveAI(){
 async function showProbe(){
   const stat=$("#setupStat"); if(!stat) return;
   stat.innerHTML='<span class="spin"></span> 探测中…（ComfyUI/音色联网探测可能需十几秒）';
-  const r=await getJSON("/api/health");
-  if(!r.ok||!r.job){ stat.textContent="探测失败"; return; }
-  pollJob(r.job,res=>{
+  probeHealth(res=>{
     stat.textContent="";
     if(!res) return;
-    S.health=res; renderProbe(res);
+    renderProbe(res);
     const b=res.brain||{};
     toast(`默认模型 ${b.main&&b.main.ok?"在线":"离线"} · 打标模型 ${b.light&&b.light.ok?"在线":"离线"}`,b.main&&b.main.ok?"ok":"err");
   });
@@ -1438,7 +1935,7 @@ function showPreview(a,instr){
   const p=$("#preview");
   const params=Object.entries(a.params||{}).filter(([k,v])=>v!==""&&!(Array.isArray(v)&&!v.length)&&!(v&&typeof v==="object"&&!Object.keys(v).length));
   const pstr=params.map(([k,v])=>`<span class="kv">${esc(k)}=${esc(typeof v==="object"?JSON.stringify(v):v)}</span>`).join(" ");
-  p.style.cssText="display:flex;gap:12px;align-items:flex-start;background:var(--bg2);border-bottom:1px solid #3b2a63;padding:9px 14px";
+  p.style.cssText="display:flex;gap:12px;align-items:flex-start;background:var(--bg2);border-bottom:1px solid var(--ai-soft-line);padding:9px 14px";
   p.innerHTML=`<div style="flex:1;min-width:0">
       <div style="font-weight:700;font-size:12.5px">${esc(a.title)} ${a.note?`<span class="muted" style="font-weight:400">· ${esc(a.note)}</span>`:""}</div>
       <div class="muted" style="font-size:11.5px;margin:2px 0 5px">${esc(a.confirm_msg||"")} · 原话：“${esc(instr)}”</div>
@@ -1482,16 +1979,11 @@ window.reindex=function(slug,withAI){
   });
 };
 $("#newProj").onclick=()=>{
-  const name=prompt("新项目名称："); if(!name) return;
-  const source=prompt("小说/剧本文件路径（可留空）：")||"";
-  postJSON("/api/new",{name,source}).then(r=>{
-    if(!r.ok) return toast("新建失败："+esc(r.error||""),"err");
-    toast("已创建："+r.slug,"ok");
-    boot().then(()=>selectProject(r.slug));
-  });
+  switchPage("guide");
+  setTimeout(()=>{ const n=$("#gName"); if(n){ n.scrollIntoView({behavior:"smooth",block:"center"}); n.focus(); } },60);
 };
 $("#refreshBtn").onclick=()=>boot();
-$("#healthBtn").onclick=()=>{ switchPage("settings"); showProbe(); };
+$("#healthBtn").onclick=()=>{ switchPage("guide"); probeGuide(); };
 document.addEventListener("keydown",e=>{
   if(e.key==="/"&&document.activeElement.tagName!=="INPUT"&&document.activeElement.tagName!=="TEXTAREA"){
     e.preventDefault(); $("#cmd").focus();

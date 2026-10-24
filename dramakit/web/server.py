@@ -274,11 +274,19 @@ def _make_handler(state: State):
                     "current_project": projs[0]["slug"] if projs else "",
                     "config_summary": {
                         "default_model": state.cfg.resolve_llm("").model,
+                        "default_base_url": state.cfg.resolve_llm("").base_url,
                         "tag_model": state.cfg.resolve_llm("tag").model,
                         "comfyui": state.cfg.comfyui.base_url,
                         "comfyui_enabled": state.cfg.comfyui.enabled,
+                        "comfyui_mode": state.cfg.comfyui.mode,
+                        "t2i_workflow": state.cfg.comfyui.t2i_workflow,
+                        "i2v_workflow": state.cfg.comfyui.i2v_workflow,
+                        "flf_workflow": state.cfg.comfyui.flf_workflow,
+                        "first_last_frame": state.cfg.comfyui.first_last_frame,
                         "tts": state.cfg.tts.provider,
+                        "tts_base_url": state.cfg.tts.base_url,
                         "music": state.cfg.music.provider,
+                        "music_library": state.cfg.music.library_dir,
                     },
                     "counts": {"projects": len(projs)},
                 }
@@ -1066,6 +1074,14 @@ def _media_url(slug: str, rel_path: str) -> str:
     return f"/media/{slug}/{rel_path.lstrip('/')}"
 
 
+def _slim_workflow_report(rep: Optional[dict]) -> Optional[dict]:
+    if not rep:
+        return None
+    return {"file": rep.get("file"), "ok": rep.get("ok"),
+            "nodes": rep.get("nodes", 0),
+            "problems": [str(p)[:220] for p in (rep.get("problems") or [])][:6]}
+
+
 def _slim_probe(rep: dict) -> dict:
     """Trim the probe report to what the UI shows."""
     comfy = rep.get("comfyui", {})
@@ -1076,9 +1092,14 @@ def _slim_probe(rep: dict) -> dict:
         "llm_main": rep.get("llm_main", {}),
         "comfyui": {"reachable": comfy.get("reachable"),
                     "base_url": comfy.get("base_url"),
+                    "version": comfy.get("version", ""),
                     "gpus": comfy.get("gpus", []),
                     "checkpoints": (comfy.get("checkpoints") or [])[:12],
-                    "t2i_ok": comfy.get("t2i_ok"), "i2v_ok": comfy.get("i2v_ok")},
+                    "t2i_ok": comfy.get("t2i_ok"), "i2v_ok": comfy.get("i2v_ok"),
+                    "flf_ok": comfy.get("flf_ok"),
+                    "t2i_report": _slim_workflow_report(comfy.get("t2i_report")),
+                    "i2v_report": _slim_workflow_report(comfy.get("i2v_report")),
+                    "flf_report": _slim_workflow_report(comfy.get("flf_report"))},
         "tts": {"provider": rep.get("tts", {}).get("provider"),
                 "voice_count": rep.get("tts", {}).get("voice_count", 0)},
         "music": {"provider": rep.get("music", {}).get("provider"),
