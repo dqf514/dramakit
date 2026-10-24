@@ -32,6 +32,7 @@ import httpx
 
 from ..config import ComfyUIConfig
 from .base import BaseImageVideo
+from .workflow_map import infer_workflow, score_workflow
 
 log = logging.getLogger("dramakit.comfyui")
 
@@ -47,6 +48,7 @@ class ComfyUIClient(BaseImageVideo):
         self.base = cfg.base_url.rstrip("/")
         # unique-ish client id so multiple machines don't cross-talk on the WS
         self.client_id = f"{cfg.client_id}-{random.randint(1000, 9999)}"
+        self._infer_cache: dict[str, tuple[float, dict]] = {}
 
     # ---------------------------------------------------------------- auth
     def _auth_headers(self) -> dict:
@@ -123,7 +125,9 @@ class ComfyUIClient(BaseImageVideo):
         return r.json()
 
     def available_node_types(self) -> set[str]:
-        return set(self.object_info().keys())
+        if not hasattr(self, "_node_types") or self._node_types is None:
+            self._node_types = set(self.object_info().keys())
+        return self._node_types
 
     def list_checkpoints(self) -> list[str]:
         """Checkpoints the server actually has (for config sanity)."""
@@ -134,15 +138,22 @@ class ComfyUIClient(BaseImageVideo):
         except Exception:  # noqa: BLE001
             return []
 
-    def validate_workflow(self, rel: str, nodes_map: dict) -> dict:
-        """Check a workflow file: every node's class_type exists on the server and
-        every mapped semantic node id is present. Returns a report dict."""
-        report: dict = {"file": rel, "ok": True, "problems": [], "nodes": 0}
+    def validate_workflow(self, rel: str, nodes_map: dict, kind: str = "") -> dict:
+        """Check a workflow: node types exist on the server, mapped semantic ids
+        resolve. With auto_map on, stale ids are repaired from the graph."""
+        report: dict = {"file": rel, "ok": True, "problems": [], "warnings": [], "nodes": 0}
         try:
-            graph = self._load_workflow(rel)
+            graph = self._load_workflow(rel, kind)
         except Exception as e:  # noqa: BLE001
-            return {"file": rel, "ok": False, "problems": [f"无法读取工作流: {e}"], "nodes": 0}
+            return {"file": rel, "ok": False, "problems": [f"无法读取工作流: {e}"],
+                    "warnings": [], "nodes": 0}
         report["nodes"] = len(graph)
+        info = infer_workflow(graph)
+        report["kind"] = info["kind"]
+        kind = kind or info["kind"]
+        resolved, _, _ = self._resolved_nodes(kind, graph)
+        report["inferred"] = {k: v for k, v in resolved.items() if v}
+        report["warnings"].extend(info.get("warnings") or [])
         try:
             have = self.available_node_types()
         except Exception as e:  # noqa: BLE001
@@ -155,22 +166,121 @@ class ComfyUIClient(BaseImageVideo):
                 report["problems"].append(f"节点 {nid} 的类型 '{ct}' 服务器上没有（缺自定义节点/插件）")
                 report["ok"] = False
         for sem, nid in (nodes_map or {}).items():
+            if not nid:
+                continue
             if str(nid) not in graph:
-                report["problems"].append(f"配置项 {sem}->节点'{nid}' 在工作流里不存在")
+                if self.cfg.auto_map and resolved.get(sem):
+                    report["warnings"].append(
+                        f"配置项 {sem}->节点'{nid}' 不存在，已自动识别为 {resolved[sem]}")
+                else:
+                    report["problems"].append(f"配置项 {sem}->节点'{nid}' 在工作流里不存在")
+                    report["ok"] = False
+        for sem, nid in resolved.items():
+            if nid and str(nid) not in graph:
+                report["problems"].append(f"自动识别项 {sem}->节点'{nid}' 在工作流里不存在")
                 report["ok"] = False
         return report
 
+    def _resolved_nodes(self, kind: str, graph: dict) -> tuple[dict, dict, list[str]]:
+        """Merge configured semantic node ids with ids inferred from the graph.
+
+        Explicit ids win while they still exist; missing/stale ones fall back to
+        inference. Returns (nodes, inference, ref_slots).
+        """
+        info = infer_workflow(graph)
+        base = dict(info.get("t2i" if kind == "t2i" else "i2v") or {})
+        explicit = dict(self.cfg.t2i_nodes if kind == "t2i" else self.cfg.i2v_nodes)
+        merged = dict(base)
+        for key, value in explicit.items():
+            value = str(value or "")
+            if not value:
+                continue
+            if self.cfg.auto_map and value not in graph:
+                continue
+            merged[key] = value
+        if not self.cfg.auto_map:
+            merged = {k: str(v) for k, v in explicit.items() if v}
+        refs = list(info.get("ref_slots") or [])
+        primary = str(merged.get("ref_image") or "")
+        if primary:
+            refs = [primary] + [r for r in refs if r != primary]
+        return merged, info, refs
+
     # ------------------------------------------------------------- workflow
-    def _load_workflow(self, rel: str) -> dict:
-        path = (self.root / rel) if not Path(rel).is_absolute() else Path(rel)
+    def _resolve_workflow_path(self, rel: str) -> Path:
+        path = Path(rel) if Path(rel).is_absolute() else (self.root / rel)
+        if path.exists():
+            return path
+        alt = Path(rel)
+        return alt if alt.exists() else path
+
+    def _load_workflow(self, rel: str, kind: str = "") -> dict:
+        path = self._resolve_workflow_path(rel)
         if not path.exists():
-            alt = Path(rel)
-            if alt.exists():
-                path = alt
+            picked = self._pick_workflow(rel, kind)
+            if picked and picked != rel:
+                path = self._resolve_workflow_path(picked)
             else:
                 raise FileNotFoundError(f"ComfyUI workflow not found: {path}")
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
+
+    def _infer_file(self, path: Path) -> dict:
+        key = str(path)
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            return {}
+        cached = self._infer_cache.get(key)
+        if cached and cached[0] == mtime:
+            return cached[1]
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                graph = json.load(f)
+            info = infer_workflow(graph)
+        except Exception:  # noqa: BLE001
+            return {}
+        self._infer_cache[key] = (mtime, info)
+        return info
+
+    def workflow_files(self) -> list[str]:
+        """Every readable workflow: configured ones + config/comfyui/*.json."""
+        seen: dict[str, None] = {}
+        for rel in (self.cfg.t2i_workflow, self.cfg.i2v_workflow,
+                    self.cfg.flf_workflow, self.cfg.upscale_workflow):
+            if rel:
+                p = self._resolve_workflow_path(rel)
+                if p.exists():
+                    seen[str(p.resolve())] = None
+        for base in (self.root / "config/comfyui", Path("config/comfyui")):
+            if base.exists():
+                for p in sorted(base.glob("*.json")):
+                    seen[str(p.resolve())] = None
+        return list(seen)
+
+    def _pick_workflow(self, configured: str, kind: str) -> str:
+        """Configured path if present; otherwise the best-scoring workflow."""
+        if configured and self._resolve_workflow_path(configured).exists():
+            return configured
+        if not self.cfg.auto_workflows:
+            return configured
+        best, best_score = "", -1
+        for path in self.workflow_files():
+            info = self._infer_file(Path(path))
+            if not info:
+                continue
+            if kind == "t2i" and info.get("kind") != "t2i":
+                continue
+            if kind == "i2v" and info.get("kind") != "i2v":
+                continue
+            if kind == "flf" and not (info.get("i2v") or {}).get("last_image"):
+                continue
+            score = score_workflow(info)
+            if score > best_score:
+                best, best_score = path, score
+        if best and kind and best != configured:
+            log.info("ComfyUI 自动选用 %s 工作流: %s", kind, best)
+        return best or configured
 
     def _node(self, graph: dict, nodes_map: dict, key: str) -> Optional[dict]:
         nid = str(nodes_map.get(key, ""))
@@ -329,9 +439,12 @@ class ComfyUIClient(BaseImageVideo):
                        seed: int, steps: int, cfg: float, out_path: str,
                        extra: Optional[dict] = None,
                        ref_images: Optional[list[str]] = None) -> str:
-        extra = extra or {}
-        graph = copy.deepcopy(self._load_workflow(self.cfg.t2i_workflow))
-        nm = self.cfg.t2i_nodes
+        extra = dict(extra or {})
+        wf = self._pick_workflow(self.cfg.t2i_workflow, "t2i")
+        graph = copy.deepcopy(self._load_workflow(wf))
+        nm, _info, ref_slots = self._resolved_nodes("t2i", graph)
+        if ref_slots:
+            extra.setdefault("ref_node_ids", ref_slots[1:])
         self._set(graph, nm, "positive", "text", prompt)
         self._set(graph, nm, "negative", "text", negative)
         self._inject_refs(graph, nm, ref_images or [], extra)
@@ -362,12 +475,24 @@ class ComfyUIClient(BaseImageVideo):
                        frames: int = 32, fps: int = 16, seed: int = -1,
                        out_path: str = "", extra: Optional[dict] = None,
                        last_image_path: str = "") -> str:
-        extra = extra or {}
-        nm = self.cfg.i2v_nodes
-        use_flf = bool(last_image_path and Path(last_image_path).exists()
-                       and self.cfg.flf_workflow)
-        wf = self.cfg.flf_workflow if use_flf else self.cfg.i2v_workflow
-        graph = copy.deepcopy(self._load_workflow(wf))
+        extra = dict(extra or {})
+        use_flf = False
+        nm: dict = {}
+        graph: dict = {}
+        if last_image_path and Path(last_image_path).exists():
+            wf = self._pick_workflow(self.cfg.flf_workflow or self.cfg.i2v_workflow, "flf")
+            if wf and self._resolve_workflow_path(wf).exists():
+                try:
+                    trial = copy.deepcopy(self._load_workflow(wf))
+                    trial_map, _info, _refs = self._resolved_nodes("i2v", trial)
+                    if trial_map.get("last_image"):
+                        graph, nm, use_flf = trial, trial_map, True
+                except Exception as e:  # noqa: BLE001
+                    log.warning("首尾帧工作流读取失败(%s)，改用单图 i2v", str(e)[:120])
+        if not use_flf:
+            wf = self._pick_workflow(self.cfg.i2v_workflow, "i2v")
+            graph = copy.deepcopy(self._load_workflow(wf))
+            nm, _info, _refs = self._resolved_nodes("i2v", graph)
         self._set(graph, nm, "positive", "text", prompt)
         self._set(graph, nm, "negative", "text", negative)
         if image_path and Path(image_path).exists():
@@ -375,9 +500,6 @@ class ComfyUIClient(BaseImageVideo):
             extra["uploaded_image"] = server_name
             self._set(graph, nm, "image", "image", server_name)
         if use_flf:
-            if not str(nm.get("last_image") or ""):
-                raise ComfyUIError(
-                    "首尾帧工作流已启用，但 comfyui.i2v_nodes.last_image 未配置节点 id")
             last_name = (extra.get("uploaded_last_image")
                          or self.upload_image(last_image_path))
             extra["uploaded_last_image"] = last_name

@@ -136,6 +136,14 @@ class ProjectStore:
     def character_ref_path(self, name: str, view: str, ext: str = "png") -> Path:
         return self.character_dir(name) / f"{slugify(view) or 'ref'}.{ext}"
 
+    def location_dir(self, name: str) -> Path:
+        d = self.root / "locations" / slugify(name)
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def location_ref_path(self, name: str, view: str = "ref", ext: str = "png") -> Path:
+        return self.location_dir(name) / f"{slugify(view) or 'ref'}.{ext}"
+
     def episode_video_path(self, ep: Episode) -> Path:
         return self.root / "episodes" / f"ep_{ep.index:03d}.mp4"
 

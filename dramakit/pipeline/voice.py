@@ -1,8 +1,8 @@
 """Stage 8 — voice: synthesize every line with the configured TTS provider.
 
-Voice selection: explicit voice_map -> gender fallback -> narrator/default.
-Each clip's measured duration is written back to the Line so the timeline and
-subtitles stay in sync.
+Voice selection: character.voice_id (auto-cast) -> voice_map -> gender fallback
+-> narrator/default. Each clip's measured duration is written back to the Line
+so the timeline and subtitles stay in sync.
 """
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ NARRATORS = {"旁白", "解说", ""}
 
 def _voice_for(ctx: Context, speaker: str, is_narration: bool) -> str:
     ch = ctx.project.character(speaker) if speaker else None
+    if ch is not None and ch.voice_id and not is_narration:
+        return ch.voice_id
     gender = ch.gender if ch else "未知"
     return resolve_voice(ctx.cfg.tts, speaker, gender, is_narration)
 

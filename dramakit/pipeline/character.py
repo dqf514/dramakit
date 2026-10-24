@@ -15,7 +15,7 @@ import hashlib
 from pathlib import Path
 
 from ..config import Config
-from ..models import Character, Status
+from ..models import Character, Location, Status
 from ..project import ProjectStore
 from ..prompts import templates as T
 from .base import Context
@@ -91,6 +91,53 @@ def _ref_prompt(ctx: Context, c: Character, view: str) -> str:
     )
 
 
+def _loc_prompt(ctx: Context, loc: Location) -> str:
+    ad = ctx.project.art_direction
+    style = ad.style_prompt_prefix or ad.style or "cinematic realistic"
+    desc = loc.visual_prompt or loc.description or loc.name
+    return (
+        f"location reference photo, empty scene, {desc}, "
+        f"no people, no text, no watermark, {ad.era}, {style}, "
+        f"wide establishing view, consistent architecture, highly detailed"
+    )
+
+
+def generate_location_refs(ctx: Context) -> int:
+    """Generate one establishing reference image per location. Never raises."""
+    cfg = ctx.cfg.characters
+    vis = ctx.providers.visual
+    if vis is None or not ctx.project.locations:
+        return 0
+    if hasattr(vis, "ping") and not vis.ping():
+        ctx.log.warning("character: ComfyUI 不可达，跳过场景参考图")
+        return 0
+    ccfg = ctx.cfg.comfyui
+    negative = "people, person, crowd, text, watermark, logo, blurry, distorted"
+    made = 0
+    for loc in ctx.project.locations:
+        existing = [r for r in loc.ref_images
+                    if ctx.store.abs(r).exists()]
+        if existing:
+            loc.ref_images = existing
+            continue
+        out = ctx.store.location_ref_path(loc.name)
+        try:
+            vis.generate_image(
+                prompt=_loc_prompt(ctx, loc), negative=negative,
+                width=cfg.ref_width, height=cfg.ref_height,
+                seed=_seed("loc:" + loc.name, "ref"), steps=ccfg.steps, cfg=ccfg.cfg,
+                out_path=str(out),
+                extra={"sampler": ccfg.sampler, "scheduler": ccfg.scheduler,
+                       "checkpoint": ccfg.checkpoint})
+            rel = ctx.store.rel(out)
+            loc.ref_images = [rel]
+            made += 1
+            ctx.log.info("character: 场景 %s 参考图已生成", loc.name)
+        except Exception as e:  # noqa: BLE001
+            ctx.log.warning("character: 场景 %s 出图失败 %s", loc.name, str(e)[:160])
+    return made
+
+
 def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) -> int:
     """Generate reference portraits for one character. Never raises."""
     cfg = ctx.cfg.characters
@@ -129,6 +176,67 @@ def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) ->
     return made
 
 
+def _fallback_voice(c: Character, voices: list[str]) -> str:
+    if not voices:
+        return ""
+    female = ("女", "female")
+    male = ("男", "male")
+    prefs = []
+    if c.gender in female:
+        prefs = ["Xiaoxiao", "Xiaoyi", "Xiaochen", "Xiaohan", "Xiaomeng",
+                 "Xiaomo", "Xiaoxuan", "Xiaoyan"]
+    elif c.gender in male:
+        prefs = ["Yunxi", "Yunjian", "Yunye", "Yunyang", "Yunfeng", "Yunhao"]
+    for name in prefs:
+        for voice in voices:
+            if name.lower() in voice.lower():
+                return voice
+    return voices[0]
+
+
+def cast_voices(ctx: Context, chars: list[Character]) -> int:
+    """Assign a TTS voice to every character without one (LLM, then gender map)."""
+    cfg = ctx.cfg.characters
+    if not cfg.auto_cast:
+        return 0
+    pending = [c for c in chars if not c.voice_id]
+    if not pending:
+        return 0
+    try:
+        voices = ctx.providers.tts.list_voices()
+    except Exception as e:  # noqa: BLE001
+        ctx.log.warning("character: 读取音色失败(%s)，跳过自动选角", str(e)[:120])
+        return 0
+    if not voices:
+        return 0
+    voices = voices[:24]
+    lines = "\n".join(
+        f"- name: {c.name}; role: {c.role}; gender: {c.gender}; age: {c.age}; "
+        f"personality: {c.personality}" for c in pending)
+    try:
+        llm = ctx.providers.llm_for("script")
+        data = llm.complete_json(
+            T.VOICE_CAST_SYSTEM,
+            T.render(T.VOICE_CAST_USER, characters=lines,
+                     voices=", ".join(voices)))
+        if isinstance(data, list):
+            data = {"characters": data}
+        by_name = {str(x.get("name", "")).strip(): str(x.get("voice_id", "")).strip()
+                   for x in (data.get("characters") or []) if isinstance(x, dict)}
+        for c in pending:
+            picked = by_name.get(c.name, "")
+            if picked in voices:
+                c.voice_id = picked
+    except Exception as e:  # noqa: BLE001
+        ctx.log.warning("character: 自动选角 LLM 失败(%s)，按性别兜底", str(e)[:120])
+    made = 0
+    for c in pending:
+        if not c.voice_id:
+            c.voice_id = _fallback_voice(c, voices)
+        made += bool(c.voice_id)
+    return made
+
+
 def run(ctx: Context) -> dict:
     cfg = ctx.cfg.characters
     if not cfg.enabled:
@@ -138,21 +246,31 @@ def run(ctx: Context) -> dict:
     if not chars:
         ctx.log.warning("character: 还没有角色（先跑 analyze）")
         return {"characters": 0, "refs": 0}
+    anchors_ready = all(c.anchor_prompt or c.locked for c in chars)
+    refs_ready = (not cfg.generate_refs) or all(
+        any(ctx.store.abs(r).exists() for r in c.refs()) for c in chars)
+    locs_ready = (not cfg.generate_location_refs) or all(
+        any(ctx.store.abs(r).exists() for r in l.ref_images)
+        for l in ctx.project.locations)
+    cast_ready = (not cfg.auto_cast) or all(c.voice_id for c in chars)
     if ctx.project.stage_status.get("character") == Status.DONE and \
-            all(c.anchor_prompt or c.locked for c in chars):
+            anchors_ready and refs_ready and locs_ready and cast_ready:
         ctx.log.info("character: 已完成，跳过")
         return {"skipped": True}
 
     anchors = build_anchors(ctx, chars)
+    casted = cast_voices(ctx, chars)
     refs = 0
     if cfg.generate_refs:
         refs = sum(generate_refs(ctx, c) for c in chars)
+    loc_refs = generate_location_refs(ctx) if cfg.generate_location_refs else 0
     ctx.save()
     ctx.project.stage_status["character"] = Status.DONE
     ctx.save()
-    ctx.log.info("character: %d 个角色，锚点补齐 %d，参考图 %d",
-                 len(chars), anchors, refs)
-    return {"characters": len(chars), "anchors": anchors, "refs": refs}
+    ctx.log.info("character: %d 个角色，锚点补齐 %d，选角 %d，参考图 %d，场景参考图 %d",
+                 len(chars), anchors, casted, refs, loc_refs)
+    return {"characters": len(chars), "anchors": anchors, "cast": casted,
+            "refs": refs, "location_refs": loc_refs}
 
 
 def generate_for_one(store: ProjectStore, cfg: Config, name: str,

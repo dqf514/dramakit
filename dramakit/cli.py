@@ -315,9 +315,10 @@ def comfy_test(config: Optional[str] = typer.Option(None, "--config", "-c"),
         console.print(f"[yellow]  读取 checkpoint 列表失败: {e}[/yellow]")
 
     # 5) workflow validation
-    for label, rel, nmap in (("出图 t2i", cfg.comfyui.t2i_workflow, cfg.comfyui.t2i_nodes),
-                             ("图生视频 i2v", cfg.comfyui.i2v_workflow, cfg.comfyui.i2v_nodes)):
-        rep = c.validate_workflow(rel, nmap)
+    for label, rel, nmap, kind in (
+            ("出图 t2i", cfg.comfyui.t2i_workflow, cfg.comfyui.t2i_nodes, "t2i"),
+            ("图生视频 i2v", cfg.comfyui.i2v_workflow, cfg.comfyui.i2v_nodes, "i2v")):
+        rep = c.validate_workflow(rel, nmap, kind)
         nnodes = rep.get("nodes", 0)
         head = f"  [{label}] {Path(rel).name} ({nnodes} 节点)"
         if rep["ok"]:
@@ -326,6 +327,12 @@ def comfy_test(config: Optional[str] = typer.Option(None, "--config", "-c"),
             console.print(f"{head} [red]✗ 有问题[/red]")
             for p in rep["problems"]:
                 console.print(f"      - {p}")
+        for w in rep.get("warnings", []):
+            console.print(f"      [yellow]! {w}[/yellow]")
+        inferred = rep.get("inferred") or {}
+        if inferred:
+            console.print("      自动识别: " + " · ".join(
+                f"{k}={v}" for k, v in inferred.items()))
 
     # 6) optional real generation
     if gen:

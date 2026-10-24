@@ -108,9 +108,12 @@ def probe(cfg: Optional[Config] = None) -> dict:
             gpus = [{"name": d.get("name"),
                      "vram_gb": round(d.get("vram_total", 0) / (1024**3), 1)}
                     for d in devices]
-            t2i_rep = c.validate_workflow(cfg.comfyui.t2i_workflow, cfg.comfyui.t2i_nodes)
-            i2v_rep = c.validate_workflow(cfg.comfyui.i2v_workflow, cfg.comfyui.i2v_nodes)
-            flf_rep = (c.validate_workflow(cfg.comfyui.flf_workflow, cfg.comfyui.i2v_nodes)
+            t2i_rep = c.validate_workflow(cfg.comfyui.t2i_workflow,
+                                          cfg.comfyui.t2i_nodes, "t2i")
+            i2v_rep = c.validate_workflow(cfg.comfyui.i2v_workflow,
+                                          cfg.comfyui.i2v_nodes, "i2v")
+            flf_rep = (c.validate_workflow(cfg.comfyui.flf_workflow,
+                                           cfg.comfyui.i2v_nodes, "i2v")
                        if cfg.comfyui.flf_workflow else None)
             report["comfyui"] = {
                 "reachable": True, "base_url": cfg.comfyui.base_url,
@@ -548,6 +551,72 @@ def _yaml_set_block(text: str, section: str, value) -> str:
         replacement.append("")
     lines[start:stop] = replacement
     return "\n".join(lines)
+
+
+def _yaml_set_map(text: str, section: str, key: str, mapping: dict) -> str:
+    """Replace `section.key` (a nested mapping) in place, keeping the section
+    header and all sibling keys/comments. Used for comfyui.t2i_nodes / i2v_nodes."""
+    lines = text.split("\n")
+    sec_re = re.compile(rf"^{re.escape(section)}\s*:(\s#.*)?$")
+    top_re = re.compile(r"^[A-Za-z_][\w\-]*\s*:")
+    start = next((i for i, ln in enumerate(lines) if sec_re.match(ln)), None)
+    if start is None:
+        return text
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        if top_re.match(lines[j]):
+            end = j
+            break
+    key_re = re.compile(rf"^(\s+){re.escape(key)}\s*:(.*)$")
+    for j in range(start + 1, end):
+        m = key_re.match(lines[j])
+        if not m:
+            continue
+        indent = m.group(1)
+        stop = j + 1
+        while stop < end:
+            line = lines[stop]
+            if line.strip() == "" or line.lstrip().startswith("#"):
+                stop += 1
+                continue
+            cur = len(line) - len(line.lstrip())
+            if cur <= len(indent):
+                break
+            stop += 1
+        block = [f"{indent}{key}:{_trailing_comment(m.group(2))}"]
+        for mk, mv in mapping.items():
+            value = str(mv) if mv is not None else ""
+            block.append(f'{indent}  {mk}: "{value}"' if value else f'{indent}  {mk}: ""')
+        lines[j:stop] = block
+        return "\n".join(lines)
+    return text
+
+
+def save_comfyui_settings(cfg_path: str | Path, scalars: dict,
+                          maps: dict, characters: dict | None = None) -> dict:
+    """Write ComfyUI scalars + nested node maps, preserving YAML comments.
+    Validates by reloading and restores the backup on failure."""
+    path = Path(cfg_path)
+    backup = path.read_text(encoding="utf-8") if path.exists() else ""
+    text = backup
+    for key, value in (scalars or {}).items():
+        text = _yaml_set_scalar(text, "comfyui", key, value)
+    for key, value in (maps or {}).items():
+        text = _yaml_set_map(text, "comfyui", key, value or {})
+    for key, value in (characters or {}).items():
+        text = _yaml_set_scalar(text, "characters", key, value)
+    if not text.strip():
+        raise ValueError("配置为空")
+    path.write_text(text, encoding="utf-8")
+    try:
+        cfg = Config.load(path)
+    except Exception:
+        if backup:
+            path.write_text(backup, encoding="utf-8")
+        else:
+            path.unlink(missing_ok=True)
+        raise
+    return json.loads(cfg.model_dump_json())
 
 
 def save_settings(cfg_path: str | Path, updates: dict, blocks: dict | None = None) -> dict:

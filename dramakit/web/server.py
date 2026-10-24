@@ -229,6 +229,10 @@ def _make_handler(state: State):
                 return self._json(self._api_config_test_llm(body))
             if path == "/api/config/production":
                 return self._json(self._api_config_production_save(body))
+            if path == "/api/comfyui/inspect":
+                return self._json(self._api_comfyui_inspect(body))
+            if path == "/api/comfyui/apply":
+                return self._json(self._api_comfyui_apply(body))
             if path == "/api/shot/update":
                 return self._json(self._api_shot_update(body))
             if path == "/api/shot/regen":
@@ -283,6 +287,13 @@ def _make_handler(state: State):
                         "i2v_workflow": state.cfg.comfyui.i2v_workflow,
                         "flf_workflow": state.cfg.comfyui.flf_workflow,
                         "first_last_frame": state.cfg.comfyui.first_last_frame,
+                        "auto_map": state.cfg.comfyui.auto_map,
+                        "auto_workflows": state.cfg.comfyui.auto_workflows,
+                        "consistency": state.cfg.characters.consistency,
+                        "generate_refs": state.cfg.characters.generate_refs,
+                        "generate_location_refs": state.cfg.characters.generate_location_refs,
+                        "auto_cast": state.cfg.characters.auto_cast,
+                        "checkpoint": state.cfg.comfyui.checkpoint,
                         "tts": state.cfg.tts.provider,
                         "tts_base_url": state.cfg.tts.base_url,
                         "music": state.cfg.music.provider,
@@ -742,6 +753,8 @@ def _make_handler(state: State):
                         "t2i_workflow": c.comfyui.t2i_workflow,
                         "i2v_workflow": c.comfyui.i2v_workflow,
                         "flf_workflow": c.comfyui.flf_workflow,
+                        "auto_map": c.comfyui.auto_map,
+                        "auto_workflows": c.comfyui.auto_workflows,
                     },
                     "characters": c.characters.model_dump(),
                     "compose": {
@@ -765,9 +778,11 @@ def _make_handler(state: State):
                     "steps": int, "cfg": float, "seed_mode": str,
                     "concurrency": int, "first_last_frame": _as_bool,
                     "t2i_workflow": str, "i2v_workflow": str, "flf_workflow": str,
+                    "auto_map": _as_bool, "auto_workflows": _as_bool,
                 },
                 "characters": {
                     "enabled": _as_bool, "generate_refs": _as_bool,
+                    "generate_location_refs": _as_bool, "auto_cast": _as_bool,
                     "consistency": str, "use_llm_anchor": _as_bool,
                 },
                 "compose": {
@@ -802,6 +817,152 @@ def _make_handler(state: State):
             out = self._api_config_production_get()
             out["updated"] = updates
             return out
+
+        # ---- ComfyUI auto-connect (inspect + apply) ----
+        def _display_path(self, path: str) -> str:
+            try:
+                return str(Path(path).resolve().relative_to(Path(".").resolve())).replace("\\", "/")
+            except ValueError:
+                return str(Path(path).resolve()).replace("\\", "/")
+
+        def _api_comfyui_inspect(self, body: dict) -> dict:
+            from ..providers.comfyui import ComfyUIClient
+            from ..providers.workflow_map import infer_workflow, score_workflow
+            with state.lock:
+                cfg = state.cfg.comfyui.model_copy(deep=True)
+            url = str(body.get("base_url") or "").strip()
+            if url:
+                cfg.base_url = url
+            cfg.enabled = True
+            client = ComfyUIClient(cfg, Path("."))
+            out: dict = {"ok": True, "base_url": cfg.base_url,
+                         "reachable": False, "workflows": [],
+                         "checkpoints": [], "current_checkpoint": cfg.checkpoint,
+                         "recommend": {}}
+            if not client.ping():
+                out["error"] = "连不上 ComfyUI（检查 --listen、端口、防火墙；局域网记得 use_proxy=false）"
+                return out
+            out["reachable"] = True
+            try:
+                st = client.system_stats()
+                info = st.get("system", {})
+                out["version"] = info.get("comfyui_version", "")
+                out["gpus"] = [
+                    {"name": d.get("name"),
+                     "vram_gb": round(d.get("vram_total", 0) / (1024 ** 3), 1)}
+                    for d in info.get("devices", [])
+                ]
+            except Exception as e:  # noqa: BLE001
+                out["warning"] = f"读取 system_stats 失败: {str(e)[:120]}"
+            try:
+                out["checkpoints"] = client.list_checkpoints()[:40]
+            except Exception:  # noqa: BLE001
+                pass
+            best: dict[str, dict] = {}
+            for path in client.workflow_files():
+                rel = self._display_path(path)
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        graph = json.load(f)
+                except Exception as e:  # noqa: BLE001
+                    out["workflows"].append({"file": rel, "name": Path(path).name,
+                                             "ok": False, "kind": "unknown",
+                                             "problems": [f"无法读取: {str(e)[:120]}"]})
+                    continue
+                if not isinstance(graph, dict):
+                    out["workflows"].append({"file": rel, "name": Path(path).name,
+                                             "ok": False, "kind": "unknown",
+                                             "problems": ["不是 API 格式：应为 JSON 对象"]})
+                    continue
+                try:
+                    info = infer_workflow(graph)
+                    nmap = cfg.t2i_nodes if info["kind"] == "t2i" else cfg.i2v_nodes
+                    rep = client.validate_workflow(rel, nmap, info["kind"])
+                except Exception as e:  # noqa: BLE001
+                    out["workflows"].append({"file": rel, "name": Path(path).name,
+                                             "ok": False, "kind": "unknown",
+                                             "problems": [f"识别失败: {str(e)[:160]}"]})
+                    continue
+                item = {
+                    "file": rel, "name": Path(path).name,
+                    "kind": info["kind"], "ok": rep.get("ok", False),
+                    "nodes": rep.get("nodes", 0),
+                    "map": {k: v for k, v in (rep.get("inferred") or {}).items() if v},
+                    "problems": [str(p)[:220] for p in (rep.get("problems") or [])][:6],
+                    "warnings": [str(p)[:220] for p in (rep.get("warnings") or [])][:6],
+                    "score": score_workflow(info),
+                }
+                out["workflows"].append(item)
+                kind = item["kind"]
+                if item["ok"]:
+                    if kind == "i2v" and item["map"].get("last_image"):
+                        if item["score"] > best.get("flf", {}).get("score", -1):
+                            best["flf"] = item
+                    if item["score"] > best.get(kind, {}).get("score", -1):
+                        best[kind] = item
+            out["workflows"].sort(key=lambda x: (x.get("kind") != "t2i", -x.get("score", 0)))
+            out["recommend"] = {k: {"file": v["file"], "name": v["name"],
+                                    "map": v["map"], "kind": v["kind"]}
+                                for k, v in best.items()}
+            return out
+
+        def _api_comfyui_apply(self, body: dict) -> dict:
+            from ..ai import autoconfig
+            root = Path(".")
+            scalars: dict = {"enabled": True, "auto_map": True, "auto_workflows": True}
+            for key in ("enabled", "auto_map", "auto_workflows"):
+                if key in body:
+                    scalars[key] = bool(body[key])
+            for key in ("base_url", "t2i_workflow", "i2v_workflow",
+                        "flf_workflow", "checkpoint", "mode"):
+                if key in body and str(body.get(key) or "").strip():
+                    scalars[key] = str(body[key]).strip()
+            if "flf_workflow" in body and not str(body.get("flf_workflow") or "").strip():
+                scalars["flf_workflow"] = ""
+            for key in ("t2i_workflow", "i2v_workflow", "flf_workflow"):
+                rel = scalars.get(key)
+                if not rel:
+                    continue
+                path = Path(rel) if Path(rel).is_absolute() else root / rel
+                if not path.exists():
+                    return {"ok": False, "error": f"工作流不存在: {rel}"}
+            if "first_last_frame" in body:
+                scalars["first_last_frame"] = bool(body["first_last_frame"])
+            elif scalars.get("flf_workflow"):
+                scalars["first_last_frame"] = True
+            if scalars.get("base_url"):
+                scalars["base_url"] = scalars["base_url"].rstrip("/")
+            maps = {}
+            for key in ("t2i_nodes", "i2v_nodes"):
+                src = body.get(key)
+                if isinstance(src, dict):
+                    maps[key] = {str(k): str(v) for k, v in src.items() if v not in (None, "")}
+            characters = {}
+            if "consistency" in body:
+                characters["consistency"] = str(body["consistency"])
+            if "generate_location_refs" in body:
+                characters["generate_location_refs"] = bool(body["generate_location_refs"])
+            if "auto_cast" in body:
+                characters["auto_cast"] = bool(body["auto_cast"])
+            path = state.config_path or Path("config/default.yaml")
+            try:
+                autoconfig.save_comfyui_settings(path, scalars, maps, characters)
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"写入配置失败: {str(e)[:240]}"}
+            state.reload_config()
+            with state.lock:
+                c = state.cfg.comfyui
+                consistency = state.cfg.characters.consistency
+            return {"ok": True, "updated": scalars,
+                    "config": {"base_url": c.base_url,
+                               "t2i_workflow": c.t2i_workflow,
+                               "i2v_workflow": c.i2v_workflow,
+                               "flf_workflow": c.flf_workflow,
+                               "checkpoint": c.checkpoint,
+                               "first_last_frame": c.first_last_frame,
+                               "auto_map": c.auto_map,
+                               "auto_workflows": c.auto_workflows},
+                    "consistency": consistency}
 
         # ---- model registry (settings page) ----
         def _api_config_models_get(self) -> dict:
@@ -1078,7 +1239,9 @@ def _slim_workflow_report(rep: Optional[dict]) -> Optional[dict]:
     if not rep:
         return None
     return {"file": rep.get("file"), "ok": rep.get("ok"),
-            "nodes": rep.get("nodes", 0),
+            "nodes": rep.get("nodes", 0), "kind": rep.get("kind"),
+            "inferred": {k: v for k, v in (rep.get("inferred") or {}).items() if v},
+            "warnings": [str(p)[:220] for p in (rep.get("warnings") or [])][:6],
             "problems": [str(p)[:220] for p in (rep.get("problems") or [])][:6]}
 
 

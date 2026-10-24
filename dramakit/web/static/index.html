@@ -403,6 +403,18 @@ try{
   .intg-note{font-size:11px;color:var(--fg3);background:var(--bg);border-left:2px solid var(--line2);
     padding:6px 8px;margin-top:8px;line-height:1.55;border-radius:0 4px 4px 0}
   .intg-err{border-left-color:var(--danger2);color:var(--danger2)}
+  .cibox{margin-top:8px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:9px 10px}
+  .cibox .cirow{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap}
+  .cibox .cirow .grow{flex:1;min-width:170px}
+  .cibox .f{padding:5px 7px;font-size:11px}
+  .cibox .fl{font-size:10.5px;margin-bottom:2px}
+  .cibox .cigrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px;margin-top:8px}
+  .cibox .fw{font-size:10.5px;color:var(--fg3);margin-top:7px;line-height:1.55}
+  .cibox .cierr{color:var(--danger2);font-size:11px;line-height:1.55;margin-top:6px}
+  .cimap{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;min-height:14px}
+  .cimap span{font-size:9.5px;background:var(--bg3);border:1px solid var(--line);border-radius:3px;
+    padding:0 5px;color:var(--fg3);font-family:var(--mono)}
+  .cimap span.muted{border:0;background:none;padding:0}
   .flowgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:9px}
   .flow{background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:10px 12px}
   .flow b{font-size:12px;display:block;margin-bottom:3px}
@@ -556,6 +568,7 @@ const S = {
   boardEp:0, boardFilter:"all", assetKind:"", assetRows:[],
   drawer:{kind:"",ep:null,sc:null,shot:null,line:null},
   production:null, booted:false, guideBusy:null, guideProbing:false,
+  comfyInspect:null, comfyInspecting:false, comfyApplying:false, comfyUrl:"", comfyPick:null,
 };
 
 // ---------- api ----------
@@ -770,6 +783,19 @@ function renderGuide(){
   const busy=!!S.guideBusy;
   const dis=(!projReady||busy)?"disabled":"";
   const ep=(d&&d.episodes||[]).find(e=>e.video)||null;
+  const chs=(d&&d.characters)||[], locs=(d&&d.locations)||[];
+  const anch=chs.filter(c=>c.anchor_prompt).length;
+  const refd=chs.filter(c=>(c.ref_urls||[]).length).length;
+  const cast=chs.filter(c=>c.voice_id).length;
+  const locRef=locs.filter(l=>(l.ref_urls||[]).length).length;
+  const consMode=cs.consistency||"ref";
+  const consChips=chs.length?`<div class="chips" style="margin-top:6px">
+    <span class="envchip ${consMode==="ref"?"ok":""}">一致性：${consMode==="ref"?"参考图+锚点":consMode==="prompt"?"文字锚点":"LoRA"}</span>
+    <span class="envchip ${anch===chs.length?"ok":"bad"}">锚点 ${anch}/${chs.length}</span>
+    <span class="envchip ${refd===chs.length?"ok":"bad"}">三视图 ${refd}/${chs.length}</span>
+    <span class="envchip ${cast===chs.length?"ok":"bad"}">音色 ${cast}/${chs.length}</span>
+    ${locs.length?`<span class="envchip ${locRef===locs.length?"ok":"bad"}">场景图 ${locRef}/${locs.length}</span>`:""}
+  </div>`:"";
 
   const envChip=(name,ok)=>`<span class="envchip ${env.checked?(ok?"ok":"bad"):""}">${name} ${env.checked?(ok?"✓":"✗"):"·"}</span>`;
   const envChips=`<div class="chips" style="margin-top:5px">${envChip("ffmpeg",env.ff)}${envChip("大模型",env.llm)}${envChip("ComfyUI",env.comfy)}${envChip("TTS",env.tts)}
@@ -784,8 +810,8 @@ function renderGuide(){
     {n:2,title:"新建项目并导入小说",desc:src?`源文件：<code>${esc(src)}</code>。导入会清洗文本、识别章节，后面所有阶段都基于它。`:"支持 txt / md；docx 需装 <code>.[docx]</code> 扩展。导入只复制到项目里，不动原文件。",
      st:{state:ingested?"done":projReady?"partial":"pending",done:ingested?1:0,total:1},
      actions:projReady?gbtn("打开工作台","workbench")+(src?gbtn("重新导入","run","ghost",`data-stages="ingest" data-label="导入" ${dis}`):"")+gbtn("＋ 新建","new"):gbtn("去导入小说","new","confirm")},
-    {n:3,title:"AI 读懂故事 · 角色定妆",desc:"分析人物、世界观与主线，给每个角色生成固定英文锚点和三视图。<b>锚点之后会前置注入每个镜头</b>，跨集不换脸。",
-     st:gStagesState(["analyze","character"]),actions:runBtn("运行 分析→定妆",["analyze","character"])+gbtn("角色库","cast")},
+    {n:3,title:"AI 读懂故事 · 角色定妆",desc:"分析人物、世界观与主线，给每个角色生成固定英文锚点和三视图，并自动分配音色；每个场景也会生成一张无人的环境参考图。<b>锚点和参考图之后会自动注入每个镜头</b>，跨集不换脸、不换景。",
+     st:gStagesState(["analyze","character"]),extra:consChips,actions:runBtn("运行 分析→定妆",["analyze","character"])+gbtn("角色库","cast")},
     {n:4,title:"分集 · 剧本 · 分镜",desc:"按目标时长和结尾钩子切集，生成台词/旁白/场次，再把每场拆成可生成的镜头。建议先跑到这里检查剧本。",
      st:gStagesState(["segment","script","storyboard"]),actions:runBtn("运行 分集→分镜",["segment","script","storyboard"])+gbtn("分镜台","board")},
     {n:5,title:"出画面（首帧 / 视频）",desc:"把分镜变成中英提示词，调用 ComfyUI 出首帧；配置了 i2v 就继续生成视频。单个镜头不满意可在分镜台单独返工。",
@@ -876,15 +902,16 @@ function renderGuide(){
           ${cs.first_last_frame?`<span class="envchip ${flfOk?"ok":"bad"}">首尾帧 ${flfOk?"✓":"未通过"}</span>`:""}
         </div>`:""}
         ${probs.length?`<div class="intg-note intg-err">${probs.map(esc).join("<br>")}</div>`:""}
+        ${renderComfyPanel()}
         <ol>
           <li>GPU 机器启动：<code>python main.py --listen 0.0.0.0 --port 8188</code>；本机可只监听 127.0.0.1。</li>
-          <li>搭好「文生图」「图生视频」两条工作流，各自 <b>Save (API Format)</b> 导出 JSON。</li>
-          <li>JSON 放进 <code>config/comfyui/</code>，在「设置 → 制作参数」填两条工作流路径。</li>
-          <li>把 JSON 里的节点编号填到 <code>comfyui.t2i_nodes / i2v_nodes</code>：正向、负向、seed、宽高、steps/cfg、checkpoint、LoadImage、frames/fps 各对应一个节点。</li>
+          <li>搭好「文生图」「图生视频」两条工作流，各自 <b>Save (API Format)</b> 导出 JSON，放进 <code>config/comfyui/</code>（文件名随意）。</li>
+          <li>在上面填地址点「自动识别」：自动发现工作流、推断节点编号、校验模型与插件，并推荐最完整的一套。</li>
+          <li>确认工作流 / Checkpoint 后点「应用并启用」，配置会原位写回 YAML，随即自动自检。</li>
           <li>远程/反代：填 <code>base_url</code>；按需 <code>auth: basic|token|header</code>。<b>use_proxy 必须 false</b>，否则会走系统代理连不上。</li>
-          <li>点上方「环境自检」；工作流缺节点/插件会直接把问题列在这里。</li>
+          <li>想手调节点编号仍可在「设置 → 制作参数」里改，关掉 <code>auto_map</code> 即可完全按手填执行。</li>
         </ol>
-        <div class="intg-note">可选增强：角色参考图 → t2i 工作流加 <code>LoadImage</code>，填 <code>t2i_nodes.ref_image</code>，设 <code>consistency: ref</code>；首尾帧 → <code>flf_workflow</code> + <code>i2v_nodes.last_image</code> + <code>first_last_frame: true</code>。不配会自动退回单图流程，不报错。</div>
+        <div class="intg-note">一致性是自动的：角色锚点、三视图、场景参考图、配音音色都在「分析→定妆」阶段生成，之后自动注入每个镜头；工作流节点或编号变了，下次调用会自动重新推断，不用再回来改 YAML。</div>
       </div>
 
       <div class="intg">
@@ -988,12 +1015,15 @@ dj comfy-test --gen                        # 远程 ComfyUI 自检 + 试生成�
       return startStages(stages,x.dataset.label||"阶段");
     }
     if(a==="runall") return startStages([...STAGES],"全流程");
+    if(a==="cinspect") return inspectComfy();
+    if(a==="capply") return applyComfy();
     switchPage(a);
   });
   $$("#page-guide .anode[data-gstage]").forEach(x=>x.onclick=()=>{
     runSel=new Set([x.dataset.gstage]); switchPage("pipeline");
   });
   const gc=$("#gCreate"); if(gc) gc.onclick=createProjectFromGuide;
+  comfyBind();
 }
 
 async function probeHealth(onDone){
@@ -1012,6 +1042,140 @@ function probeGuide(){
     } else toast("环境探测失败，看流水线/日志","err",6000);
     if(S.activePage==="guide") renderGuide();
   });
+}
+// ---------- ComfyUI auto-connect ----------
+const CI_LABEL={positive:"正向",negative:"负向",seed:"种子",width:"宽",height:"高",steps:"步数",
+  cfg:"CFG",sampler:"采样器",checkpoint:"模型",image:"首帧",last_image:"尾帧",frames:"帧数",
+  fps:"帧率",ref_image:"参考图",output:"输出"};
+function ciChips(map){
+  const keys=Object.keys(map||{}).filter(k=>map[k]);
+  if(!keys.length) return `<span class="muted" style="font-size:10px">未识别到节点</span>`;
+  return keys.map(k=>`<span>${esc(CI_LABEL[k]||k)} #${esc(map[k])}</span>`).join("");
+}
+function ciPickInit(r){
+  const cs=(S.state&&S.state.config_summary)||{};
+  const wf=r.workflows||[];
+  const okFile=(f,k)=>[...wf].some(w=>w.file===f&&(w.kind===k||(k==="i2v"&&w.map&&w.map.last_image))&&w.ok)?f:"";
+  const rec=r.recommend||{};
+  S.comfyPick={
+    t2i: okFile(cs.t2i_workflow,"t2i")||(rec.t2i&&rec.t2i.file)||"",
+    i2v: okFile(cs.i2v_workflow,"i2v")||(rec.i2v&&rec.i2v.file)||"",
+    flf: cs.first_last_frame?(okFile(cs.flf_workflow,"i2v")||(rec.flf&&rec.flf.file)||""):"",
+    checkpoint: r.current_checkpoint||(r.checkpoints||[])[0]||"",
+    consistency: cs.consistency||"ref",
+    location_refs: cs.generate_location_refs!==false,
+    auto_cast: cs.auto_cast!==false,
+  };
+}
+function renderComfyPanel(){
+  const cs=(S.state&&S.state.config_summary)||{};
+  const r=S.comfyInspect;
+  const url=S.comfyUrl||cs.comfyui||"http://127.0.0.1:8188";
+  const busy=S.comfyInspecting;
+  const head=`<div class="cirow">
+    <div class="grow"><label class="fl">ComfyUI 地址</label>
+      <input class="f" id="ciUrl" value="${attr(url)}" placeholder="http://127.0.0.1:8188"></div>
+    <button class="btn sm confirm" data-gact="cinspect" ${busy?"disabled":""}>${busy?"识别中…":"自动识别"}</button>
+    ${busy?'<span class="muted" style="font-size:10.5px;padding-bottom:7px"><span class="spin"></span> 连接并扫描工作流…</span>':""}
+  </div>`;
+  if(!r) return `<div class="cibox">${head}
+    <div class="fw">不用手填节点：自动扫描 <code>config/comfyui/*.json</code> 和已配置的工作流，推断正向/负向/seed/宽高/采样器/Checkpoint/LoadImage 等编号并校验；确认后一键写入配置。</div></div>`;
+  if(!r.reachable) return `<div class="cibox">${head}
+    <div class="cierr">${esc(r.error||"连不上 ComfyUI")}</div>
+    <div class="fw">先启动 ComfyUI（远程加 <code>--listen 0.0.0.0</code>），确认端口与防火墙；走系统代理的环境把 <code>use_proxy</code> 设为 false。</div></div>`;
+  const wf=r.workflows||[];
+  const kindList=k=>wf.filter(w=>w.kind===k&&w.ok);
+  const flfList=kindList("i2v").filter(w=>w.map&&w.map.last_image);
+  const p=S.comfyPick||{};
+  const sel=(id,list,cur)=>`<select class="f" id="${id}"><option value="">（不启用）</option>`+
+    list.map(w=>`<option value="${esc(w.file)}" ${w.file===cur?"selected":""}>${esc(w.name)} · ${w.nodes} 节点</option>`).join("")+`</select>`;
+  const curCk=p.checkpoint||r.current_checkpoint||"";
+  const ckAll=(curCk&&!(r.checkpoints||[]).includes(curCk)?[curCk]:[]).concat(r.checkpoints||[]);
+  const ckOpts=ckAll.length?ckAll.map(x=>`<option value="${esc(x)}" ${x===curCk?"selected":""}>${esc(x)}</option>`).join(""):'<option value="">（不指定）</option>';
+  const cons=p.consistency||"ref";
+  const bad=wf.filter(w=>!w.ok&&(w.problems||[]).length).slice(0,3);
+  return `<div class="cibox">
+    ${head}
+    <div class="fw">GPU：${esc((r.gpus||[]).map(g=>`${g.name} ${g.vram_gb}G`).join(" · ")||"—")}${r.version?` · ComfyUI ${esc(r.version)}`:""} · 发现 ${wf.length} 个工作流</div>
+    <div class="cigrid">
+      <div><label class="fl">出图工作流</label>${sel("ciT2I",kindList("t2i"),p.t2i)}<div class="cimap" id="ciMapT2I"></div></div>
+      <div><label class="fl">视频工作流</label>${sel("ciI2V",kindList("i2v"),p.i2v)}<div class="cimap" id="ciMapI2V"></div></div>
+      <div><label class="fl">首尾帧工作流（可选，多一次出图）</label>${sel("ciFlf",flfList,p.flf)}<div class="cimap" id="ciMapFlf"></div></div>
+      <div><label class="fl">Checkpoint</label><select class="f" id="ciCkpt">${ckOpts}</select></div>
+      <div><label class="fl">一致性方式</label><select class="f" id="ciCons">
+        <option value="ref" ${cons==="ref"?"selected":""}>参考图 + 文字锚点（推荐）</option>
+        <option value="prompt" ${cons==="prompt"?"selected":""}>只用文字锚点（省显存）</option>
+      </select></div>
+    </div>
+    <div class="lockrow" style="margin-top:8px">
+      <label><input type="checkbox" id="ciLoc" ${p.location_refs!==false?"checked":""}> 自动生成场景参考图</label>
+      <label><input type="checkbox" id="ciCast" ${p.auto_cast!==false?"checked":""}> AI 自动分配配音音色</label>
+    </div>
+    ${kindList("t2i").length?"":`<div class="cierr">没有可用的出图工作流：把 API 格式 JSON 放进 <code>config/comfyui/</code> 再点「重新识别」。</div>`}
+    ${bad.map(w=>`<div class="cierr"><b>${esc(w.name)}</b>：${(w.problems||[]).slice(0,2).map(esc).join("；")}</div>`).join("")}
+    <div class="cirow" style="margin-top:9px">
+      <button class="btn sm go" data-gact="capply" ${S.comfyApplying?"disabled":""}>${S.comfyApplying?"写入中…":"应用并启用"}</button>
+      <button class="btn sm ghost" data-gact="cinspect">重新识别</button>
+      <span class="muted" style="font-size:10.5px;align-self:center">节点编号自动写入；工作流改编号后也会自动修复。</span>
+    </div>
+  </div>`;
+}
+function ciPaint(selId,mapId){
+  const el=$("#"+selId), box=$("#"+mapId);
+  if(!el||!box) return;
+  const w=((S.comfyInspect&&S.comfyInspect.workflows)||[]).find(x=>x.file===el.value);
+  box.innerHTML=el.value?(w?ciChips(w.map):""):"";
+}
+function comfyBind(){
+  const pairs=[["t2i","ciT2I","ciMapT2I"],["i2v","ciI2V","ciMapI2V"],["flf","ciFlf","ciMapFlf"]];
+  pairs.forEach(([k,s,m])=>{
+    const el=$("#"+s); if(!el) return;
+    el.onchange=()=>{ if(S.comfyPick) S.comfyPick[k]=el.value; ciPaint(s,m); };
+    ciPaint(s,m);
+  });
+}
+async function inspectComfy(){
+  if(S.comfyInspecting) return;
+  const u=$("#ciUrl");
+  const url=(u&&u.value.trim())||"";
+  S.comfyUrl=url; S.comfyInspecting=true; S.comfyInspect=null;
+  if(S.activePage==="guide") renderGuide();
+  const r=await postJSON("/api/comfyui/inspect",{base_url:url});
+  S.comfyInspecting=false;
+  if(!r.ok){ toast("识别失败："+esc(r.error||""),"err",6000); if(S.activePage==="guide") renderGuide(); return; }
+  S.comfyInspect=r;
+  if(r.reachable){
+    ciPickInit(r);
+    const n=(r.workflows||[]).filter(w=>w.ok).length;
+    toast(`识别完成：发现 ${(r.workflows||[]).length} 个工作流，${n} 个可用`,"ok",3600);
+  } else toast("连不上 ComfyUI，检查地址/端口/代理","err",5000);
+  if(S.activePage==="guide") renderGuide();
+}
+async function applyComfy(){
+  if(S.comfyApplying) return;
+  const r=S.comfyInspect;
+  if(!r||!r.reachable) return toast("先点「自动识别」连上 ComfyUI","err");
+  const val=id=>{const e=$(id); return e?e.value:"";};
+  const pick=id=>{const e=$(id); return e?e.checked:true;};
+  const t2i=val("#ciT2I"), i2v=val("#ciI2V"), flf=val("#ciFlf");
+  if(!t2i) return toast("至少要选一条出图工作流","err");
+  const mapOf=f=>{const w=((S.comfyInspect&&S.comfyInspect.workflows)||[]).find(x=>x.file===f); return (w&&w.map)||{};};
+  const body={
+    base_url:val("#ciUrl"), enabled:true, auto_map:true, auto_workflows:true,
+    t2i_workflow:t2i, i2v_workflow:i2v, flf_workflow:flf, first_last_frame:!!flf,
+    mode: i2v?"image_then_video":"image",
+    t2i_nodes:mapOf(t2i), i2v_nodes:mapOf(flf||i2v),
+    checkpoint:val("#ciCkpt"), consistency:val("#ciCons"),
+    generate_location_refs:pick("#ciLoc"), auto_cast:pick("#ciCast"),
+  };
+  S.comfyApplying=true; if(S.activePage==="guide") renderGuide();
+  const res=await postJSON("/api/comfyui/apply",body);
+  S.comfyApplying=false;
+  if(!res.ok){ toast("应用失败："+esc(res.error||""),"err",6000); if(S.activePage==="guide") renderGuide(); return; }
+  toast("已写入配置并启用，开始自检…","ok",3000);
+  await boot();
+  if(S.activePage==="guide") renderGuide();
+  probeGuide();
 }
 async function startStages(stages,label){
   if(!S.current) return toast("先新建或选择一个项目","err");
@@ -1605,9 +1769,16 @@ async function loadProduction(){
       <div style="width:210px"><label class="fl">首尾帧开关</label>
         <label class="switch" style="margin-top:8px"><input type="checkbox" id="prFLFOn" ${c.first_last_frame?"checked":""}> 启用首尾帧 i2v</label></div>
     </div>
+    <div class="row" style="margin-top:6px">
+      <div class="grow"><label class="fl">ComfyUI 地址</label><input class="f" id="prUrl" value="${attr(c.base_url||"")}" placeholder="http://127.0.0.1:8188"></div>
+    </div>
     <div class="lockrow" style="margin-top:8px">
       <label><input type="checkbox" id="prCharOn" ${ch.enabled?"checked":""}> 启用角色定妆</label>
       <label><input type="checkbox" id="prRefs" ${ch.generate_refs?"checked":""}> 生成三视图</label>
+      <label><input type="checkbox" id="prLocRefs" ${ch.generate_location_refs?"checked":""}> 生成场景参考图</label>
+      <label><input type="checkbox" id="prCast" ${ch.auto_cast?"checked":""}> AI 自动选音色</label>
+      <label><input type="checkbox" id="prAutoMap" ${c.auto_map?"checked":""}> 自动推断节点</label>
+      <label><input type="checkbox" id="prAutoFlow" ${c.auto_workflows?"checked":""}> 自动发现工作流</label>
       <label><input type="checkbox" id="prBurn" ${cp.burn_subtitles?"checked":""}> 烧录字幕</label>
       <span style="flex:1"></span>
       <button class="btn go" id="prSave">保存制作参数</button>
@@ -1623,14 +1794,18 @@ async function saveProduction(){
       cfg:num($("#prCfg").value,6.5),concurrency:Math.round(num($("#prConc").value,1)),
       seed_mode:$("#prSeed").value,t2i_workflow:$("#prT2I").value,
       i2v_workflow:$("#prI2V").value,flf_workflow:$("#prFLF").value,
-      first_last_frame:$("#prFLFOn").checked},
+      base_url:$("#prUrl").value.trim(),
+      first_last_frame:$("#prFLFOn").checked,
+      auto_map:$("#prAutoMap").checked,auto_workflows:$("#prAutoFlow").checked},
     characters:{enabled:$("#prCharOn").checked,generate_refs:$("#prRefs").checked,
+      generate_location_refs:$("#prLocRefs").checked,auto_cast:$("#prCast").checked,
       consistency:$("#prCons").value},
     compose:{transition:$("#prTrans").value,transition_duration:num($("#prTransD").value,.35),
       burn_subtitles:$("#prBurn").checked},
     music:{bgm_volume:num($("#prBgm").value,.22)},
     tts:{concurrency:Math.round(num($("#prTts").value,4))},
   };
+  if(!body.comfyui.base_url) delete body.comfyui.base_url;
   $("#prSave").disabled=true;
   const r=await postJSON("/api/config/production",body);
   $("#prSave").disabled=false;

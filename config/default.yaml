@@ -120,10 +120,12 @@ characters:
   use_llm_anchor: true                      # 用 LLM 把外貌整理成稳定英文锚点
   anchor_max_chars: 320
   generate_refs: true # 用 ComfyUI 生成三视图
+  generate_location_refs: true # 每个场景生成一张无人的环境参考图（注入镜头）
+  auto_cast: true           # 由 AI 从可用音色里给角色分配声音（失败按性别回退）
   ref_views: [front, side, three_quarter]
   ref_width: 768
   ref_height: 1024
-  consistency: prompt # prompt=只靠文字锚点 | ref=附带参考图 | lora
+  consistency: ref   # prompt=只靠文字锚点 | ref=附带参考图（推荐） | lora
 
 # --------------------------- 配音 TTS -------------------------------------
 # provider:
@@ -182,13 +184,16 @@ comfyui:
   ws_fallback_to_poll: true
   t2i_workflow: config/comfyui/t2i_sdxl.json
   i2v_workflow: config/comfyui/i2v_animatediff.json
+  auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
+  auto_map: true       # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
   upscale_workflow: ""                      # 可选：放大工作流
   # --- 首尾帧：用起始/结束两张关键帧驱动 i2v，镜头更可控 ---
   # 需要一份支持双图输入的工作流（如 FLF2V / IP-Adapter 双图），
   # 留空则自动退回单图 i2v，不影响现有流程。
   first_last_frame: false
   flf_workflow: "" # 例：config/comfyui/i2v_flf.json
-  # 语义名 → 你工作流里的节点ID（字符串）。对不上就改这里，不用改代码。
+  # 语义名 → 节点ID（字符串）。全部可留空/删掉：auto_map 会按图结构自动推断；
+  # 想锁定某个节点再手填，手填优先。工作流换编号后失效项会被自动忽略并重新推断。
   t2i_nodes:
     positive: "6"        # 正向提示词 CLIPTextEncode
     negative: "7"        # 负向提示词 CLIPTextEncode

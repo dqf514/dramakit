@@ -39,22 +39,30 @@ def _seed_for(ctx: Context, shot: Shot) -> int:
 
 
 def _ref_images(ctx: Context, shot: Shot, scene=None) -> list[str]:
-    """Character / location reference images for this shot, as absolute paths."""
-    mode_default = ctx.cfg.characters.consistency
+    """One reference image per on-screen character, then the scene's location.
+
+    Order matters: the first slot drives the primary identity. Extra slots (if
+    the workflow exposes several IP-Adapter inputs) get the rest in this order.
+    """
+    if ctx.cfg.characters.consistency != "ref":
+        return []
     out: list[str] = []
     for name in shot.characters or []:
         c = ctx.project.character(name)
-        if c is None or (c.consistency or mode_default) != "ref":
+        if c is None or (c.consistency and c.consistency != "ref"):
             continue
-        for rel in c.refs():
-            p = ctx.store.abs(rel)
-            if p.exists() and str(p) not in out:
-                out.append(str(p))
-    if scene is not None and mode_default == "ref":
+        refs = c.refs()
+        primary = refs[0] if refs else ""
+        if not primary:
+            continue
+        p = ctx.store.abs(primary)
+        if p.exists() and str(p) not in out:
+            out.append(str(p))
+    if scene is not None:
         for loc in ctx.project.locations:
             if loc.name != scene.location:
                 continue
-            for rel in loc.ref_images:
+            for rel in loc.ref_images[:1]:
                 p = ctx.store.abs(rel)
                 if p.exists() and str(p) not in out:
                     out.append(str(p))

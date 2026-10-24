@@ -49,9 +49,11 @@ def _fallback_prompt(ctx: Context, shot: Shot, scene) -> str:
     who = ", ".join(shot.characters) or "a person"
     style = ad.style_prompt_prefix or ad.style
     anchors = ", ".join(c.anchor() for c in _picked_characters(ctx, shot) if c.anchor())
+    loc = next((l for l in ctx.project.locations if l.name == scene.location), None)
+    location = (loc.visual_prompt or loc.description) if loc else scene.location
     return (f"vertical composition 9:16, {anchors + ', ' if anchors else ''}"
             f"{shot.shot_type.value} shot, {who}, "
-            f"{shot.action}, {scene.location}, {scene.time_of_day}, "
+            f"{shot.action}, {location}, {scene.time_of_day}, "
             f"{style}, cinematic lighting, highly detailed")
 
 
@@ -69,9 +71,14 @@ def run(ctx: Context) -> dict:
                     continue
                 visuals = _char_visuals(ctx, shot)
                 flf = _flf_enabled(ctx, shot)
+                loc = next((l for l in ctx.project.locations
+                            if l.name == sc.location), None)
+                location_visual = (loc.visual_prompt or loc.description) if loc else ""
                 user = T.render(T.PROMPT_USER, shot_type=shot.shot_type.value,
                                 camera_move=shot.camera_move, action=shot.action,
                                 character_anchors=visuals, location=sc.location or "场景",
+                                location_visual=location_visual or "（按剧情合理生成）",
+                                scene_summary=sc.summary or "",
                                 time_of_day=sc.time_of_day,
                                 style=ad.style_prompt_prefix or ad.style, era=ad.era,
                                 color_palette=ad.color_palette, mood=sc.mood,

@@ -167,11 +167,13 @@ class CharacterConfig(BaseModel):
     use_llm_anchor: bool = True                       # 用 LLM 把外貌整理成稳定英文锚点
     anchor_max_chars: int = 320
     generate_refs: bool = True                        # 用 ComfyUI 生成三视图
+    generate_location_refs: bool = True               # 自动为每个场景出参考图
+    auto_cast: bool = True                            # 自动给角色分配 TTS 音色
     ref_views: list[str] = Field(default_factory=lambda: ["front", "side", "three_quarter"])
     ref_width: int = 768
     ref_height: int = 1024
-    # prompt = 只靠文字锚点；ref = 出图时附带角色参考图（需工作流支持）
-    consistency: Literal["prompt", "ref", "lora"] = "prompt"
+    # prompt = 只靠文字锚点；ref = 出图时附带角色/场景参考图（需工作流支持）
+    consistency: Literal["prompt", "ref", "lora"] = "ref"
 
 
 # --------------------------------------------------------------------------- #
@@ -230,6 +232,8 @@ class ComfyUIConfig(BaseModel):
     t2i_workflow: str = "config/comfyui/t2i_sdxl.json"
     i2v_workflow: str = "config/comfyui/i2v_animatediff.json"
     upscale_workflow: str = ""                        # optional
+    auto_workflows: bool = True                       # missing file -> scan config/comfyui/
+    auto_map: bool = True                             # infer node ids from the graph
     # 首尾帧：用 start+end 两张关键帧驱动 i2v（需支持双图的模型/工作流）
     first_last_frame: bool = False
     flf_workflow: str = ""                            # 双图 i2v 工作流；留空则退回单图

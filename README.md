@@ -115,8 +115,9 @@ dj serve --no-browser         # 不自动开浏览器（远程/无头）
 
 - **整体架构图**：文本链（1~7）→ 生成链（8~11）→ 合成链（12），以及 `project.json / 后台任务 / catalog.db / Provider`
   四个基座；点任意阶段可直接去流水线重跑。
-- **外挂接入手册**：ComfyUI、大模型、TTS、BGM、ffmpeg 各自的配置键、步骤和「环境自检」结果；
-  ComfyUI 工作流节点对不上时，会直接把缺失节点/插件列出来。
+- **外挂接入手册**：ComfyUI、大模型、TTS、BGM、ffmpeg 各自的配置键、步骤和「环境自检」结果。
+  ComfyUI 一栏内置 **自动接入**：填地址 → 自动识别工作流与节点编号 → 选择后一键写回配置，
+  不用再手抄 JSON 里的节点 ID；工作流缺节点/插件会直接列出。
 - **无缝工作流说明**：一键跑全链、断点续跑、改一处只废下游、后台任务、配音驱动时间轴、失败不连坐。
 - **新建/导入表单**：填项目名和小说路径即可创建并自动跑「导入」。
 
@@ -377,12 +378,20 @@ Nginx 反代 + Basic Auth、SSH 隧道。一键脚本（Linux）：
 bash deploy/setup_comfyui.sh
 ```
 
-**接入四步：**
+**接入（控制台全自动）：**
 
 1. GPU 机器启动 ComfyUI：`python main.py --listen 0.0.0.0 --port 8188`（本机可只监听 127.0.0.1）。
-2. 在 ComfyUI 里搭好「文生图」和「图生视频」两条能跑通的工作流，各自 **Save (API Format)** 导出 JSON。
-3. 把 JSON 放进 `config/comfyui/`，覆盖或新增模板，并在 `comfyui.t2i_workflow` / `i2v_workflow` 填路径。
-4. 把 JSON 里的节点编号填进 `comfyui.t2i_nodes` / `i2v_nodes`（对不上就改配置，不改代码）：
+2. 在 ComfyUI 里搭好「文生图」「图生视频」两条能跑通的工作流，各自 **Save (API Format)** 导出 JSON。
+3. 把 JSON 放进 `config/comfyui/`（文件名随意），控制台「导引 → ComfyUI」填地址点 **自动识别**。
+4. 识别会扫描工作流、从图结构推断节点编号、校验模型与插件，并推荐出图/视频/首尾帧各一套；
+   确认后点 **应用并启用**，配置原位写回 `default.yaml` 并立刻自检。
+
+节点映射不需要手填：`comfyui.auto_map: true` 会按节点类型和连线自动推断
+（KSampler / CLIPTextEncode / CheckpointLoader / EmptyLatentImage / LoadImage / VideoCombine…），
+`auto_workflows: true` 允许在路径为空或失效时自动扫描 `config/comfyui/*.json`。
+手填仍然优先；工作流改编号后失效的手填值会被忽略并重新推断，不会卡住出图。
+
+需要手动覆盖时，配置键与语义节点对应关系如下：
 
 | 配置键 | 指向的节点 | 写入内容 |
 |--------|------------|----------|
@@ -393,7 +402,7 @@ bash deploy/setup_comfyui.sh
 | `t2i_nodes.steps` / `cfg` | `KSampler` | 采样步数 / CFG |
 | `t2i_nodes.sampler` | `KSampler` | sampler_name / scheduler |
 | `t2i_nodes.checkpoint` | `CheckpointLoaderSimple` | checkpoint 文件名 |
-| `t2i_nodes.ref_image` | `LoadImage`（可选） | 角色三视图参考图 |
+| `t2i_nodes.ref_image` | `LoadImage`（可选） | 角色 / 场景参考图主槽 |
 | `i2v_nodes.image` | `LoadImage` | 首帧 |
 | `i2v_nodes.last_image` | `LoadImage`（可选） | 尾帧（首尾帧模式） |
 | `i2v_nodes.frames` | 帧数节点 | length / frames |
@@ -415,12 +424,13 @@ comfyui:
 验证：`dj comfy-test --gen`（含试生成一张图），或控制台「导引 → 环境自检」。
 自检会逐个校验工作流里的节点类型和映射 ID，缺插件/节点会直接列出问题。
 
-**可选增强（不配会自动退回单图流程，不报错）：**
+**一致性默认全自动（不配会自动降级，不报错）：**
 
-- **参考图出图**：t2i 工作流加一个 `LoadImage`，节点 ID 填 `comfyui.t2i_nodes.ref_image`，
-  并设 `characters.consistency: ref`。
-- **首尾帧图生视频**：准备支持双图输入的 i2v 工作流，填 `comfyui.flf_workflow` 和
-  `comfyui.i2v_nodes.last_image`，再打开 `comfyui.first_last_frame: true`。
+- **参考图出图**：默认 `characters.consistency: ref`。角色三视图和场景环境图由定妆/画面
+  阶段自动生成，主槽优先放当前镜头的角色，其次放场景参考；工作流没有 `LoadImage`
+  参考槽时自动忽略，退回纯文字锚点。
+- **首尾帧图生视频**：准备支持双图输入的 i2v 工作流后在控制台勾选即可；`first_last_frame`
+  未开时自动走单图 i2v。分镜台单镜抽屉也能按镜头覆盖。
 
 ### 6.3 大模型 LLM（文本）
 
@@ -536,10 +546,11 @@ dramakit/
 
 - **时间轴由配音驱动**：每句台词的真实音频时长决定场景长度，镜头按比例拉伸铺满，
   字幕用同一时间轴 → 画面/人声/字幕永远对齐。
-- **角色一致性（三层）**：`analyze` 抽角色 → `character` 定妆阶段把外貌整理成稳定英文
-  锚点，并用 ComfyUI 出三视图参考图 → `visual` 出图时注入锚点；`characters.consistency:
-  ref` 会把参考图喂给工作流的 `LoadImage` 节点（需配 `comfyui.t2i_nodes.ref_image`），
-  `seed_mode: character` 让同一角色跨镜头用稳定种子。角色卡可锁定，锁了不会被重写。
+- **角色/场景一致性（全自动）**：`analyze` 抽角色 → `character` 定妆阶段把外貌整理成稳定
+  英文锚点、用 ComfyUI 出三视图、为每个场景出一张无人环境图、并由 AI 从可用音色里给角色
+  分配声音 → `visual` 出图时把锚点前置，并按「角色主参考 + 场景参考」注入 `LoadImage`
+  槽位；`characters.consistency: ref`（默认）启用参考图，工作流没有参考槽时自动退回纯文字
+  锚点；`seed_mode: character` 让同一角色跨镜头用稳定种子。角色卡可锁定，锁了不会被重写。
 - **首尾帧（可选）**：`comfyui.first_last_frame` + `flf_workflow` + `i2v_nodes.last_image`
   三处齐备时，每个镜头会先生成起始帧和结束帧，再交给双图 i2v 工作流；缺任何一项自动
   退回单图 i2v，不影响其他流程。分镜台上的单镜抽屉可按镜头覆盖首尾帧开关。
