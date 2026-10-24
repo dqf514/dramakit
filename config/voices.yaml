@@ -1,0 +1,61 @@
+# ===========================================================================
+#  音色参考表 (config/voices.yaml)
+#  这不是自动加载的配置，而是"音色速查表"。挑好后把映射抄进
+#  config/default.yaml 的 tts.voice_map 即可。
+#  实时试听全部音色：  dj voices
+# ===========================================================================
+
+# ---- 微软 Edge 免费神经音色（provider: edge）常用中文音色 ----
+edge_zh_voices:
+  男声:
+    - zh-CN-YunxiNeural      # 云希，年轻男声，默认男主，情感丰富
+    - zh-CN-YunyangNeural    # 云扬，成熟稳重，新闻旁白感，默认旁白
+    - zh-CN-YunjianNeural    # 云健，硬朗有力，适合硬汉/战神/反派
+    - zh-CN-YunxiaNeural     # 云夏，少年音，适合学生/弟弟角色
+    - zh-CN-YunyeNeural      # 云野，故事讲述感，适合说书旁白
+    - zh-CN-guangxi-YunqiNeural  # 云奇，广西口音
+    - zh-CN-henan-YundengNeural  # 云登，河南口音
+    - zh-CN-liaoning-YunbiaoNeural # 云彪，东北口音
+    - zh-CN-shaanxi-YunxiNeural  # 云希，陕西口音
+
+  女声:
+    - zh-CN-XiaoxiaoNeural   # 晓晓，标准女声，默认女主，温柔百搭
+    - zh-CN-XiaoyiNeural     # 晓伊，甜美活泼，适合少女/甜宠
+    - zh-CN-liaoning-XiaobeiNeural  # 晓北，东北口音女声
+    - zh-CN-sichuan-XiaoxiNeural    # 晓希，四川口音女声
+
+  港台/其它:
+    - zh-HK-HiuGaaiNeural    # 粤语女
+    - zh-HK-HiuMaanNeural    # 粤语女
+    - zh-HK-WanLungNeural    # 粤语男
+    - zh-TW-HsiaoChenNeural  # 台式女
+    - zh-TW-YunJheNeural     # 台式男
+
+# ---- 情绪风格（部分 Edge 音色支持 style，需在 SSML 里指定；本表仅备注）----
+# zh-CN-YunxiNeural 支持: narration-relaxed, embarrassed, fearful, cheerful,
+#   disgruntled, serious, angry, sad, depressed, affectionate, gentle, envious
+# zh-CN-XiaoxiaoNeural 支持: cheerful, angry, sad, gentle, serious, affectionate ...
+# 注：edge-tts 库当前主要用 rate/volume/pitch 调节；style 需自行扩展 SSML。
+
+# ---- 角色 → 音色 映射示例（抄到 default.yaml 的 tts.voice_map）----
+voice_map_example:
+  林凡: zh-CN-YunjianNeural     # 男主/战神
+  苏晚: zh-CN-XiaoyiNeural      # 女主/甜
+  苏母: zh-CN-XiaoxiaoNeural    # 长辈女
+  反派 boss: zh-CN-YunyangNeural
+  旁白: zh-CN-YunyeNeural       # 说书感旁白
+
+# ---- 本地 CosyVoice（provider: cosyvoice）----
+# 先部署 CosyVoice 的 HTTP 服务（如 CosyVoice-webui / 自建 FastAPI），
+# 在 default.yaml 设置:
+#   tts.provider: cosyvoice
+#   tts.base_url: http://<服务器IP>:9880
+#   tts.voice_map: { 林凡: "中文男", 苏晚: "中文女" }   # 用 CosyVoice 的音色/spk id
+# CosyVoice 支持零样本音色克隆：给一段参考音频即可复刻特定嗓音，适合固定角色。
+
+# ---- MiniMax（provider: minimax，云端多情感）----
+#   tts.provider: minimax
+#   tts.api_key: <环境变量 DRAMAKIT_TTS_API_KEY>
+#   tts.voice_map: { 林凡: "male-qn-qingse", 苏晚: "female-shaonv" }
+# 常用 voice_id: female-shaonv / female-yujie / male-qn-qingse / male-qn-jingying /
+#   presenter_male / presenter_female / audiobook_male_1 / audiobook_female_1

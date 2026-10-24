@@ -1,0 +1,325 @@
+# ===========================================================================
+#  DramaKit 主配置  (config/default.yaml)
+#  小说 → 多集竖屏短剧 的全流程参数。改完直接 `dj run <项目>` 生效。
+#  密钥建议放环境变量，别写进文件：
+#    set DRAMAKIT_LLM_API_KEY=sk-xxxx        (Windows)
+#    export DRAMAKIT_LLM_API_KEY=sk-xxxx     (Linux/Mac)
+#  也可以在 Web 控制台（dj serve）→「设置」页里图形化增删模型、调优先级、勾选任务分工。
+# ===========================================================================
+
+# --------------------------- 大模型 LLM -----------------------------------
+# provider 目前统一走 OpenAI 兼容接口，云端/本地都能接：
+#   DeepSeek   base_url: https://api.deepseek.com/v1        model: deepseek-chat
+#   通义千问    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1  model: qwen-plus
+#   Kimi       base_url: https://api.moonshot.cn/v1         model: moonshot-v1-32k
+#   OpenAI     base_url: https://api.openai.com/v1          model: gpt-4o-mini
+#   Ollama本地  base_url: http://localhost:11434/v1          model: qwen2.5:14b
+#   LMStudio   base_url: http://localhost:1234/v1           model: <你加载的模型>
+llm:
+  provider: openai_compat
+  base_url: http://localhost:11434/v1 # 默认指向本地 Ollama
+  api_key: ollama # 本地随便填；云端用环境变量覆盖
+  model: qwen2.5:14b
+  temperature: 0.7
+  max_tokens: 4096
+  top_p: 1.0
+  timeout: 300.0
+  max_retries: 3
+  concurrency: 2                           # 并行调用数（本地显存小就设 1）
+  use_proxy: false # 直连(false)；仅当需经系统代理访问海外API时设 true
+  json_mode: true                          # 要求结构化输出
+  system_prompt_extra: ""
+  # 旧版单模型阶段覆盖（模型清单 models.entries 为空时才生效）
+  model_overrides:
+    # analyze: qwen2.5:32b
+    # segment: deepseek-chat
+    # promptgen: qwen2.5:7b
+
+# --------------------------- 模型清单 -----------------------------------
+# entries 顺序即优先级；roles 指定每个模型负责的任务；default 是兜底模型。
+# 在 Web 控制台「设置」页里图形化增删/排序/勾选，保存会自动写回这里。
+models:
+  default: m1
+  entries:
+  - id: m1
+    label: 本地主力
+    base_url: http://localhost:11434/v1
+    model: qwen2.5:14b
+    api_key: ollama
+    temperature: 0.7
+    max_tokens: 4096
+    timeout: 300.0
+    use_proxy: false
+    roles:
+    - analyze
+    - segment
+    - script
+    - storyboard
+    - promptgen
+    - config
+    - actions
+    - search
+  - id: m2
+    label: 打标小模型
+    base_url: http://localhost:11434/v1
+    model: qwen2.5:3b
+    api_key: ollama
+    temperature: 0.2
+    max_tokens: 1024
+    timeout: 120.0
+    use_proxy: false
+    roles:
+    - tag
+
+# --------------------- AI 原生层（大脑/一键配置/标签/检索）------------------
+# 这一层让「所有事交给 AI」：探测环境自动生成配置、给素材打标签分类、
+# 自然语言检索、自然语言→动作。全部失败即优雅降级，不影响手动跑流水线。
+
+ai:
+  enabled: true
+  language: zh                             # AI 输出/标签语言
+  main_timeout: 90.0                       # 交互式调用的超时上限；端点挂了不卡界面
+  # --- 旧版小模型配置（模型清单 models.entries 非空时不生效）---
+  # 留空则自动复用上面的主 LLM，无感降级。
+  light_base_url: ""                       # 例：http://localhost:11434/v1
+  light_api_key: ""                        # 建议走环境变量 DRAMAKIT_AI_LIGHT_API_KEY
+  light_model: ""                          # 例：qwen2.5:3b
+  light_temperature: 0.2
+  light_max_tokens: 1024
+  light_timeout: 120.0
+  light_use_proxy: false                   # 直连(false)；同 llm.use_proxy
+  # --- 行为开关 ---
+  auto_tag: true                           # 流水线产出后自动打标签入库
+  intent_confirm: true                     # 自然语言动作执行前需确认
+  catalog_db: catalog.db                   # 资产目录库（相对 projects 目录或绝对路径）
+  max_search_results: 60
+  tag_max: 8                               # 每个资产最多标签数
+  # 内置标签分类体系（AI 打标签时受此约束，保证分类清晰统一）
+  tag_taxonomies:
+    genre: [都市, 古装, 玄幻, 悬疑, 甜宠, 战神, 重生, 穿越, 复仇]
+    scene_type: [对白, 独白, 旁白, 打斗, 情感, 反转, 回忆, 空镜]
+    mood: [紧张, 温馨, 悲伤, 愤怒, 喜悦, 悬疑, 燃, 虐]
+    shot: [特写, 近景, 中景, 全景, 远景, 过肩, 主观, 空镜]
+    time: [日, 夜, 晨, 昏]
+    asset: [小说, 剧本, 分镜, 画面, 视频, 配音, 字幕, 配乐, 成片, 封面]
+
+# --------------------------- Web 控制台 -----------------------------------
+# `dj serve` 打开的本地控制台（零依赖，标准库实现）。
+web:
+  host: 127.0.0.1                          # 仅本机；要在局域网访问填 0.0.0.0
+  port: 8756
+  open_browser: true
+  projects_dir: projects
+  title: DramaKit 控制台
+
+# --------------------------- 角色定妆 -------------------------------------
+# 先给每个角色定一张"锚点脸"和三视图，之后所有镜头都复用同一组参考图，
+# 跨镜头/跨集不换脸。consistency=ref 需要画面工作流支持 LoadImage 参考图。
+characters:
+  enabled: true
+  use_llm_anchor: true                      # 用 LLM 把外貌整理成稳定英文锚点
+  anchor_max_chars: 320
+  generate_refs: true # 用 ComfyUI 生成三视图
+  ref_views: [front, side, three_quarter]
+  ref_width: 768
+  ref_height: 1024
+  consistency: prompt # prompt=只靠文字锚点 | ref=附带参考图 | lora
+
+# --------------------------- 配音 TTS -------------------------------------
+# provider:
+#   edge      免费！微软 Edge 神经音色，开箱即用，无需 Key（推荐起步）
+#   cosyvoice 本地 CosyVoice HTTP 服务（可克隆音色），base_url 指向你的服务
+#   openai    任意 OpenAI 兼容 /v1/audio/speech
+#   minimax   MiniMax 云端多情感音色
+tts:
+  provider: edge
+  edge_default_voice: zh-CN-YunxiNeural     # 男主/男声
+  edge_narrator_voice: zh-CN-YunyangNeural  # 旁白/解说
+  edge_female_voice: zh-CN-XiaoxiaoNeural   # 女主/女声
+  base_url: http://localhost:9880           # cosyvoice / 其它本地服务地址
+  api_key: ""
+  model: cosyvoice-v1
+  rate: "+0%"                               # 语速，如 +10% / -10%
+  volume: "+0%"
+  pitch: "+0Hz"
+  speed: 1.0                                # 非 edge 提供商的语速
+  concurrency: 4
+  use_proxy: false                          # 直连(false)；本地 CosyVoice 必须 false
+  silence_pad_ms: 120                       # 每句尾部留白，避免字幕/语音太挤
+  # 角色名 → 音色（不填则按性别回退到上面的默认音色）
+  voice_map: {}
+    # 林凡: zh-CN-YunxiNeural
+    # 苏晚: zh-CN-XiaoxiaoNeural
+    # 旁白: zh-CN-YunyangNeural
+  # 情绪 → 提供商风格提示（edge 暂不吃这个，cosyvoice/minimax 可用）
+  emotion_map: {}
+
+# --------------------- 画面生成 ComfyUI（你的视频服务器）--------------------
+# 这是短剧画面的来源。ComfyUI 用 "Save (API Format)" 导出工作流，
+# 放到 config/comfyui/ 下，然后把下面的节点ID映射对上你的图。
+# 支持对接另一台机器（远程/局域网），含鉴权与断线重试。
+comfyui:
+  enabled: true
+  base_url: http://127.0.0.1:8188           # 视频服务器地址（远程就填 http://IP:8188）
+  client_id: dramakit
+  timeout: 600.0                            # 单张图/单段视频生成上限（秒）
+  request_timeout: 60.0                     # 短HTTP调用（提交/查询/下载）超时
+  poll_interval: 1.0
+  concurrency: 1 # 受显存限制，单卡建议 1
+  max_retries: 3                            # 远程网络抖动重试次数
+  use_proxy: false                          # 直连(false)：局域网/远程 ComfyUI 必须 false，
+                                            #   否则 httpx 会读系统代理导致连不上/卡住
+  # --- 远程鉴权（对接另一台机器，尤其走 Nginx 反代时）---
+  auth: none                                # none | basic | token | header
+  auth_username: ""                         # basic 用
+  auth_password: ""                         # basic 用；建议走环境变量 DRAMAKIT_COMFYUI_PASSWORD
+  auth_token: ""                            # token(bearer) 用；建议走 DRAMAKIT_COMFYUI_TOKEN
+  extra_headers: {}                         # 任意自定义头（auth=header 或附加头）
+    # X-Api-Key: your-key
+  verify_tls: true                          # 内网自签名证书可设 false
+  # --- 进度监听：优先 WebSocket，失败自动回退轮询 /history ---
+  use_websocket: true
+  ws_fallback_to_poll: true
+  t2i_workflow: config/comfyui/t2i_sdxl.json
+  i2v_workflow: config/comfyui/i2v_animatediff.json
+  upscale_workflow: ""                      # 可选：放大工作流
+  # --- 首尾帧：用起始/结束两张关键帧驱动 i2v，镜头更可控 ---
+  # 需要一份支持双图输入的工作流（如 FLF2V / IP-Adapter 双图），
+  # 留空则自动退回单图 i2v，不影响现有流程。
+  first_last_frame: false
+  flf_workflow: "" # 例：config/comfyui/i2v_flf.json
+  # 语义名 → 你工作流里的节点ID（字符串）。对不上就改这里，不用改代码。
+  t2i_nodes:
+    positive: "6"        # 正向提示词 CLIPTextEncode
+    negative: "7"        # 负向提示词 CLIPTextEncode
+    seed: "3"            # KSampler（写 seed / noise_seed）
+    width: 768 # EmptyLatentImage（写 width）
+    height: 1344 # EmptyLatentImage（写 height）
+    steps: 25 # KSampler（写 steps）
+    cfg: 6.5 # KSampler（写 cfg）
+    sampler: "3"         # KSampler（写 sampler_name / scheduler）
+    checkpoint: "4"      # CheckpointLoaderSimple（写 ckpt_name）
+    ref_image: ""        # 可选：角色参考图 LoadImage 节点（consistency=ref 时注入）
+  i2v_nodes:
+    image: "10"          # LoadImage（写 image，上传后的名字）
+    last_image: ""       # 可选：尾帧 LoadImage 节点（首尾帧工作流用）
+    positive: "6"
+    negative: "7"
+    seed: "3"
+    frames: 32 # 帧数节点（写 length / frames）
+    fps: 16 # 合成节点（写 frame_rate / fps）
+  mode: image_then_video # image | video | image_then_video
+  width: 768
+  height: 1344                              # ≈9:16 竖屏
+  steps: 25
+  cfg: 6.5
+  sampler: dpmpp_2m
+  scheduler: karras
+  checkpoint: sd_xl_base_1.0.safetensors
+  frames: 32                                # 每镜头视频帧数
+  fps: 16
+  seed_mode: character # random | fixed | character（按角色固定种子保一致性）
+  fixed_seed: 12345
+  save_intermediate: true                   # 保留 tmp/ 中间文件便于排查
+
+# --------------------------- 配乐 BGM -------------------------------------
+# provider:
+#   library  本地曲库：把版权音乐丢进 assets/music，按情绪自动匹配（零成本）
+#   musicgen 本地/HTTP Meta MusicGen 生成（需 torch，见 requirements 的 musicgen extra）
+#   suno     Suno 兼容 API 生成
+#   none     不加 BGM
+music:
+  provider: library
+  library_dir: assets/music
+  base_url: http://localhost:8001           # musicgen HTTP 服务地址
+  model: facebook/musicgen-small
+  duration: 30.0
+  api_key: ""
+  use_proxy: false                          # 直连(false)：走 HTTP 生成音乐时避免系统代理卡住
+  mood_map: {}                              # 情绪标签 → 文件名列表（不填则按文件名关键词匹配）
+    # 紧张: [tense1.mp3, suspense2.wav]
+    # 悲伤: [sad_piano.mp3]
+  bgm_volume: 0.22 # 相对人声音量
+  loop_to_fit: true                         # 自动循环铺满整集
+  fade_in: 1.0
+  fade_out: 2.0
+  duck_voice: true                          # 有人说话时自动压低 BGM（侧链）
+
+# --------------------------- 分集 segment -----------------------------------
+segment:
+  strategy: auto                            # auto | fixed_count | fixed_duration | by_chapter
+  episode_count: 0                          # fixed_count 时用
+  episode_duration: 90.0                    # 目标每集秒数（红果常见 60~120s）
+  min_episode_duration: 45.0
+  max_episode_duration: 180.0
+  respect_chapters: true                    # 尽量沿章节边界切
+  hook_style: 强悬念反转                     # 每集结尾钩子风格
+  max_chars_per_episode: 0                  # 0=按秒数让系统估算
+  opening_recap: true                       # 生成"前情提要"
+  cold_open: true                           # 第一集冷开场直接抛冲突
+
+# --------------------------- 分镜 storyboard --------------------------------
+storyboard:
+  shots_per_scene: auto
+  min_shots_per_scene: 2
+  max_shots_per_scene: 8
+  shot_duration_range: [2.0, 5.0]
+  prefer_dynamic: true                      # 多用推拉摇移增强节奏
+  include_insert_shots: true                # 允许空镜/特写插入
+  language: bilingual                       # 提示词语言 zh | en | bilingual
+
+# --------------------------- 合成 compose -----------------------------------
+compose:
+  width: 1080
+  height: 1920                              # 竖屏 9:16
+  fps: 30
+  video_bitrate: 6M
+  audio_bitrate: 192k
+  codec: libx264
+  pixel_format: yuv420p
+  crf: 20                                   # 越小越清晰、文件越大（18~23 常用）
+  preset: medium                            # ultrafast..veryslow
+  transition: fade # none=硬切 | fade/dissolve=场间淡入淡出
+  transition_duration: 0.35 # 淡入淡出时长；会按镜头时长自动收缩
+  motion_effect: kenburns                   # 静图镜头的运动：kenburns | zoompan | none
+  kenburns_scale: 1.12                      # 静图最大缩放幅度
+  loudness_normalize: true
+  target_loudness_lufs: -16.0               # 短视频平台常用 -14~-16 LUFS
+  burn_subtitles: true # 硬字幕（红果/抖音常用，不可关闭显示）
+  also_write_srt: true                      # 同时输出软字幕 .srt
+  show_speaker_name: true                   # 台词上方显示角色名
+  subtitle_style:
+    font: Microsoft YaHei
+    font_size: 16                           # 内部按分辨率放大
+    primary_color: "&H00FFFFFF"             # 白字（&HAABBGGRR）
+    outline_color: "&H00000000"             # 黑边
+    outline: 2
+    shadow: 0
+    margin_v: 220                           # 距底部距离
+    bold: true
+    alignment: 2                            # 底部居中
+    speaker_color: "&H0000E5FF"             # 角色名高亮色
+  generate_cover: true
+  cover_from_shot: first                    # first | best | last
+
+# --------------------------- 流水线控制 -------------------------------------
+pipeline:
+  output_dir: projects
+  stages_enabled:                           # 想跳过某步就从这里删掉
+    - ingest
+    - analyze
+    - character
+    - segment
+    - script
+    - storyboard
+    - promptgen
+    - visual
+    - voice
+    - subtitle
+    - music
+    - compose
+  resume: true                              # 跳过已完成节点，可断点续跑
+  stop_after: null                          # 例: storyboard —— 只跑到分镜就停
+  only_episodes: []                         # 例: [1,2,3] 只处理这几集
+  fail_fast: false                          # true=任一阶段报错即中止
+  verbose: true

@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DramaKit 制作台</title>
+<style>
+  :root{
+    --bg:#0c1015; --bg2:#121820; --bg3:#1a222c; --bg4:#202b37;
+    --line:#27313d; --line2:#334250;
+    --fg:#e8eef5; --fg2:#9fb0c1; --fg3:#697b8d;
+    --go:#248a3d; --go2:#3fb950; --danger:#c93636; --danger2:#f0645c;
+    --confirm:#1f6feb; --confirm2:#4c9aff; --warn:#c9971c; --ai:#8b5cf6;
+    --chip:#1d2732; --r:6px;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--fg);
+    font:13px/1.45 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    overflow:hidden}
+  a{color:var(--confirm2);text-decoration:none}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#2b3745;border-radius:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  #app{display:flex;height:100%}
+
+  /* ---------- icon rail ---------- */
+  #rail{width:68px;flex:0 0 auto;background:#090d11;border-right:1px solid var(--line);
+    display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px}
+  .brand{width:38px;height:38px;border-radius:9px;background:linear-gradient(145deg,#2c6bed,#7c3aed);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;
+    letter-spacing:.5px;color:#fff;margin-bottom:10px;box-shadow:0 4px 14px rgba(58,110,240,.35)}
+  .railbtn{width:54px;padding:7px 0 5px;border:0;background:transparent;color:var(--fg3);
+    display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:8px;
+    cursor:pointer;font-size:10px;font-family:inherit}
+  .railbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  .railbtn:hover{background:var(--bg3);color:var(--fg2)}
+  .railbtn.on{background:#17222e;color:var(--confirm2)}
+  .railbtn.on::before{content:"";position:absolute;left:0;width:2px;height:26px;background:var(--confirm2);border-radius:2px}
+  .railbtn{position:relative}
+  .rail-sp{flex:1}
+
+  /* ---------- shell ---------- */
+  #shell{flex:1;min-width:0;display:flex;flex-direction:column}
+  header{height:46px;flex:0 0 auto;display:flex;align-items:center;gap:12px;
+    padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--line)}
+  .crumb{display:flex;align-items:baseline;gap:8px;min-width:0}
+  .crumb b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  .crumb span{font-size:11px;color:var(--fg3);white-space:nowrap}
+  .hchips{display:flex;gap:6px;align-items:center;flex:1;overflow:hidden}
+  .hchip{background:var(--chip);border:1px solid var(--line);border-radius:20px;
+    padding:2px 9px;font-size:11px;color:var(--fg2);white-space:nowrap}
+  .hchip b{color:var(--fg);font-weight:600}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+  .dot.ok{background:var(--go2)} .dot.bad{background:var(--danger2)}
+  .dot.warn{background:var(--warn)} .dot.na{background:var(--fg3)}
+
+  /* ---------- AI command bar ---------- */
+  #cmdbar{display:flex;gap:8px;padding:7px 14px;background:var(--bg2);
+    border-bottom:1px solid var(--line);align-items:center;flex:0 0 auto}
+  #cmdbar .lbl{font-size:11px;color:var(--ai);font-weight:650;white-space:nowrap;
+    border:1px solid #4b3a7a;background:#201735;border-radius:4px;padding:2px 7px}
+  #cmd{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--fg);
+    border-radius:var(--r);padding:7px 11px;font-size:12.5px;outline:none;font-family:inherit}
+  #cmd:focus{border-color:var(--ai);box-shadow:0 0 0 2px rgba(139,92,246,.15)}
+  #cmdproj{background:var(--bg);border:1px solid var(--line);color:var(--fg2);
+    border-radius:var(--r);padding:6px 8px;font-size:12px;max-width:160px}
+
+  /* ---------- workspace ---------- */
+  #body{display:flex;flex:1;min-height:0}
+  #side{width:232px;flex:0 0 auto;background:var(--bg2);border-right:1px solid var(--line);
+    overflow-y:auto;padding:10px}
+  #side.hide{display:none}
+  #main{flex:1;min-width:0;overflow-y:auto;padding:16px 18px}
+  .side-h{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);
+    margin:12px 0 6px;font-weight:700;display:flex;justify-content:space-between}
+  .side-h:first-child{margin-top:0}
+  .proj{padding:7px 9px;border-radius:var(--r);cursor:pointer;border:1px solid transparent;
+    margin-bottom:3px}
+  .proj:hover{background:var(--bg3)}
+  .proj.on{background:#17222e;border-color:#2b4a70}
+  .proj .pn{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .proj .pm{color:var(--fg3);font-size:10.5px;margin-top:1px}
+  .tagfilter{display:flex;flex-wrap:wrap;gap:4px}
+  .tg{background:var(--chip);border:1px solid var(--line);color:var(--fg2);
+    border-radius:12px;padding:1px 7px;font-size:10.5px;cursor:pointer}
+  .tg:hover{border-color:var(--fg3)}
+  .tg.on{background:var(--confirm);border-color:var(--confirm);color:#fff}
+
+  /* ---------- buttons ---------- */
+  .btn{border:1px solid var(--line);background:var(--bg3);color:var(--fg);
+    border-radius:var(--r);padding:6px 13px;font-size:12.5px;cursor:pointer;
+    font-weight:550;white-space:nowrap;font-family:inherit}
+  .btn:hover{filter:brightness(1.14)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.go{background:var(--go);border-color:var(--go);color:#fff}
+  .btn.confirm{background:var(--confirm);border-color:var(--confirm);color:#fff}
+  .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+  .btn.ghost{background:transparent}
+  .btn.ai{background:#3b2a63;border-color:#5b3fa0;color:#d8c9ff}
+  .btn.sm{padding:3px 9px;font-size:11.5px}
+  .btn.xs{padding:1px 7px;font-size:10.5px;border-radius:4px}
+
+  /* ---------- general ---------- */
+  h1.page{font-size:17px;margin:0 0 3px;font-weight:700;letter-spacing:.2px}
+  .sub{color:var(--fg2);font-size:12px;margin-bottom:14px;line-height:1.55}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+    padding:14px;margin-bottom:12px}
+  .card h3{margin:0 0 10px;font-size:12.5px;font-weight:700;display:flex;
+    align-items:center;gap:8px;justify-content:space-between}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .grow{flex:1;min-width:180px}
+  label.fl{display:block;font-size:10.5px;color:var(--fg2);margin-bottom:3px}
+  input.f,textarea.f,select.f{width:100%;background:var(--bg);border:1px solid var(--line);
+    color:var(--fg);border-radius:var(--r);padding:6px 9px;font-size:12.5px;outline:none;
+    font-family:inherit}
+  input.f:focus,textarea.f:focus,select.f:focus{border-color:var(--confirm)}
+  textarea.f{resize:vertical;min-height:54px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+  .chip{background:var(--chip);border:1px solid var(--line);color:var(--fg2);
+    border-radius:14px;padding:3px 10px;font-size:11.5px;cursor:pointer}
+  .chip:hover{border-color:var(--fg3)}
+  .chip.on{background:var(--confirm);border-color:var(--confirm);color:#fff}
+  .pcard{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r);
+    padding:9px 12px;cursor:pointer;min-width:120px}
+  .pcard:hover{border-color:var(--fg3)}
+  .pcard.on{border-color:var(--confirm);background:#16233a}
+  .pcard .pl{font-weight:650;font-size:12.5px}
+  .pcard .pd{color:var(--fg3);font-size:10.5px;margin-top:1px}
+  .preset{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);
+    color:var(--fg2);background:var(--chip)}
+  .badge.done{color:var(--go2);border-color:#264d2e}
+  .badge.run{color:var(--confirm2);border-color:#243b5e}
+  .badge.fail{color:var(--danger2);border-color:#5e2626}
+  .badge.flf{color:#c4a5ff;border-color:#4b3a7a;background:#201735}
+  .muted{color:var(--fg3)}
+  .empty{color:var(--fg3);text-align:center;padding:38px 10px;font-size:12.5px}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--fg3);
+    border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  code,.kv{font-family:var(--mono);font-size:11px;background:var(--bg);
+    border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+  .mini{font-size:9.5px;background:var(--chip);border:1px solid var(--line);
+    border-radius:9px;padding:0 6px;color:var(--fg3);display:inline-block}
+  .toast{position:fixed;bottom:18px;right:18px;background:var(--bg3);border:1px solid var(--line);
+    border-left:3px solid var(--confirm2);border-radius:var(--r);padding:10px 15px;
+    font-size:12.5px;max-width:380px;box-shadow:0 6px 24px rgba(0,0,0,.55);z-index:200;
+    opacity:0;transform:translateY(8px);transition:.2s}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-left-color:var(--danger2)}
+  .toast.ok{border-left-color:var(--go2)}
+
+  /* ---------- workbench ---------- */
+  .hero{display:flex;gap:16px;align-items:flex-start;margin-bottom:14px}
+  .hero .cover{width:96px;height:170px;flex:0 0 auto;border-radius:7px;overflow:hidden;
+    background:#000;border:1px solid var(--line)}
+  .hero .cover img{width:100%;height:100%;object-fit:cover}
+  .hero .hb{flex:1;min-width:0}
+  .hero .ht{font-size:19px;font-weight:750;margin:0 0 2px}
+  .hero .hm{color:var(--fg2);font-size:12px}
+  .statrow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+  .stat{background:var(--bg2);border:1px solid var(--line);border-radius:6px;
+    padding:7px 11px;min-width:92px}
+  .stat b{display:block;font-size:17px;line-height:1.2}
+  .stat span{font-size:10.5px;color:var(--fg3)}
+  .stagebar{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+  .stg{display:flex;align-items:center;gap:5px;background:var(--bg2);
+    border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11.5px;
+    color:var(--fg2);cursor:pointer}
+  .stg:hover{border-color:var(--fg3)}
+  .stg.done{color:#9be2a8;border-color:#2a5533;background:#122117}
+  .stg.partial{color:#f0d38a;border-color:#574a22;background:#1e1a10}
+  .stg.pending{color:var(--fg2)}
+  .stg .num{font-family:var(--mono);font-size:10px;opacity:.7}
+  .epgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+  .epcard{background:var(--bg2);border:1px solid var(--line);border-radius:7px;
+    padding:11px;cursor:pointer;transition:border-color .12s}
+  .epcard:hover{border-color:var(--line2)}
+  .epcard .eh{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+  .epcard .eh b{font-size:13px}
+  .epcard .el{color:var(--fg2);font-size:11.5px;line-height:1.45;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .epcard .ef{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  .epcard .ebar{height:3px;background:var(--bg4);border-radius:2px;margin-top:8px;overflow:hidden}
+  .epcard .ebar i{display:block;height:100%;background:var(--go2)}
+  .quick{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  details.fold{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+    padding:0;margin-bottom:12px;overflow:hidden}
+  details.fold>summary{cursor:pointer;padding:10px 14px;font-size:12.5px;font-weight:650;
+    list-style:none;display:flex;align-items:center;gap:8px;color:var(--fg2)}
+  details.fold>summary::-webkit-details-marker{display:none}
+  details.fold>summary:hover{color:var(--fg)}
+  details.fold[open]>summary{border-bottom:1px solid var(--line);color:var(--fg)}
+  details.fold .inner{padding:13px 14px}
+
+  /* ---------- storyboard ---------- */
+  .boardbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .boardbar select{max-width:200px}
+  .scblock{border:1px solid var(--line);border-radius:7px;margin-bottom:12px;
+    background:var(--bg2);overflow:hidden}
+  .sch{display:flex;align-items:center;gap:9px;padding:8px 12px;background:var(--bg3);
+    border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .sch .t{font-weight:650;font-size:12.5px}
+  .sch .m{color:var(--fg3);font-size:11px}
+  .shotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    gap:8px;padding:10px 12px}
+  .shotcard{background:var(--bg);border:1px solid var(--line);border-radius:6px;
+    overflow:hidden;cursor:pointer;position:relative}
+  .shotcard:hover{border-color:var(--confirm)}
+  .shotcard .media{height:200px;background:#000;position:relative}
+  .shotcard .media img,.shotcard .media video{width:100%;height:100%;object-fit:cover;display:block}
+  .shotcard .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    color:var(--fg3);font-size:11px;
+    background:repeating-linear-gradient(45deg,#11161d,#11161d 6px,#151b23 6px,#151b23 12px)}
+  .shotcard .cap{padding:5px 7px;font-size:10.5px;color:var(--fg2);line-height:1.35}
+  .shotcard .cap b{color:var(--fg);font-weight:600;font-size:11px}
+  .shotcard .sidx{position:absolute;left:5px;top:5px;background:rgba(0,0,0,.72);
+    color:#fff;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:3px}
+  .shotcard .sfl{position:absolute;right:5px;top:5px;background:rgba(45,26,80,.9);
+    color:#d4bcff;font-size:9.5px;padding:1px 6px;border-radius:3px}
+  .shotcard .sst{position:absolute;right:5px;bottom:5px}
+  .lines{padding:0 12px 10px}
+  .line{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed #1e262f;font-size:12px;
+    align-items:flex-start}
+  .line:last-child{border-bottom:0}
+  .line .sp{color:var(--confirm2);min-width:58px;font-weight:600;font-size:11.5px}
+  .line .tx{flex:1;color:var(--fg2)}
+  .line .au{color:var(--fg3);font-size:10.5px;cursor:pointer;white-space:nowrap}
+  .line .au:hover{color:var(--fg)}
+  .lineedit{background:transparent;border:0;color:var(--fg3);cursor:pointer;font-size:10.5px;
+    padding:0 4px}
+  .lineedit:hover{color:var(--confirm2)}
+
+  /* ---------- cast ---------- */
+  .castgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+  .castcard{background:var(--bg2);border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .casttop{display:flex;gap:10px;padding:10px;border-bottom:1px solid var(--line)}
+  .casttop .ref{width:88px;height:132px;flex:0 0 auto;border-radius:5px;overflow:hidden;
+    background:#000;border:1px solid var(--line)}
+  .casttop .ref img{width:100%;height:100%;object-fit:cover}
+  .casttop .cb{flex:1;min-width:0}
+  .casttop .cn{font-size:14px;font-weight:700}
+  .casttop .cr{color:var(--fg2);font-size:11.5px;margin:2px 0 6px}
+  .reflist{display:flex;gap:4px;flex-wrap:wrap}
+  .reflist img{width:38px;height:56px;object-fit:cover;border-radius:3px;border:1px solid var(--line)}
+  .castbody{padding:10px}
+  .castbody textarea{min-height:64px;font-size:11.5px}
+  .lockrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;
+    font-size:11.5px;color:var(--fg2)}
+  .lockrow input[type=checkbox]{accent-color:var(--confirm)}
+  .locgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .loc{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11.5px}
+  .loc .li{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+  .loc .li img{width:44px;height:60px;object-fit:cover;border-radius:3px}
+
+  /* ---------- assets ---------- */
+  .assetgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
+  .asset{background:var(--bg2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .asset .am{height:180px;background:#000;display:flex;align-items:center;justify-content:center}
+  .asset .am img,.asset .am video{width:100%;height:100%;object-fit:cover}
+  .asset .am .at{color:var(--fg3);font-size:11px;text-align:center;padding:6px}
+  .asset .ab{padding:6px 8px}
+  .asset .an{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .asset .ameta{font-size:10px;color:var(--fg3);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap}
+  .res{display:flex;gap:10px;padding:9px;border:1px solid var(--line);border-radius:var(--r);
+    margin-bottom:7px;background:var(--bg2);align-items:flex-start}
+  .res .thumb{width:56px;height:80px;flex:0 0 auto;border-radius:4px;overflow:hidden;background:#000}
+  .res .thumb img,.res .thumb video{width:100%;height:100%;object-fit:cover}
+  .res .rb{flex:1;min-width:0}
+  .res .rt{font-weight:600;font-size:12.5px}
+  .res .rx{color:var(--fg2);font-size:11.5px;margin:2px 0;overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .res .rtags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+
+  /* ---------- settings / models ---------- */
+  .health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px}
+  .hc{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:10px}
+  .hc .hn{font-size:10px;color:var(--fg3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+  .hc .hv{font-size:12.5px;font-weight:600}
+  .hc .hd{font-size:10.5px;color:var(--fg2);margin-top:3px;word-break:break-all}
+  .prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
+  .switch{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg2);
+    margin-top:6px;cursor:pointer}
+
+  /* ---------- drawer ---------- */
+  #drawerMask{position:fixed;inset:0;background:rgba(4,7,11,.5);opacity:0;pointer-events:none;
+    transition:.18s;z-index:140}
+  #drawerMask.show{opacity:1;pointer-events:auto}
+  #drawer{position:fixed;top:0;right:0;height:100%;width:440px;max-width:94vw;
+    background:var(--bg2);border-left:1px solid var(--line2);z-index:150;
+    transform:translateX(102%);transition:.2s;display:flex;flex-direction:column}
+  #drawer.show{transform:none}
+  .dhead{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .dhead .dt{font-weight:700;font-size:13.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dbody{flex:1;overflow-y:auto;padding:13px 14px}
+  .dfoot{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);
+    background:var(--bg3)}
+  .dprev{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .dprev .dp{width:92px;height:150px;border-radius:5px;overflow:hidden;background:#000;
+    border:1px solid var(--line);position:relative}
+  .dprev .dp img,.dprev .dp video{width:100%;height:100%;object-fit:cover}
+  .dprev .dp span{position:absolute;left:3px;top:3px;background:rgba(0,0,0,.7);
+    font-size:9px;color:#fff;padding:0 4px;border-radius:2px}
+  .dsec{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+  .dsec:first-child{border-top:0;margin-top:0;padding-top:0}
+  .dsec h4{margin:0 0 8px;font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.5px}
+
+  @media(max-width:1180px){ #side{display:none} }
+  @media(max-width:900px){ #cmdproj{display:none} .hero .cover{display:none} }
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="rail">
+    <div class="brand">DK</div>
+    <button class="railbtn on" data-page="workbench" title="工作台">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>工作台</span>
+    </button>
+    <button class="railbtn" data-page="board" title="分镜台">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M17 9h4M3 15h4M17 15h4"/></svg>
+      <span>分镜台</span>
+    </button>
+    <button class="railbtn" data-page="cast" title="角色库">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>角色库</span>
+    </button>
+    <button class="railbtn" data-page="pipeline" title="流水线">
+      <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/></svg>
+      <span>流水线</span>
+    </button>
+    <button class="railbtn" data-page="assets" title="资产">
+      <svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+      <span>资产</span>
+    </button>
+    <button class="railbtn" data-page="settings" title="设置">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <span>设置</span>
+    </button>
+    <div class="rail-sp"></div>
+    <button class="railbtn" id="healthBtn" title="环境自检">
+      <svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></svg>
+      <span>环境</span>
+    </button>
+  </nav>
+
+  <div id="shell">
+    <header>
+      <div class="crumb"><b id="projTitle">DramaKit</b><span id="projMeta">制作台</span></div>
+      <div class="hchips" id="hchips"></div>
+      <button class="btn sm ghost" id="sideToggle" title="显示/隐藏项目栏">☰</button>
+      <button class="btn sm ghost" id="refreshBtn" title="刷新">⟳</button>
+    </header>
+
+    <div id="cmdbar">
+      <span class="lbl">AI</span>
+      <select id="cmdproj"></select>
+      <input id="cmd" placeholder="一句话下指令：把第3集重做成卡通风 / 只生成配音和字幕 / 找出所有夜戏特写…  （按 / 聚焦）">
+      <button class="btn ai" id="cmdGo">解析</button>
+    </div>
+    <div id="preview"></div>
+
+    <div id="body">
+      <aside id="side">
+        <div class="side-h">项目 <button class="btn xs ghost" id="newProj">＋</button></div>
+        <div id="projlist"></div>
+        <div class="side-h">标签 <span class="muted" id="tagCount"></span></div>
+        <div class="tagfilter" id="tagfilter"></div>
+      </aside>
+
+      <main id="main">
+        <section id="page-workbench" class="page"></section>
+        <section id="page-board" class="page" style="display:none"></section>
+        <section id="page-cast" class="page" style="display:none"></section>
+        <section id="page-pipeline" class="page" style="display:none"><div id="tab-run"></div></section>
+        <section id="page-assets" class="page" style="display:none"></section>
+        <section id="page-settings" class="page" style="display:none">
+          <div id="tab-settings"></div>
+          <details class="fold" id="prodFold"><summary>制作参数 · 画面 / 角色 / 剪辑</summary>
+            <div class="inner" id="prodPanel"></div>
+          </details>
+          <details class="fold"><summary>一键 AI 配置 · 按一句话生成全套参数</summary>
+            <div class="inner" id="tab-setup"></div>
+          </details>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+<div id="previewOld" style="display:none"></div>
+<div class="toast" id="toast"></div>
+<div id="drawerMask"></div>
+<aside id="drawer">
+  <div class="dhead"><span class="dt" id="dTitle">编辑</span>
+    <button class="btn sm ghost" id="dClose">×</button></div>
+  <div class="dbody" id="dBody"></div>
+  <div class="dfoot" id="dFoot"></div>
+</aside>
+
+<script>
+"use strict";
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const num = (v,d)=>{const x=parseFloat(v);return Number.isFinite(x)?x:d;};
+const attr = s => esc(s).replace(/'/g,"&#39;");
+
+const STAGES=["ingest","analyze","character","segment","script","storyboard","promptgen","visual","voice","subtitle","music","compose"];
+const STAGE_ZH={ingest:"导入",analyze:"分析",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",visual:"画面",voice:"配音",subtitle:"字幕",music:"配乐",compose:"合成"};
+
+const S = {
+  state:null, templates:null, projects:[], current:"", tags:{}, tagSel:new Set(),
+  detail:null, health:null, activePage:"workbench", activeTag:"",
+  settings:null, modelEntries:[], modelDefault:"", modelRoles:[],
+  boardEp:0, boardFilter:"all", assetKind:"", assetRows:[],
+  drawer:{kind:"",ep:null,sc:null,shot:null,line:null},
+  production:null,
+};
+
+// ---------- api ----------
+async function api(path, opts={}){
+  const r = await fetch(path, opts);
+  const ct = r.headers.get("content-type")||"";
+  if(ct.includes("json")) return r.json();
+  return {ok:r.ok, text:await r.text()};
+}
+const getJSON = p => api(p);
+const postJSON = (p,b) => api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
+
+function toast(msg, kind="", ms=3200){
+  const t=$("#toast"); t.className="toast show "+kind; t.innerHTML=msg;
+  clearTimeout(t._x); t._x=setTimeout(()=>t.className="toast "+kind, ms);
+}
+async function pollJob(jid, onDone){
+  const tick = async ()=>{
+    const r = await getJSON("/api/jobs?id="+encodeURIComponent(jid));
+    const j = r.job;
+    if(!j){ toast("任务丢失","err"); return; }
+    if(j.status==="running"){ setTimeout(tick, 900); return; }
+    if(j.status==="error"){ toast("任务失败："+esc(j.error),"err",6000); onDone&&onDone(null,j); return; }
+    onDone&&onDone(j.result,j);
+  };
+  tick();
+}
+
+// ---------- boot / nav ----------
+async function boot(){
+  const st = await getJSON("/api/state");
+  if(!st.ok){ toast("无法连接后端","err"); return; }
+  S.state=st; S.projects=st.projects||[];
+  if(!S.current || !S.projects.some(p=>p.slug===S.current)) S.current=st.current_project||(S.projects[0]&&S.projects[0].slug)||"";
+  if(!S.templates) S.templates=await getJSON("/api/templates");
+  renderHeader(); renderCmdProj(); renderProjects(); renderTags();
+  if(S.current) await selectProject(S.current, true); else { S.detail=null; renderAllPages(); }
+  renderAllPages();
+  switchPage(S.activePage, true);
+}
+
+function renderHeader(){
+  const c=(S.state&&S.state.config_summary)||{};
+  const same=c.default_model===c.tag_model;
+  const chips=[
+    ["模型",c.default_model],
+    ...(same||!c.tag_model?[]:[["打标",c.tag_model]]),
+    ["ComfyUI",(c.comfyui_enabled?"":"关 ")+(c.comfyui||"").replace(/^https?:\/\//,"")],
+    ["TTS",c.tts],["配乐",c.music],
+  ];
+  $("#hchips").innerHTML=chips.filter(x=>x[1]).map(([k,v])=>`<span class="hchip">${k} <b>${esc(v)}</b></span>`).join("");
+  const d=S.detail;
+  $("#projTitle").textContent=d?(d.meta.title||d.meta.name):"DramaKit";
+  $("#projMeta").textContent=d?`${d.art_direction.genre||""} · ${d.art_direction.style||""} · ${(d.episodes||[]).length}集 ${(d.episodes||[]).reduce((a,e)=>a+e.scenes.reduce((x,s)=>x+s.shots.length,0),0)}镜`:"制作台";
+}
+
+function renderCmdProj(){
+  $("#cmdproj").innerHTML=`<option value="">（全部项目）</option>`+
+    S.projects.map(p=>`<option value="${esc(p.slug)}" ${p.slug===S.current?"selected":""}>${esc(p.title)}</option>`).join("");
+}
+
+function switchPage(name, force){
+  if(!force && S.activePage===name){
+    // still refresh the page's data
+  }
+  S.activePage=name;
+  $$(".railbtn[data-page]").forEach(b=>b.classList.toggle("on",b.dataset.page===name));
+  $$(".page").forEach(p=>p.style.display=(p.id==="page-"+name?"":"none"));
+  $("#main").scrollTop=0;
+  if(name==="workbench") renderWorkbench();
+  if(name==="board") renderBoard();
+  if(name==="cast") renderCast();
+  if(name==="pipeline") renderRun();
+  if(name==="assets"){ renderAssetsPage(); loadAssets(); }
+  if(name==="settings"){ loadSettings(); loadProduction(); }
+}
+$$(".railbtn[data-page]").forEach(b=>b.onclick=()=>switchPage(b.dataset.page));
+$("#sideToggle").onclick=()=>$("#side").classList.toggle("hide");
+
+// ---------- sidebar ----------
+function renderProjects(){
+  const box=$("#projlist");
+  if(!S.projects.length){ box.innerHTML='<div class="muted" style="font-size:11.5px">暂无项目</div>'; return; }
+  box.innerHTML=S.projects.map(p=>{
+    const isCur=p.slug===S.current&&S.detail;
+    let pct=0;
+    if(isCur){
+      const d=stageSummary(p.slug);
+      pct=d.total?Math.round(d.done/d.total*100):0;
+    }
+    return `<div class="proj ${p.slug===S.current?"on":""}" data-slug="${esc(p.slug)}">
+      <div class="pn">${esc(p.title)}</div>
+      <div class="pm">${esc(p.genre||"")} · ${p.episodes}集 · ${p.shots}镜${isCur?" · "+pct+"%":""}</div>
+    </div>`;
+  }).join("");
+  $$("#projlist .proj").forEach(x=>x.onclick=()=>selectProject(x.dataset.slug));
+}
+function stageSummary(slug){
+  // lightweight from project list (server detail has the truth; this is a hint)
+  const p=S.projects.find(x=>x.slug===slug);
+  const total=STAGES.length*(p&&p.episodes?p.episodes:1);
+  let done=0;
+  if(S.detail&&S.detail.slug===slug){
+    (S.detail.episodes||[]).forEach(ep=>STAGES.forEach(s=>{ if((ep.stage_status||{})[s]==="done") done++; }));
+  }
+  return {total,done};
+}
+
+async function renderTags(){
+  const r=await getJSON("/api/tags?project="+encodeURIComponent(S.current||""));
+  S.tags=r.tags||{};
+  const keys=Object.keys(S.tags).slice(0,44);
+  $("#tagCount").textContent=keys.length?Object.keys(S.tags).length+" 个":"";
+  const box=$("#tagfilter");
+  if(!keys.length){ box.innerHTML='<span class="muted" style="font-size:11px">运行或索引后出现</span>'; return; }
+  box.innerHTML=keys.map(t=>`<span class="tg ${S.tagSel.has(t)?"on":""}" data-tag="${esc(t)}">${esc(t)} <b style="opacity:.65">${S.tags[t]}</b></span>`).join("");
+  $$("#tagfilter .tg").forEach(c=>c.onclick=()=>{
+    const t=c.dataset.tag; S.tagSel.has(t)?S.tagSel.delete(t):S.tagSel.add(t);
+    renderTags(); jumpSearch([...S.tagSel].join(" "));
+  });
+}
+
+async function selectProject(slug, quiet){
+  S.current=slug;
+  renderProjects(); renderCmdProj();
+  const d=await getJSON("/api/projects/"+encodeURIComponent(slug));
+  if(!d.ok){ toast("加载项目失败："+esc(d.error||""),"err"); return; }
+  S.detail=d;
+  if(!S.boardEp || !(d.episodes||[]).some(e=>e.index===S.boardEp)) S.boardEp=(d.episodes[0]||{}).index||0;
+  renderHeader(); renderProjects(); renderTags();
+  renderAllPages();
+  if(!quiet) toast("已打开《"+esc(d.meta.title||d.meta.name)+"》","",1600);
+}
+
+function renderAllPages(){
+  renderWorkbench();
+  if(S.activePage==="board") renderBoard();
+  if(S.activePage==="cast") renderCast();
+  if(S.activePage==="assets") loadAssets();
+}
+
+// ---------- workbench ----------
+function stageState(stage){
+  const eps=(S.detail&&S.detail.episodes)||[];
+  if(!eps.length) return "pending";
+  let done=0, run=0;
+  eps.forEach(ep=>{const v=(ep.stage_status||{})[stage]; if(v==="done")done++; else if(v==="running")run++;});
+  if(done===eps.length) return "done";
+  if(done||run) return "partial";
+  return "pending";
+}
+function epProgress(ep){
+  const vals=STAGES.map(s=>(ep.stage_status||{})[s]);
+  return Math.round(vals.filter(v=>v==="done").length/STAGES.length*100);
+}
+function renderWorkbench(){
+  const box=$("#page-workbench");
+  const d=S.detail;
+  if(!d){ box.innerHTML='<div class="empty">左侧选择或新建一个项目</div>'; return; }
+  const eps=d.episodes||[];
+  const shots=eps.reduce((a,e)=>a+e.scenes.reduce((x,s)=>x+s.shots.length,0),0);
+  const firstCover=eps.map(e=>e.cover).find(Boolean)||"";
+  const doneStages=STAGES.filter(s=>stageState(s)==="done").length;
+  const stageHtml=STAGES.map((s,i)=>`<span class="stg ${stageState(s)}" data-stage="${s}" title="点击去流水线重跑">
+    <span class="dot ${stageState(s)==="done"?"ok":stageState(s)==="partial"?"warn":"na"}"></span>
+    <span class="num">${i+1}</span> ${STAGE_ZH[s]}</span>`).join("");
+  const epHtml=eps.map(ep=>`<div class="epcard" data-ep="${ep.index}">
+      <div class="eh"><b>第${ep.index}集</b>${badge(ep.status)}<span style="flex:1"></span>
+        <span class="muted" style="font-size:10.5px">${ep.scenes.length}场 · ${ep.scenes.reduce((a,s)=>a+s.shots.length,0)}镜</span></div>
+      <div class="el">${esc(ep.logline||ep.title||"（暂无简介）")}</div>
+      <div class="ebar"><i style="width:${epProgress(ep)}%"></i></div>
+      <div class="ef">
+        <span class="mini">${epProgress(ep)}% 完成</span>
+        ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ↗</a>':""}
+        ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ↗</a>':""}
+        ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:#9be2a8">有视频</span>':""}
+      </div>
+    </div>`).join("");
+
+  box.innerHTML=`
+    <div class="hero">
+      <div class="cover">${firstCover?`<img src="${firstCover}">`:'<div class="empty" style="padding:0;height:100%;display:flex;align-items:center;justify-content:center">无封面</div>'}</div>
+      <div class="hb">
+        <h1 class="page">${esc(d.meta.title||d.meta.name)}</h1>
+        <div class="hm">${esc(d.art_direction.genre||"")} · ${esc(d.art_direction.style||"")} · ${esc(d.art_direction.aspect_ratio||"9:16")} · ${esc(d.art_direction.era||"")}</div>
+        <div class="statrow">
+          <div class="stat"><b>${eps.length}</b><span>集数</span></div>
+          <div class="stat"><b>${eps.reduce((a,e)=>a+e.scenes.length,0)}</b><span>场次</span></div>
+          <div class="stat"><b>${shots}</b><span>分镜</span></div>
+          <div class="stat"><b>${(d.characters||[]).length}</b><span>角色</span></div>
+          <div class="stat"><b>${doneStages}/12</b><span>阶段完成</span></div>
+        </div>
+        <div class="quick">
+          <button class="btn go" data-act="run-all">▶ 跑完整流程</button>
+          <button class="btn confirm" data-act="open-board">分镜台</button>
+          <button class="btn ai" data-act="open-assets">AI 检索资产</button>
+          <button class="btn ghost" onclick="reindex('${attr(d.slug)}',true)">AI 打标签</button>
+        </div>
+      </div>
+    </div>
+    <div class="card"><h3>制作阶段 <span class="muted" style="font-weight:400">完成 ${doneStages}/12</span></h3>
+      <div class="stagebar">${stageHtml}</div>
+      <div class="muted" style="font-size:11px;margin-top:8px">阶段按顺序执行；画面/配音可单独重跑。点击阶段跳到流水线并勾选它。</div>
+    </div>
+    <h2 class="page" style="font-size:14px;margin:14px 0 8px">分集</h2>
+    <div class="epgrid">${epHtml||'<div class="empty">还没有分集，先跑导入/分析</div>'}</div>`;
+
+  $$("#page-workbench .stg").forEach(x=>x.onclick=()=>{
+    runSel=new Set([x.dataset.stage]); switchPage("pipeline");
+  });
+  $$("#page-workbench .epcard").forEach(x=>x.onclick=()=>{
+    S.boardEp=parseInt(x.dataset.ep)||0; switchPage("board");
+  });
+  $$("#page-workbench [data-act]").forEach(b=>b.onclick=()=>{
+    const a=b.dataset.act;
+    if(a==="run-all"){ runSel=new Set(STAGES); switchPage("pipeline"); }
+    if(a==="open-board") switchPage("board");
+    if(a==="open-assets") switchPage("assets");
+  });
+}
+
+function badge(st){
+  const m={done:["done","完成"],running:["run","进行"],failed:["fail","失败"],pending:["","待办"],skipped:["","跳过"]};
+  const x=m[st]||["",st||""];
+  return `<span class="badge ${x[0]}">${esc(x[1])}</span>`;
+}
+
+// ---------- storyboard ----------
+function renderBoard(){
+  const box=$("#page-board");
+  const d=S.detail;
+  if(!d){ box.innerHTML='<div class="empty">选择一个项目</div>'; return; }
+  const eps=d.episodes||[];
+  if(!eps.length){ box.innerHTML='<div class="empty">还没有分集</div>'; return; }
+  const ep=eps.find(e=>e.index===S.boardEp)||eps[0];
+  S.boardEp=ep.index;
+  const statuses=[["all","全部"],["done","已完成"],["pending","待生成"],["failed","失败"],["video","有视频"],["flf","首尾帧"]];
+  const shotCount=ep.scenes.reduce((a,s)=>a+s.shots.length,0);
+  const blocks=ep.scenes.map(sc=>{
+    sc.shots.forEach(sh=>{sh._sc=sc.id;});
+    const shots=sc.shots.filter(sh=>matchesFilter(sh));
+    if(!shots.length && S.boardFilter!=="all") return "";
+    const shotHtml=shots.map(sh=>shotCard(sh)).join("");
+    const lines=(sc.lines||[]).map(l=>`<div class="line">
+        <span class="sp">${esc(l.speaker)}</span>
+        <span class="tx">${esc(l.text)} <span class="muted" style="font-size:10px">${l.kind==="narration"?"旁白":l.kind==="monologue"?"独白":l.kind==="caption"?"字幕卡":""}${l.duration?" · "+l.duration.toFixed(1)+"s":""}</span></span>
+        ${l.audio?`<span class="au" data-audio="${attr(l.audio)}">试听</span>`:""}
+        <button class="lineedit" data-line="${attr(l.id)}">编辑</button>
+      </div>`).join("");
+    return `<div class="scblock" data-sc="${attr(sc.id)}">
+      <div class="sch"><span class="t">场景 ${sc.index}</span>
+        <span class="m">${esc(sc.location||"")} · ${esc(sc.time||"")} · ${esc(sc.mood||"")}</span>
+        <span class="m" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sc.summary||"")}</span>
+        ${badge(sc.status)}<span class="mini">${sc.shots.length} 镜</span></div>
+      <div class="shotgrid">${shotHtml||'<span class="muted" style="font-size:11.5px">该场景没有镜头</span>'}</div>
+      ${lines?`<div class="lines">${lines}</div>`:""}
+    </div>`;
+  }).join("");
+
+  box.innerHTML=`
+    <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <h1 class="page">分镜台</h1>
+        <div class="sub">点击镜头编辑提示词、景别与首尾帧，单独返工画面或视频；台词可改字、换情绪。</div>
+      </div>
+      <div class="boardbar">
+        <select class="f" id="boardEpSel">${eps.map(e=>`<option value="${e.index}" ${e.index===ep.index?"selected":""}>第${e.index}集 · ${esc(e.title||"")}</option>`).join("")}</select>
+        <select class="f" id="boardFilterSel">${statuses.map(([v,l])=>`<option value="${v}" ${S.boardFilter===v?"selected":""}>${l}</option>`).join("")}</select>
+        <button class="btn sm ghost" id="boardRefresh">⟳ 刷新</button>
+      </div>
+    </div>
+    <div class="muted" style="font-size:11.5px;margin-bottom:10px">第 ${ep.index} 集 · ${ep.scenes.length} 场 · ${shotCount} 镜
+      ${ep.video?`<a class="mini" href="${ep.video}" target="_blank" style="margin-left:6px">▶ 成片</a>`:""}</div>
+    <div id="boardBlocks">${blocks||'<div class="empty">本集还没有分镜</div>'}</div>`;
+
+  $("#boardEpSel").onchange=e=>{S.boardEp=parseInt(e.target.value)||0; renderBoard();};
+  $("#boardFilterSel").onchange=e=>{S.boardFilter=e.target.value; renderBoard();};
+  $("#boardRefresh").onclick=()=>selectProject(S.current,true).then(()=>renderBoard());
+  $$("#page-board .au").forEach(x=>x.onclick=()=>{new Audio(x.dataset.audio).play();});
+  $$("#page-board .shotcard").forEach(c=>c.onclick=()=>{
+    const sc=ep.scenes.find(s=>s.id===c.dataset.sc);
+    const sh=sc&&sc.shots.find(s=>s.id===c.dataset.shot);
+    if(sh) openShotDrawer(ep,sc,sh);
+  });
+  $$("#page-board .lineedit").forEach(x=>x.onclick=()=>{
+    const line=ep.scenes.flatMap(s=>s.lines).find(l=>l.id===x.dataset.line);
+    const sc=ep.scenes.find(s=>s.lines.some(l=>l.id===x.dataset.line));
+    if(line) openLineDrawer(ep,sc,line);
+  });
+}
+function matchesFilter(sh){
+  const f=S.boardFilter;
+  if(f==="all") return true;
+  if(f==="video") return !!sh.video;
+  if(f==="flf") return !!sh.end_image;
+  return sh.status===f;
+}
+function shotCard(sh){
+  let media="";
+  if(sh.video) media=`<video src="${sh.video}" muted loop preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause()"></video>`;
+  else if(sh.image) media=`<img src="${sh.image}" loading="lazy">`;
+  else media='<div class="ph">无画面</div>';
+  return `<div class="shotcard" data-sc="${attr(sh._sc||"")}" data-shot="${attr(sh.id)}" title="${attr(sh.action||"")}">
+    <div class="media">${media}
+      <span class="sidx">#${sh.index||""}</span>
+      ${sh.end_image?'<span class="sfl">首尾帧</span>':""}
+      <span class="sst">${badge(sh.status)}</span>
+    </div>
+    <div class="cap"><b>${esc(sh.shot_type)}</b> · ${esc(sh.camera||"")}<br>${esc((sh.action||"").slice(0,30))}</div>
+  </div>`;
+}
+
+function openShotDrawer(ep,sc,sh){
+  sh._sc=sc.id;
+  S.drawer={kind:"shot",ep,sc,shot:sh,line:null};
+  const prev=[];
+  if(sh.image) prev.push(`<div class="dp"><img src="${sh.image}"><span>首帧</span></div>`);
+  if(sh.end_image) prev.push(`<div class="dp"><img src="${sh.end_image}"><span>尾帧</span></div>`);
+  if(sh.video) prev.push(`<div class="dp"><video src="${sh.video}" muted loop autoplay></video><span>视频</span></div>`);
+  const types=["特写","近景","中景","全景","远景","过肩","主观","空镜"];
+  $("#dTitle").innerHTML=`镜 #${sh.index||""} <span class="muted" style="font-size:11px">${esc(sc.location||"")}</span>`;
+  $("#dBody").innerHTML=`
+    ${prev.length?`<div class="dprev">${prev.join("")}</div>`:""}
+    <div class="dsec">
+      <div class="row">
+        <div style="width:110px"><label class="fl">景别</label><select class="f" id="edType">${types.map(t=>`<option ${t===sh.shot_type?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div style="width:110px"><label class="fl">运镜</label><input class="f" id="edCam" value="${attr(sh.camera||"")}"></div>
+        <div style="width:90px"><label class="fl">时长(秒)</label><input class="f" id="edDur" value="${sh.duration||3}"></div>
+        <div style="width:100px"><label class="fl">Seed</label><input class="f" id="edSeed" value="${sh.seed}"></div>
+      </div>
+      <div style="margin-top:8px"><label class="fl">画面动作（中文）</label><textarea class="f" id="edAction">${esc(sh.action||"")}</textarea></div>
+      <div style="margin-top:8px"><label class="fl">出场角色（逗号分隔）</label><input class="f" id="edChars" value="${attr((sh.characters||[]).join(", "))}"></div>
+    </div>
+    <div class="dsec">
+      <h4>生成提示词</h4>
+      <label class="fl">正向 prompt</label><textarea class="f" id="edPrompt" style="min-height:90px">${esc(sh.prompt||"")}</textarea>
+      <label class="fl" style="margin-top:8px">负向 prompt</label><textarea class="f" id="edNeg" style="min-height:54px">${esc(sh.negative_prompt||"")}</textarea>
+      <label class="fl" style="margin-top:8px">尾帧 prompt（首尾帧模式）</label><textarea class="f" id="edEndPrompt" style="min-height:54px">${esc(sh.end_prompt||"")}</textarea>
+      <label class="switch"><input type="checkbox" id="edFlf" ${sh.flf===true?"checked":""} ${sh.flf==null?"data-mixed=1":""}>强制首尾帧（不勾＝跟随全局）</label>
+    </div>
+    <div class="dsec"><h4>生成信息</h4>
+      <div class="muted" style="font-size:11px">${esc(JSON.stringify(sh.gen_meta||{},null,0))||"—"}</div>
+    </div>`;
+  $("#dFoot").innerHTML=`
+    <button class="btn go" id="edSave">保存</button>
+    <button class="btn confirm" id="edRegenImg">重出画面</button>
+    <button class="btn confirm" id="edRegenVid">重出视频</button>
+    <button class="btn ghost" id="edRegenAll">画面+视频</button>
+    <button class="btn ghost" id="edClose2">关闭</button>`;
+  showDrawer();
+  $("#edSave").onclick=saveShot;
+  $("#edFlf").onchange=e=>{delete e.target.dataset.mixed;};
+  $("#edRegenImg").onclick=()=>regenShot("image");
+  $("#edRegenVid").onclick=()=>regenShot("video");
+  $("#edRegenAll").onclick=()=>regenShot("all");
+  $("#edClose2").onclick=closeDrawer;
+}
+
+async function saveShot(){
+  const d=S.drawer;
+  if(d.kind!=="shot") return;
+  const flfEl=$("#edFlf");
+  const fields={
+    shot_type:$("#edType").value, camera:$("#edCam").value,
+    duration:num($("#edDur").value,3), seed:Math.round(num($("#edSeed").value,-1)),
+    action:$("#edAction").value, prompt:$("#edPrompt").value,
+    negative_prompt:$("#edNeg").value, end_prompt:$("#edEndPrompt").value,
+    characters:$("#edChars").value.split(/[,，、]/).map(s=>s.trim()).filter(Boolean),
+    flf:flfEl.dataset.mixed?"__keep__":(flfEl.checked?true:false),
+  };
+  if(fields.flf==="__keep__") delete fields.flf;
+  const r=await postJSON("/api/shot/update",{project:S.current,episode:d.ep.index,shot_id:d.shot.id,fields});
+  if(!r.ok){ toast("保存失败："+esc(r.error||""),"err"); return; }
+  toast("镜头已保存","ok"); closeDrawer();
+  await selectProject(S.current,true); renderBoard();
+}
+async function regenShot(mode){
+  const d=S.drawer;
+  if(d.kind!=="shot") return;
+  toast(`已提交${mode==="image"?"画面":mode==="video"?"视频":"画面+视频"}返工…`);
+  const r=await postJSON("/api/shot/regen",{project:S.current,episode:d.ep.index,shot_id:d.shot.id,mode});
+  if(!r.ok){ toast("提交失败："+esc(r.error||""),"err"); return; }
+  pollJob(r.job,res=>{
+    if(res&&res.ok){ toast("返工完成","ok"); closeDrawer(); selectProject(S.current,true).then(()=>renderBoard()); }
+    else toast("返工失败："+esc((res&&res.error)||"未知错误"),"err",6000);
+  });
+}
+
+function openLineDrawer(ep,sc,line){
+  S.drawer={kind:"line",ep,sc,shot:null,line};
+  const kinds=[["dialogue","对白"],["narration","旁白"],["monologue","独白"],["caption","字幕卡"]];
+  $("#dTitle").innerHTML=`台词 <span class="muted" style="font-size:11px">${esc(sc.location||"")}</span>`;
+  $("#dBody").innerHTML=`
+    <div class="dsec">
+      <div class="row">
+        <div class="grow"><label class="fl">说话人</label><input class="f" id="lnSpeaker" value="${attr(line.speaker||"")}"></div>
+        <div style="width:110px"><label class="fl">类型</label><select class="f" id="lnKind">${kinds.map(([v,l])=>`<option value="${v}" ${line.kind===v?"selected":""}>${l}</option>`).join("")}</select></div>
+        <div style="width:110px"><label class="fl">情绪</label><input class="f" id="lnEmotion" value="${attr(line.emotion||"")}"></div>
+      </div>
+      <div style="margin-top:8px"><label class="fl">台词内容</label><textarea class="f" id="lnText" style="min-height:100px">${esc(line.text||"")}</textarea></div>
+      <div class="muted" style="font-size:11px;margin-top:6px">改台词会清空这句的配音并标记配音/字幕/合成待重跑。</div>
+    </div>
+    ${line.audio?`<div class="dsec"><h4>当前配音</h4><audio controls src="${line.audio}" style="width:100%"></audio></div>`:""}`;
+  $("#dFoot").innerHTML=`<button class="btn go" id="lnSave">保存</button>
+    <button class="btn ghost" id="lnClose">关闭</button>`;
+  showDrawer();
+  $("#lnSave").onclick=async()=>{
+    const fields={speaker:$("#lnSpeaker").value,kind:$("#lnKind").value,
+      emotion:$("#lnEmotion").value,text:$("#lnText").value};
+    const r=await postJSON("/api/line/update",{project:S.current,episode:ep.index,line_id:line.id,fields});
+    if(!r.ok){ toast("保存失败："+esc(r.error||""),"err"); return; }
+    toast("台词已保存，配音待重跑","ok"); closeDrawer();
+    await selectProject(S.current,true); renderBoard();
+  };
+  $("#lnClose").onclick=closeDrawer;
+}
+function showDrawer(){ $("#drawer").classList.add("show"); $("#drawerMask").classList.add("show"); }
+function closeDrawer(){ $("#drawer").classList.remove("show"); $("#drawerMask").classList.remove("show"); }
+$("#dClose").onclick=closeDrawer;
+$("#drawerMask").onclick=closeDrawer;
+
+// ---------- cast ----------
+function renderCast(){
+  const box=$("#page-cast");
+  const d=S.detail;
+  if(!d){ box.innerHTML='<div class="empty">选择一个项目</div>'; return; }
+  const chars=d.characters||[];
+  const cards=chars.map((c,i)=>{
+    const sheet=c.ref_sheet_url||c.ref_urls&&c.ref_urls[0]||"";
+    return `<div class="castcard" data-name="${attr(c.name)}">
+      <div class="casttop">
+        <div class="ref">${sheet?`<img src="${sheet}" loading="lazy">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px">无参考图</div>'}</div>
+        <div class="cb">
+          <div class="cn">${esc(c.name)} ${c.locked?'<span class="mini" style="color:#9be2a8">已锁定</span>':""}</div>
+          <div class="cr">${esc(c.role||"")} · ${esc(c.gender||"")} ${c.age?"· "+esc(c.age):""}</div>
+          <div class="reflist">${(c.ref_urls||[]).slice(0,5).map(u=>`<img src="${u}" loading="lazy">`).join("")}</div>
+        </div>
+      </div>
+      <div class="castbody">
+        <label class="fl">角色锚点（每次出图前置，英文）</label>
+        <textarea class="f" data-f="anchor_prompt">${esc(c.anchor_prompt||"")}</textarea>
+        <div class="row" style="margin-top:7px">
+          <div class="grow"><label class="fl">外貌</label><input class="f" data-f="appearance" value="${attr(c.appearance||c.visual_prompt||"")}"></div>
+          <div class="grow"><label class="fl">服装</label><input class="f" data-f="outfit" value="${attr(c.outfit||"")}"></div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div class="grow"><label class="fl">发型</label><input class="f" data-f="hair" value="${attr(c.hair||"")}"></div>
+          <div class="grow"><label class="fl">负面词</label><input class="f" data-f="negative_prompt" value="${attr(c.negative_prompt||"")}"></div>
+        </div>
+        <div class="lockrow">
+          <label><input type="checkbox" data-f="locked" ${c.locked?"checked":""}> 锁定锚点（AI 不改写）</label>
+          <label><input type="checkbox" data-reset ${c.locked?"checked":""}> 顺带重置相关提示词</label>
+          <span style="flex:1"></span>
+          <button class="btn sm confirm" data-act="save">保存</button>
+          <button class="btn sm ai" data-act="regen">生成三视图</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const locs=(d.locations||[]).map(l=>`<div class="loc"><b>${esc(l.name)}</b>
+    <div class="muted" style="font-size:10.5px;margin-top:2px">${esc((l.description||"").slice(0,44))}</div>
+    <div class="li">${(l.ref_urls||[]).map(u=>`<img src="${u}" loading="lazy">`).join("")||'<span class="muted" style="font-size:10px">无参考图</span>'}</div>
+  </div>`).join("");
+
+  box.innerHTML=`
+    <h1 class="page">角色库</h1>
+    <div class="sub">先定妆再分镜：角色锚点会前置注入每个镜头，三视图作为参考图喂给出图工作流，跨集保持同一张脸。</div>
+    ${cards?`<div class="castgrid">${cards}</div>`:'<div class="empty">还没有角色，先跑“分析”阶段</div>'}
+    <h2 class="page" style="font-size:14px;margin:18px 0 8px">场景参考</h2>
+    ${locs?`<div class="locgrid">${locs}</div>`:'<div class="muted" style="font-size:11.5px">尚未识别场景参考</div>'}`;
+
+  $$("#page-cast .castcard").forEach(card=>{
+    const name=card.dataset.name;
+    const fields={};
+    $$("[data-f]",card).forEach(inp=>{ if(inp.dataset.f!=="locked") fields[inp.dataset.f]=inp.value; });
+    const locked=$("[data-f=locked]",card);
+    card.querySelector('[data-act="save"]').onclick=async()=>{
+      const body={project:S.current,name,fields:{...fields,locked:locked.checked},
+        reset_prompts:$("[data-reset]",card).checked};
+      const r=await postJSON("/api/character/update",body);
+      if(!r.ok){ toast("保存失败："+esc(r.error||""),"err"); return; }
+      toast("角色已保存"+(body.reset_prompts?"，相关提示词已重置":""),"ok");
+      await selectProject(S.current,true); renderCast();
+    };
+    card.querySelector('[data-act="regen"]').onclick=async()=>{
+      toast("已提交三视图生成…");
+      const r=await postJSON("/api/character/regen",{project:S.current,name,reset_prompts:$("[data-reset]",card).checked});
+      if(!r.ok){ toast("提交失败："+esc(r.error||""),"err"); return; }
+      pollJob(r.job,res=>{
+        if(res&&res.ok){ toast("参考图已更新："+name,"ok"); selectProject(S.current,true).then(()=>renderCast()); }
+        else toast("生成失败："+esc((res&&res.error)||""),"err",6000);
+      });
+    };
+  });
+}
+
+// ---------- assets ----------
+function renderAssetsPage(){
+  const kinds=[["","全部"],["image","画面"],["video","视频"],["audio","配音"],["bgm","配乐"],["cover","封面"],["subtitle","字幕"]];
+  $("#page-assets").innerHTML=`
+    <h1 class="page">资产库</h1>
+    <div class="sub">按 AI 语义检索，或按类型浏览项目产出的媒体文件。</div>
+    <div class="card" style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="f grow" id="searchq" placeholder="例如：夜戏里男主的特写 / 所有打斗分镜 / 悲伤的台词">
+      <button class="btn confirm" id="searchGo">AI 检索</button>
+    </div>
+    <div id="searchmeta" class="muted" style="font-size:11.5px;margin-bottom:9px"></div>
+    <div id="searchres"></div>
+    <div id="assetSection">
+      <div class="boardbar">
+        <div class="chips" id="assetKinds" style="margin:0">${kinds.map(([v,l])=>`<span class="chip ${S.assetKind===v?"on":""}" data-kind="${v}">${l}</span>`).join("")}</div>
+        <span style="flex:1"></span>
+        <button class="btn sm ghost" id="assetRefresh">⟳ 刷新</button>
+      </div>
+      <div class="assetgrid" id="assetgrid"><div class="empty"><span class="spin"></span> 加载资产…</div></div>
+    </div>`;
+  $("#searchGo").onclick=()=>doSearch($("#searchq").value);
+  $("#searchq").addEventListener("keydown",e=>{if(e.key==="Enter")doSearch(e.target.value);});
+  $$("#assetKinds .chip").forEach(c=>c.onclick=()=>{S.assetKind=c.dataset.kind; renderAssetsPage(); loadAssets();});
+  $("#assetRefresh").onclick=()=>loadAssets();
+}
+async function loadAssets(){
+  if(!S.current){ $("#assetgrid").innerHTML='<div class="empty">先选择项目</div>'; return; }
+  const r=await getJSON(`/api/assets?project=${encodeURIComponent(S.current)}&kind=${encodeURIComponent(S.assetKind||"")}`);
+  if(!r.ok){ $("#assetgrid").innerHTML=`<div class="empty">加载失败：${esc(r.error||"")}</div>`; return; }
+  S.assetRows=r.assets||[];
+  const box=$("#assetgrid");
+  if(!S.assetRows.length){ box.innerHTML='<div class="empty">还没有此类资产</div>'; return; }
+  box.innerHTML=S.assetRows.map(a=>{
+    let media="";
+    if(a.kind==="video"&&a.media_url) media=`<video src="${a.media_url}" muted preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause()"></video>`;
+    else if((a.kind==="image"||a.kind==="cover")&&a.media_url) media=`<img src="${a.media_url}" loading="lazy">`;
+    else if(a.kind==="audio"||a.kind==="bgm") media=`<div class="at" style="width:100%"><audio controls src="${a.media_url||""}" style="width:90%"></audio></div>`;
+    else media=`<div class="at">${esc(a.kind)}<br>${esc(a.title||"")}</div>`;
+    return `<div class="asset">
+      <div class="am">${media}</div>
+      <div class="ab"><div class="an">${esc(a.title||a.category||a.kind)}</div>
+        <div class="ameta"><span class="mini">${esc(a.kind)}</span>${a.category?`<span class="mini">${esc(a.category)}</span>`:""}${a.status?badge(a.status):""}</div>
+      </div></div>`;
+  }).join("");
+}
+function jumpSearch(q){
+  switchPage("assets");
+  setTimeout(()=>{ const inp=$("#searchq"); if(inp){inp.value=q||""; doSearch(q||"");} },30);
+}
+async function doSearch(q){
+  q=(q||"").trim();
+  const meta=$("#searchmeta"), res=$("#searchres"), sec=$("#assetSection");
+  if(!meta) return;
+  if(!q){ meta.innerHTML=""; res.innerHTML=""; if(sec)sec.style.display=""; return; }
+  if(sec) sec.style.display="none";
+  res.innerHTML='<div class="empty"><span class="spin"></span> 检索中…</div>';
+  const url="/api/search?q="+encodeURIComponent(q)+"&project="+encodeURIComponent(S.current||"");
+  const r=await getJSON(url);
+  if(!r.ok){ res.innerHTML=`<div class="empty">失败：${esc(r.error||"")}</div>`; return; }
+  const f=r.filters||{};
+  meta.innerHTML=`AI 解析 → 关键词[${(f.keywords||[]).map(esc).join(", ")||"—"}]
+    标签[${(f.tags||[]).map(esc).join(", ")||"—"}] 类型[${(f.kinds||[]).map(esc).join(", ")||"—"}]
+    · 命中 <b>${r.count}</b> 条 <button class="btn xs ghost" id="searchClear">清除</button>`;
+  const box=$("#searchres"); box.innerHTML="";
+  if(!r.count){ box.appendChild(el("div","empty","没有匹配的资产")); }
+  (r.results||[]).forEach(a=>box.appendChild(resultCard(a)));
+  const c=$("#searchClear"); if(c)c.onclick=()=>{ $("#searchq").value=""; doSearch(""); };
+}
+function resultCard(a){
+  const d=el("div","res");
+  let thumb="";
+  const murl=a.media_url||"";
+  if((a.kind==="image"||a.kind==="cover")&&murl) thumb=`<img src="${murl}" loading="lazy">`;
+  else if(a.kind==="video"&&murl) thumb=`<video src="${murl}" muted preload="metadata"></video>`;
+  else thumb=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px">${esc(a.kind)}</div>`;
+  d.innerHTML=`<div class="thumb">${thumb}</div>
+    <div class="rb">
+      <div class="rt">${esc(a.title||a.kind)} <span class="mini">${esc(a.kind)}</span>
+        ${a.ep_index?`<span class="mini">第${a.ep_index}集</span>`:""} ${badge(a.status)}</div>
+      <div class="rx">${esc(a.summary||a.text||"")}</div>
+      <div class="rtags">${(a.tags||[]).slice(0,10).map(t=>`<span class="mini">${esc(t)}</span>`).join("")}
+        ${a.category?`<span class="mini" style="color:var(--confirm2)">${esc(a.category)}</span>`:""}</div>
+      ${murl?`<div style="margin-top:5px"><a href="${murl}" target="_blank" class="mini">打开文件 ↗</a></div>`:""}
+    </div>`;
+  return d;
+}
+
+// ---------- pipeline ----------
+let runSel=new Set([...STAGES]);
+function renderRun(){
+  const box=$("#tab-run");
+  const projs=S.projects.map(p=>`<option value="${esc(p.slug)}" ${p.slug===S.current?"selected":""}>${esc(p.title)}</option>`).join("");
+  const d=S.detail;
+  const overview=d?(d.episodes||[]).map(ep=>`<div class="line" style="border-bottom:1px dashed #1e262f">
+      <span class="sp">第${ep.index}集</span>
+      <span class="tx">${STAGES.map(s=>`<span class="mini" style="margin:1px ${stageStateFor(ep,s)==="done"?"color:#9be2a8":""}">${STAGE_ZH[s]}</span>`).join("")}</span>
+    </div>`).join(""):"";
+  box.innerHTML=`
+    <h1 class="page">流水线</h1>
+    <div class="sub">选阶段运行。已完成的阶段会被跳过；改了角色或台词后，相关阶段自动回到待跑。</div>
+    ${overview?`<div class="card"><h3>阶段状态</h3>${overview}</div>`:""}
+    <div class="card">
+      <div class="row">
+        <div class="grow"><label class="fl">项目</label><select class="f" id="runProj">${projs||'<option>（无项目）</option>'}</select></div>
+        <div class="grow"><label class="fl">集数（如 1,3,5-8，留空=全部）</label><input class="f" id="runEps" placeholder="留空=全部"></div>
+      </div>
+      <label class="fl" style="margin-top:10px">阶段</label>
+      <div class="chips" id="stageBox">
+        ${STAGES.map(s=>`<span class="chip ${runSel.has(s)?"on":""}" data-stage="${s}">${STAGE_ZH[s]}</span>`).join("")}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
+        <button class="btn go" id="runGo">▶ 开始运行</button>
+        <button class="btn ghost sm" id="runAll">全选</button>
+        <button class="btn ghost sm" id="runNone">清空</button>
+        <span class="muted" id="runStat"></span>
+      </div>
+    </div>
+    <div id="runOut"></div>`;
+  $$("#stageBox .chip").forEach(c=>c.onclick=()=>{
+    const s=c.dataset.stage; runSel.has(s)?runSel.delete(s):runSel.add(s); c.classList.toggle("on");
+  });
+  $("#runAll").onclick=()=>{runSel=new Set(STAGES);renderRun();};
+  $("#runNone").onclick=()=>{runSel=new Set();renderRun();};
+  $("#runGo").onclick=doRun;
+}
+function stageStateFor(ep,stage){ const v=(ep.stage_status||{})[stage]; return v==="done"?"done":v||"pending"; }
+function parseEps(str){
+  const out=[]; (str||"").split(",").forEach(part=>{
+    part=part.trim(); if(!part)return;
+    if(part.includes("-")){const[a,b]=part.split("-").map(x=>parseInt(x)); for(let i=a;i<=b;i++)out.push(i);}
+    else out.push(parseInt(part));
+  });
+  return [...new Set(out.filter(n=>!isNaN(n)))];
+}
+function doRun(){
+  const body={project:$("#runProj").value,episodes:parseEps($("#runEps").value),
+    stages:[...runSel],overrides:{}};
+  if(!body.project){ toast("请先选择项目","err"); return; }
+  if(!body.stages.length){ toast("至少选一个阶段","err"); return; }
+  $("#runStat").innerHTML='<span class="spin"></span> 运行中…（可切到别处，稍后刷新）';
+  $("#runGo").disabled=true;
+  postJSON("/api/run",body).then(r=>{
+    if(!r.ok){ $("#runStat").textContent="失败："+(r.error||""); $("#runGo").disabled=false; return; }
+    pollJob(r.job,res=>{
+      $("#runGo").disabled=false;
+      $("#runStat").innerHTML='<span style="color:var(--go2)">✓ 运行完成</span>';
+      $("#runOut").innerHTML=`<div class="card"><h3>结果</h3><pre style="font-family:var(--mono);font-size:11px;overflow:auto;margin:0">${esc(JSON.stringify(res,null,1))}</pre></div>`;
+      toast("流水线完成","ok"); selectProject(body.project,true).then(()=>renderWorkbench());
+    });
+  });
+}
+
+// ---------- settings: production params ----------
+async function loadProduction(){
+  const box=$("#prodPanel");
+  if(!box) return;
+  box.innerHTML='<div class="empty"><span class="spin"></span> 加载制作参数…</div>';
+  const r=await getJSON("/api/config/production");
+  if(!r.ok){ box.innerHTML=`<div class="empty">加载失败：${esc(r.error||"")}</div>`; return; }
+  S.production=r;
+  const c=r.comfyui||{}, ch=r.characters||{}, cp=r.compose||{}, mu=r.music||{}, tt=r.tts||{};
+  const sel=(id,opts,val)=>`<select class="f" id="${id}">${opts.map(([v,l])=>`<option value="${v}" ${v===val?"selected":""}>${l}</option>`).join("")}</select>`;
+  box.innerHTML=`
+    <div class="prodgrid">
+      <div><label class="fl">画面模式</label>${sel("prMode",[["image","只出图"],["video","只出视频"],["image_then_video","先图后视频"]],c.mode)}</div>
+      <div><label class="fl">分辨率宽</label><input class="f" id="prW" value="${c.width}"></div>
+      <div><label class="fl">分辨率高</label><input class="f" id="prH" value="${c.height}"></div>
+      <div><label class="fl">每镜帧数</label><input class="f" id="prFrames" value="${c.frames}"></div>
+      <div><label class="fl">帧率</label><input class="f" id="prFps" value="${c.fps}"></div>
+      <div><label class="fl">采样步数</label><input class="f" id="prSteps" value="${c.steps}"></div>
+      <div><label class="fl">CFG</label><input class="f" id="prCfg" value="${c.cfg}"></div>
+      <div><label class="fl">并发</label><input class="f" id="prConc" value="${c.concurrency}"></div>
+      <div><label class="fl">Seed 策略</label>${sel("prSeed",[["character","按角色稳定"],["fixed","固定"],["random","随机"]],c.seed_mode)}</div>
+      <div><label class="fl">角色一致性</label>${sel("prCons",[["prompt","只用文字锚点"],["ref","参考图+锚点"],["lora","LoRA"]],ch.consistency)}</div>
+      <div><label class="fl">场间转场</label>${sel("prTrans",[["fade","淡入淡出"],["none","硬切"]],cp.transition)}</div>
+      <div><label class="fl">转场时长(秒)</label><input class="f" id="prTransD" value="${cp.transition_duration}"></div>
+      <div><label class="fl">BGM 音量</label><input class="f" id="prBgm" value="${mu.bgm_volume}"></div>
+      <div><label class="fl">TTS 并发</label><input class="f" id="prTts" value="${tt.concurrency}"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="grow"><label class="fl">出图工作流</label><input class="f" id="prT2I" value="${attr(c.t2i_workflow||"")}"></div>
+      <div class="grow"><label class="fl">视频工作流</label><input class="f" id="prI2V" value="${attr(c.i2v_workflow||"")}"></div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <div class="grow"><label class="fl">首尾帧工作流（留空＝不启用）</label><input class="f" id="prFLF" value="${attr(c.flf_workflow||"")}"></div>
+      <div style="width:210px"><label class="fl">首尾帧开关</label>
+        <label class="switch" style="margin-top:8px"><input type="checkbox" id="prFLFOn" ${c.first_last_frame?"checked":""}> 启用首尾帧 i2v</label></div>
+    </div>
+    <div class="lockrow" style="margin-top:8px">
+      <label><input type="checkbox" id="prCharOn" ${ch.enabled?"checked":""}> 启用角色定妆</label>
+      <label><input type="checkbox" id="prRefs" ${ch.generate_refs?"checked":""}> 生成三视图</label>
+      <label><input type="checkbox" id="prBurn" ${cp.burn_subtitles?"checked":""}> 烧录字幕</label>
+      <span style="flex:1"></span>
+      <button class="btn go" id="prSave">保存制作参数</button>
+      <span class="muted" id="prOut"></span>
+    </div>`;
+  $("#prSave").onclick=saveProduction;
+}
+async function saveProduction(){
+  const body={
+    comfyui:{mode:$("#prMode").value,width:Math.round(num($("#prW").value,768)),
+      height:Math.round(num($("#prH").value,1344)),frames:Math.round(num($("#prFrames").value,32)),
+      fps:Math.round(num($("#prFps").value,16)),steps:Math.round(num($("#prSteps").value,25)),
+      cfg:num($("#prCfg").value,6.5),concurrency:Math.round(num($("#prConc").value,1)),
+      seed_mode:$("#prSeed").value,t2i_workflow:$("#prT2I").value,
+      i2v_workflow:$("#prI2V").value,flf_workflow:$("#prFLF").value,
+      first_last_frame:$("#prFLFOn").checked},
+    characters:{enabled:$("#prCharOn").checked,generate_refs:$("#prRefs").checked,
+      consistency:$("#prCons").value},
+    compose:{transition:$("#prTrans").value,transition_duration:num($("#prTransD").value,.35),
+      burn_subtitles:$("#prBurn").checked},
+    music:{bgm_volume:num($("#prBgm").value,.22)},
+    tts:{concurrency:Math.round(num($("#prTts").value,4))},
+  };
+  $("#prSave").disabled=true;
+  const r=await postJSON("/api/config/production",body);
+  $("#prSave").disabled=false;
+  if(!r.ok){ $("#prOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
+  $("#prOut").innerHTML='<span style="color:var(--go2)">✓ 已写回配置</span>';
+  toast("制作参数已保存","ok"); renderHeader();
+}
+
+// ---------- settings: models + AI (reused) ----------
+async function loadSettings(){
+  const box=$("#tab-settings");
+  box.innerHTML='<div class="empty"><span class="spin"></span> 加载设置…</div>';
+  const r=await getJSON("/api/config/models");
+  if(!r.ok){ box.innerHTML=`<div class="empty">加载失败：${esc(r.error||"")}</div>`; return; }
+  S.settings=r; S.modelEntries=r.entries||[]; S.modelDefault=r.default||"";
+  S.modelRoles=r.roles||((S.templates&&S.templates.model_roles)||[]);
+  const A=r.ai||{};
+  const provs=(S.templates&&S.templates.llm_providers)||[];
+  box.innerHTML=`
+    <h1 class="page">设置</h1>
+    <div class="sub">模型按优先级与角色分配；没被勾选的任务由默认模型兜底。保存会原位写回 YAML，注释保留。</div>
+    <div class="card">
+      <h3>模型清单 <span class="muted" style="font-weight:400;font-size:11px">${S.modelEntries.length} 个 · 顺序＝优先级</span></h3>
+      <div class="chips" style="margin-bottom:10px">
+        <span class="muted" style="font-size:11px;align-self:center">添加：</span>
+        ${provs.map(p=>`<span class="chip" data-add="${esc(p.id)}" title="${esc(p.hint||"")}">${esc(p.label)}</span>`).join("")}
+      </div>
+      <div id="modelList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn go" id="mSave">保存模型清单</button>
+        <span class="muted" style="font-size:11px">↑↓ 调整优先级；默认模型负责未勾选的任务</span>
+        <span class="muted" id="mSaveOut"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>AI 行为</h3>
+      <div class="row">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="aiEnabled" ${A.enabled?"checked":""}>启用 AI 原生层</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="aiAutoTag" ${A.auto_tag?"checked":""}>产出后自动打标签</label>
+        <div style="width:110px"><label class="fl">输出语言</label><select class="f" id="aiLang"><option value="zh" ${A.language==="zh"?"selected":""}>中文</option><option value="en" ${A.language==="en"?"selected":""}>English</option></select></div>
+        <div style="width:120px"><label class="fl">交互超时(秒)</label><input class="f" id="aiMainTO" value="${A.main_timeout}"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <button class="btn go" id="aiSave">保存行为设置</button>
+        <span class="muted" id="aiSaveOut"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>环境自检 <button class="btn sm ghost" id="probeBtn">开始探测</button></h3>
+      <div class="muted" id="setupStat" style="font-size:11.5px"></div>
+      <div id="setupOut"></div>
+    </div>`;
+  $$("[data-add]",box).forEach(c=>c.onclick=()=>addModel(c.dataset.add,provs));
+  $("#mSave").onclick=saveModels;
+  $("#aiSave").onclick=saveAI;
+  $("#probeBtn").onclick=showProbe;
+  renderModelList();
+}
+function renderModelList(){
+  const box=$("#modelList"); if(!box) return;
+  const roles=S.modelRoles||[];
+  if(!S.modelEntries.length){
+    box.innerHTML='<div class="empty">还没有模型。点上方 Provider 添加一个。</div>'; return;
+  }
+  box.innerHTML=S.modelEntries.map((m,i)=>{
+    const isDef=m.id===S.modelDefault;
+    const keyPh=m.api_key?"新 Key 已输入 · 保存后生效"
+      :(m.api_key_set?`已保存 ${esc(m.api_key_masked||"")} · 留空不修改`:"未设置（本地可随便填）");
+    return `<div class="mcard" data-i="${i}" style="background:var(--bg3);border:1px solid ${isDef?"var(--confirm)":"var(--line)"};border-radius:var(--r);padding:10px;margin-bottom:8px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="badge" title="优先级">#${i+1}</span>
+        <input class="f" data-f="label" value="${attr(m.label||"")}" placeholder="备注名" style="width:190px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:${isDef?"var(--go2)":"var(--fg2)"};cursor:pointer">
+          <input type="radio" name="mdef" value="${esc(m.id)}" ${isDef?"checked":""}> 默认兜底</label>
+        <span style="flex:1"></span>
+        <button class="btn xs ghost" data-act="up" ${i===0?"disabled":""}>↑</button>
+        <button class="btn xs ghost" data-act="down" ${i===S.modelEntries.length-1?"disabled":""}>↓</button>
+        <button class="btn xs confirm" data-act="test">测试</button>
+        <button class="btn xs danger" data-act="del">删除</button>
+      </div>
+      <div class="row" style="margin-top:7px">
+        <div class="grow"><label class="fl">接口地址 base_url（含 /v1）</label>
+          <input class="f" data-f="base_url" value="${attr(m.base_url||"")}" placeholder="http://localhost:11434/v1"></div>
+        <div class="grow"><label class="fl">模型名</label>
+          <input class="f" data-f="model" value="${attr(m.model||"")}" list="ml${i}" placeholder="qwen2.5:14b"><datalist id="ml${i}"></datalist></div>
+      </div>
+      <div class="row" style="margin-top:5px">
+        <div class="grow"><label class="fl">API Key</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input class="f" type="password" data-f="api_key" placeholder="${keyPh}" style="flex:1">
+            <button class="btn xs ghost" data-act="key">显示</button>
+            ${m.api_key_set?'<label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--fg2);white-space:nowrap"><input type="checkbox" data-f="clear_key">清除</label>':""}
+          </div></div>
+        <div style="width:82px"><label class="fl">temperature</label><input class="f" data-f="temperature" value="${m.temperature}"></div>
+        <div style="width:92px"><label class="fl">max_tokens</label><input class="f" data-f="max_tokens" value="${m.max_tokens}"></div>
+        <div style="width:84px"><label class="fl">超时(秒)</label><input class="f" data-f="timeout" value="${m.timeout}"></div>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--fg2);margin-top:16px"><input type="checkbox" data-f="use_proxy" ${m.use_proxy?"checked":""}>代理</label>
+      </div>
+      <div style="margin-top:8px"><label class="fl">负责的任务（全不勾＝只做默认兜底）</label>
+        <div class="chips">${roles.map(role=>`<span class="chip ${(m.roles||[]).includes(role.id)?"on":""}" data-role="${esc(role.id)}" title="${esc(role.desc||"")}">${esc(role.label)}</span>`).join("")}</div>
+      </div>
+      <div class="muted" data-out="test" style="font-size:11px;margin-top:6px"></div>
+      <div class="chips" data-out="models"></div>
+    </div>`;
+  }).join("");
+  bindModelEvents();
+}
+function bindModelEvents(){
+  $$("#modelList .mcard").forEach((card,i)=>{
+    const m=S.modelEntries[i]; if(!m) return;
+    $$(".chip[data-role]",card).forEach(c=>c.onclick=()=>c.classList.toggle("on"));
+    $('input[name="mdef"]',card).onchange=()=>{ S.modelDefault=m.id; renderModelList(); };
+    $$("[data-act]",card).forEach(b=>b.onclick=()=>{
+      const act=b.dataset.act;
+      if(act==="key"){
+        const inp=$('[data-f="api_key"]',card);
+        const show=inp.type==="password"; inp.type=show?"text":"password";
+        b.textContent=show?"隐藏":"显示";
+      } else if(act==="test"){
+        testModel(i);
+      } else if(act==="del"){
+        harvestModels(); S.modelEntries.splice(i,1);
+        if(!S.modelEntries.some(x=>x.id===S.modelDefault)) S.modelDefault=S.modelEntries[0]?S.modelEntries[0].id:"";
+        renderModelList();
+      } else if(act==="up" && i>0){
+        harvestModels(); [S.modelEntries[i-1],S.modelEntries[i]]=[S.modelEntries[i],S.modelEntries[i-1]]; renderModelList();
+      } else if(act==="down" && i<S.modelEntries.length-1){
+        harvestModels(); [S.modelEntries[i+1],S.modelEntries[i]]=[S.modelEntries[i],S.modelEntries[i+1]]; renderModelList();
+      }
+    });
+  });
+}
+function harvestModels(){
+  $$("#modelList .mcard").forEach((card,i)=>{
+    const m=S.modelEntries[i]; if(!m) return;
+    $$("[data-f]",card).forEach(inp=>{
+      const f=inp.dataset.f;
+      if(f==="api_key"){ const v=inp.value.trim(); if(v) m.api_key=v; }
+      else if(f==="clear_key"){ if(inp.checked){ m.clear_api_key=true; delete m.api_key; } else delete m.clear_api_key; }
+      else if(f==="use_proxy"){ m.use_proxy=inp.checked; }
+      else if(f==="temperature"||f==="max_tokens"||f==="timeout"){ m[f]=num(inp.value,m[f]); }
+      else m[f]=inp.value;
+    });
+    m.roles=$$(".chip.on[data-role]",card).map(c=>c.dataset.role);
+  });
+  const sel=$('input[name="mdef"]:checked'); if(sel) S.modelDefault=sel.value;
+}
+function addModel(provId, provs){
+  harvestModels();
+  const p=(provs||[]).find(x=>x.id===provId)||{};
+  const id="m"+Date.now().toString(36);
+  const first=S.modelEntries.length===0;
+  S.modelEntries.push({id,label:(p.label||"新模型").replace(/（.*?）/g,"").trim()||"新模型",
+    base_url:p.base_url||"",model:p.model||"",api_key:p.api_key||"",
+    temperature:0.7,max_tokens:4096,timeout:300,use_proxy:false,
+    roles:first?(S.modelRoles||[]).map(r=>r.id):[]});
+  if(first||!S.modelDefault) S.modelDefault=id;
+  renderModelList();
+}
+async function testModel(i){
+  harvestModels();
+  const m=S.modelEntries[i]; if(!m) return;
+  const card=$(`#modelList .mcard[data-i="${i}"]`);
+  const out=$('[data-out="test"]',card), chipsBox=$('[data-out="models"]',card);
+  out.innerHTML='<span class="spin"></span> 正在连接…（最多约 10 秒）';
+  const r=await postJSON("/api/config/test_llm",{entry_id:m.id,base_url:m.base_url,
+    api_key:m.api_key||"",model:m.model,use_proxy:!!m.use_proxy});
+  const models=r.models||[];
+  if(models.length){
+    const dl=$(`datalist#ml${i}`); if(dl) dl.innerHTML=models.map(x=>`<option value="${esc(x)}">`).join("");
+    chipsBox.innerHTML='<span class="muted" style="font-size:10.5px">端点模型（点击选用）：</span>'+
+      models.slice(0,30).map(x=>`<span class="chip" data-pick="${esc(x)}">${esc(x)}</span>`).join("");
+    $$(".chip",chipsBox).forEach(c=>c.onclick=()=>{ $('[data-f="model"]',card).value=c.dataset.pick; });
+  } else chipsBox.innerHTML="";
+  out.innerHTML = r.ok
+    ? `<span style="color:var(--go2)">✓ ${esc(r.message||"连接成功")}</span>${r.used_saved_key?'<span class="muted">（用了已保存的 Key）</span>':""}`
+    : `<span style="color:var(--danger2)">✗ ${esc(r.error||"连接失败")}</span>`;
+}
+async function saveModels(){
+  harvestModels();
+  for(const m of S.modelEntries){
+    if(!(m.base_url||"").trim()||!(m.model||"").trim()){
+      $("#mSaveOut").innerHTML='<span style="color:var(--danger2)">每个模型都要填接口地址和模型名</span>'; return;
+    }
+  }
+  const body={default:S.modelDefault,entries:S.modelEntries.map(m=>({
+    id:m.id,label:(m.label||"").trim(),base_url:(m.base_url||"").trim(),
+    model:(m.model||"").trim(),temperature:num(m.temperature,0.7),
+    max_tokens:Math.round(num(m.max_tokens,4096)),timeout:num(m.timeout,300),
+    use_proxy:!!m.use_proxy,roles:m.roles||[],
+    ...(m.api_key?{api_key:m.api_key}:{}),...(m.clear_api_key?{clear_api_key:true}:{}),
+  }))};
+  $("#mSave").disabled=true;
+  const r=await postJSON("/api/config/models",body);
+  $("#mSave").disabled=false;
+  if(!r.ok){ $("#mSaveOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
+  S.settings=r; S.modelEntries=r.entries||[]; S.modelDefault=r.default||"";
+  $("#mSaveOut").innerHTML='<span style="color:var(--go2)">✓ 已写回 default.yaml</span>';
+  renderModelList(); toast("模型清单已保存","ok");
+}
+async function saveAI(){
+  const body={ai:{enabled:$("#aiEnabled").checked,auto_tag:$("#aiAutoTag").checked,
+    language:$("#aiLang").value,main_timeout:num($("#aiMainTO").value,90)}};
+  const r=await postJSON("/api/config/llm",body);
+  if(!r.ok){ $("#aiSaveOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
+  $("#aiSaveOut").innerHTML='<span style="color:var(--go2)">✓ 已保存</span>';
+  toast("AI 行为设置已保存","ok"); boot();
+}
+
+// ---------- probe ----------
+async function showProbe(){
+  const stat=$("#setupStat"); if(!stat) return;
+  stat.innerHTML='<span class="spin"></span> 探测中…（ComfyUI/音色联网探测可能需十几秒）';
+  const r=await getJSON("/api/health");
+  if(!r.ok||!r.job){ stat.textContent="探测失败"; return; }
+  pollJob(r.job,res=>{
+    stat.textContent="";
+    if(!res) return;
+    S.health=res; renderProbe(res);
+    const b=res.brain||{};
+    toast(`默认模型 ${b.main&&b.main.ok?"在线":"离线"} · 打标模型 ${b.light&&b.light.ok?"在线":"离线"}`,b.main&&b.main.ok?"ok":"err");
+  });
+}
+function renderProbe(res){
+  const p=res.probe||{};
+  const box=$("#setupOut"); if(!box) return;
+  box.innerHTML=`<div class="health-grid" style="margin-top:9px">
+    <div class="hc"><div class="hn">ffmpeg</div><div class="hv">${p.ffmpeg?'<span class="dot ok"></span>可用':'<span class="dot bad"></span>缺失'}</div></div>
+    <div class="hc"><div class="hn">大模型</div><div class="hv">${(p.llm_endpoints||[]).length?'<span class="dot ok"></span>本地可用':'<span class="dot warn"></span>未发现本地'}</div>
+      <div class="hd">${(p.llm_endpoints||[]).map(e=>e.name+":"+((e.models||[]).slice(0,2).join(","))).join(" | ")||"—"}</div></div>
+    <div class="hc"><div class="hn">ComfyUI</div><div class="hv">${p.comfyui&&p.comfyui.reachable?'<span class="dot ok"></span>已连接':'<span class="dot bad"></span>不可达'}</div>
+      <div class="hd">${p.comfyui?((p.comfyui.gpus||[]).map(g=>g.name+" "+g.vram_gb+"G").join(", ")||p.comfyui.base_url||""):""}</div></div>
+    <div class="hc"><div class="hn">音色 / 配乐</div><div class="hv">${(p.tts&&p.tts.voice_count)||0} 音色 · ${(p.music&&p.music.track_count)||0} 曲</div></div>
+  </div>`;
+}
+
+// ---------- setup wizard (AI one-click config) ----------
+let setupSel={preset:"",chips:new Set()};
+function renderSetup(){
+  const T=S.templates||{};
+  const presets=(T.genre_presets||[]).map(p=>
+    `<div class="pcard" data-preset="${p.id}"><div class="pl">${esc(p.label)}</div>
+      <div class="pd">${esc(p.genre)} · ${esc(p.pacing||"")}</div></div>`).join("");
+  const chipGroups=Object.entries(T.requirement_chips||{}).map(([g,items])=>
+    `<div style="margin-bottom:8px"><label class="fl">${esc(g)}</label><div class="chips">
+      ${items.map(c=>`<span class="chip" data-chip="${c.id}">${esc(c.label)}</span>`).join("")}</div></div>`).join("");
+  const examples=(T.intent_examples||[]).map(e=>`<span class="chip" data-intent="${esc(e)}">${esc(e)}</span>`).join("");
+  $("#tab-setup").innerHTML=`
+    <div style="margin-bottom:10px">
+      <label class="fl">你想要什么样的短剧？</label>
+      <textarea class="f" id="intent" placeholder="例如：做一部都市甜宠短剧，女频，节奏轻快，写实电影感，竖屏"></textarea>
+      <div class="chips">${examples}</div>
+    </div>
+    <label class="fl" style="margin-top:8px">题材预设</label>
+    <div class="preset" id="presetBox">${presets}</div>
+    <div style="margin-top:10px">${chipGroups}</div>
+    <label class="fl">其它要求</label>
+    <textarea class="f" id="extra" placeholder="例如：男主是军人气质；每集结尾必须留悬念；不要血腥画面"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn go" id="doSetup">AI 生成并写入配置</button>
+      <span class="muted" id="setupWizStat" style="font-size:11.5px"></span>
+    </div>
+    <div id="setupWizOut"></div>`;
+  $$("#presetBox .pcard").forEach(c=>c.onclick=()=>{
+    const id=c.dataset.preset; setupSel.preset=(setupSel.preset===id?"":id);
+    $$("#presetBox .pcard").forEach(x=>x.classList.toggle("on",x.dataset.preset===setupSel.preset));
+  });
+  $$("#tab-setup .chip[data-chip]").forEach(c=>c.onclick=()=>{
+    const id=c.dataset.chip; setupSel.chips.has(id)?setupSel.chips.delete(id):setupSel.chips.add(id); c.classList.toggle("on");
+  });
+  $$("#tab-setup .chip[data-intent]").forEach(c=>c.onclick=()=>{ $("#intent").value=c.dataset.intent; });
+  $("#doSetup").onclick=doSetup;
+}
+async function doSetup(){
+  const body={intent:$("#intent").value.trim(),genre_preset:setupSel.preset,
+    chips:[...setupSel.chips],extra:$("#extra").value.trim(),write:true};
+  const stat=$("#setupWizStat");
+  stat.innerHTML='<span class="spin"></span> AI 正在探测环境并生成配置…';
+  $("#doSetup").disabled=true;
+  const r=await postJSON("/api/setup",body);
+  if(!r.ok){ stat.textContent="失败："+(r.error||""); $("#doSetup").disabled=false; return; }
+  pollJob(r.job,res=>{
+    $("#doSetup").disabled=false;
+    if(!res){ stat.textContent=""; return; }
+    stat.innerHTML=res.used_llm?'<span style="color:var(--go2)">✓ 已由 AI 生成并写入</span>':'<span style="color:var(--warn)">✓ 已写入（未连到大模型，用模板规则生成）</span>';
+    $("#setupWizOut").innerHTML=`<div class="card" style="margin-top:9px"><h3>写入 ${esc(res.written||"config/default.yaml")}</h3>
+      <pre style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-family:var(--mono);font-size:10.5px;margin:0">${esc(JSON.stringify(res.overrides||{},null,1))}</pre></div>`;
+    toast("配置已更新","ok"); boot(); loadProduction();
+  });
+}
+
+// ---------- AI command bar ----------
+$("#cmdGo").onclick=runCmd;
+$("#cmd").addEventListener("keydown",e=>{if(e.key==="Enter")runCmd();});
+async function runCmd(){
+  const instr=$("#cmd").value.trim(); if(!instr) return;
+  $("#cmdGo").disabled=true; $("#cmdGo").textContent="解析中";
+  const r=await postJSON("/api/ai/parse",{instruction:instr,project:$("#cmdproj").value});
+  $("#cmdGo").disabled=false; $("#cmdGo").textContent="解析";
+  if(!r.ok){ toast("解析失败："+esc(r.error||""),"err"); return; }
+  showPreview(r.action,instr);
+}
+function showPreview(a,instr){
+  const p=$("#preview");
+  const params=Object.entries(a.params||{}).filter(([k,v])=>v!==""&&!(Array.isArray(v)&&!v.length)&&!(v&&typeof v==="object"&&!Object.keys(v).length));
+  const pstr=params.map(([k,v])=>`<span class="kv">${esc(k)}=${esc(typeof v==="object"?JSON.stringify(v):v)}</span>`).join(" ");
+  p.style.cssText="display:flex;gap:12px;align-items:flex-start;background:var(--bg2);border-bottom:1px solid #3b2a63;padding:9px 14px";
+  p.innerHTML=`<div style="flex:1;min-width:0">
+      <div style="font-weight:700;font-size:12.5px">${esc(a.title)} ${a.note?`<span class="muted" style="font-weight:400">· ${esc(a.note)}</span>`:""}</div>
+      <div class="muted" style="font-size:11.5px;margin:2px 0 5px">${esc(a.confirm_msg||"")} · 原话：“${esc(instr)}”</div>
+      <div>${pstr||'<span class="muted">（无参数）</span>'}</div></div>
+    <button class="btn ${a.needs_confirm?"confirm":"go"} sm" id="pvOk">${a.needs_confirm?"确认执行":"执行"}</button>
+    <button class="btn ghost sm" id="pvNo">取消</button>`;
+  $("#pvNo").onclick=()=>p.style.display="none";
+  $("#pvOk").onclick=()=>execAction(a);
+}
+async function execAction(a){
+  $("#preview").style.display="none"; $("#cmd").value="";
+  const r=await postJSON("/api/ai/run",{action:a});
+  if(!r.ok){ toast("执行失败："+esc(r.error||""),"err"); return; }
+  if(r.job){
+    toast("已提交，后台执行中…");
+    pollJob(r.job,res=>{
+      toast("✓ "+a.title+" 完成","ok");
+      if(a.kind==="search"&&res){ switchPage("assets"); jumpSearch(""); renderSearchResults(res); }
+      boot(); if(S.current) selectProject(S.current,true);
+    });
+  } else if(r.result){
+    const res=r.result;
+    if(a.kind==="search"){ switchPage("assets"); renderSearchResults(res); }
+    else toast("✓ "+a.title+" 完成","ok");
+    boot();
+  }
+}
+function renderSearchResults(res){
+  const box=$("#searchres"); if(!box) return;
+  box.innerHTML=""; (res.results||[]).forEach(x=>box.appendChild(resultCard(x)));
+  $("#searchmeta").innerHTML=`命中 <b>${res.count||0}</b> 条`;
+  $("#assetSection")&&($("#assetSection").style.display="none");
+}
+
+// ---------- misc ----------
+window.reindex=function(slug,withAI){
+  toast(withAI?"AI 打标签中…":"重建索引中…");
+  postJSON("/api/reindex",{project:slug,with_ai:withAI}).then(r=>{
+    if(!r.ok) return toast("失败："+esc(r.error||""),"err");
+    pollJob(r.job,res=>{ toast("索引完成："+(res&&res.total||0)+" 条","ok"); renderTags(); if(S.current===slug) selectProject(slug,true); });
+  });
+};
+$("#newProj").onclick=()=>{
+  const name=prompt("新项目名称："); if(!name) return;
+  const source=prompt("小说/剧本文件路径（可留空）：")||"";
+  postJSON("/api/new",{name,source}).then(r=>{
+    if(!r.ok) return toast("新建失败："+esc(r.error||""),"err");
+    toast("已创建："+r.slug,"ok");
+    boot().then(()=>selectProject(r.slug));
+  });
+};
+$("#refreshBtn").onclick=()=>boot();
+$("#healthBtn").onclick=()=>{ switchPage("settings"); showProbe(); };
+document.addEventListener("keydown",e=>{
+  if(e.key==="/"&&document.activeElement.tagName!=="INPUT"&&document.activeElement.tagName!=="TEXTAREA"){
+    e.preventDefault(); $("#cmd").focus();
+  }
+  if(e.key==="Escape"){ closeDrawer(); $("#preview").style.display="none"; }
+});
+
+// ---------- init ----------
+renderSetup();
+boot();
+</script>
+</body>
+</html>

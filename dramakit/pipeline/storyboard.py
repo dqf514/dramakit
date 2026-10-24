@@ -1,0 +1,95 @@
+"""Stage 5 — storyboard: design the shot list for every scene."""
+from __future__ import annotations
+
+import uuid
+
+from ..models import Shot, ShotType, Status
+from ..prompts import templates as T
+from ..utils.text import estimate_reading_seconds
+from .base import Context
+
+
+def _id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+def _to_shot_type(v: str) -> ShotType:
+    v = (v or "").strip()
+    for st in ShotType:
+        if st.value == v or st.name.lower() == v.lower():
+            return st
+    return ShotType.MEDIUM
+
+
+def _clamp(v, lo: float, hi: float, default: float) -> float:
+    try:
+        return max(lo, min(hi, float(v)))
+    except (TypeError, ValueError):
+        return default
+
+
+def run(ctx: Context) -> dict:
+    cfg = ctx.cfg.storyboard
+    llm = ctx.providers.llm_for("storyboard")
+    char_names = ", ".join(c.name for c in ctx.project.characters) or "（自行判断）"
+    dmin, dmax = (cfg.shot_duration_range + [2.0, 5.0])[:2]
+    done = 0
+    for ep in ctx.target_episodes():
+        if ctx.stage_done(ep, "storyboard"):
+            continue
+        if not ep.scenes:
+            ctx.log.warning("storyboard: 第%d集无剧本，跳过（先跑 script）", ep.index)
+            continue
+        for sc in ep.scenes:
+            if sc.shots:
+                continue
+            narration_sec = round(sum(estimate_reading_seconds(l.text) for l in sc.lines), 1)
+            lines_text = "\n".join(
+                f"- {l.speaker}({l.emotion}): {l.text}" for l in sc.lines) or "（无台词，纯画面）"
+            prefer = "多用运动镜头增强节奏" if cfg.prefer_dynamic else "以固定镜头为主"
+            user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
+                            time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
+                            lines_text=lines_text, min_shots=cfg.min_shots_per_scene,
+                            max_shots=cfg.max_shots_per_scene, prefer_dynamic=prefer,
+                            dur_min=dmin, dur_max=dmax, narration_seconds=narration_sec,
+                            character_names=char_names)
+            try:
+                data = llm.complete_json(T.STORYBOARD_SYSTEM, user)
+            except Exception as e:  # noqa: BLE001
+                ctx.log.error("storyboard: 第%d集 场%d 失败 %s", ep.index, sc.index, e)
+                sc.status = Status.FAILED
+                if ctx.cfg.pipeline.fail_fast:
+                    raise
+                # fallback: one shot per line so the pipeline still proceeds
+                sc.shots = _fallback_shots(sc, dmin, dmax)
+                continue
+            if isinstance(data, list):
+                data = data[0] if data else {}
+            shots = []
+            for i, s in enumerate(data.get("shots", []) or [], 0):
+                shots.append(Shot(
+                    id=_id("sh"), index=i, shot_type=_to_shot_type(s.get("shot_type", "中景")),
+                    camera_move=s.get("camera_move", "固定"),
+                    duration=_clamp(s.get("duration"), dmin, dmax, 3.0),
+                    action=s.get("action", ""),
+                    characters=[str(c) for c in (s.get("characters") or [])],
+                ))
+            sc.shots = shots or _fallback_shots(sc, dmin, dmax)
+        ctx.mark(ep, "storyboard", Status.DONE)
+        ctx.save()
+        done += 1
+        ctx.log.info("storyboard: 第%d集 → %d 镜", ep.index, ep.total_shots)
+    return {"episodes_storyboarded": done}
+
+
+def _fallback_shots(sc, dmin: float, dmax: float) -> list[Shot]:
+    """One medium shot per line (or a single shot for a silent scene)."""
+    shots: list[Shot] = []
+    items = sc.lines or [None]  # type: ignore[list-item]
+    for i, l in enumerate(items):
+        action = l.text[:60] if l else sc.summary[:60]
+        chars = [l.speaker] if (l and l.speaker not in ("旁白", "解说")) else []
+        shots.append(Shot(id=_id("sh"), index=i, shot_type=ShotType.MEDIUM,
+                          camera_move="固定", duration=max(dmin, min(dmax, 3.0)),
+                          action=action, characters=chars))
+    return shots
