@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import Config
-from ..models import Episode, Line, Project, Scene, Shot, Status
+from ..models import Episode, Line, Project, Scene, Shot, Status, is_narration
 from ..project import ProjectStore
 from ..providers import Providers
 from ..utils.text import estimate_reading_seconds
@@ -33,6 +33,7 @@ class TimedLine:
     scene_id: str
     start: float
     end: float
+    is_narration: bool = False
 
 
 @dataclass
@@ -70,8 +71,11 @@ def build_timeline(ep: Episode, min_shot: float = 1.0) -> Timeline:
     timed_scenes: list[TimedScene] = []
     cursor = 0.0
     for sc in ep.scenes:
-        # 1) dialogue length of the scene
-        raw_lines = [(_line_duration(l), l) for l in sc.lines]
+        # 1) dialogue length of the scene. Narration is shown on screen but never
+        #    spoken, so it must not stretch the scene's audio track.
+        spoken = [l for l in sc.lines if not is_narration(l)]
+        narration = [l for l in sc.lines if is_narration(l)]
+        raw_lines = [(_line_duration(l), l) for l in spoken]
         scene_audio = round(sum(d for d, _ in raw_lines), 3)
         # 2) minimum picture length from shot durations
         shot_sum = round(sum(max(sh.duration, min_shot) for sh in sc.shots), 3)
@@ -90,13 +94,23 @@ def build_timeline(ep: Episode, min_shot: float = 1.0) -> Timeline:
                 timed_shots.append(TimedShot(sh, round(shot_cursor, 3), round(d, 3)))
                 shot_cursor += d
 
-        # 4) place lines back-to-back from scene start
+        # 4) place spoken lines back-to-back from scene start
         timed_lines: list[TimedLine] = []
         line_cursor = cursor
         for d, l in raw_lines:
             timed_lines.append(TimedLine(l, sc.id, round(line_cursor, 3),
                                          round(line_cursor + d, 3)))
             line_cursor += d
+
+        # 5) narration: display-only cards spread across the scene. They overlap
+        #    the spoken track in time but live in their own on-screen slot.
+        if narration:
+            slot = scene_dur / len(narration)
+            for i, l in enumerate(narration):
+                d = min(estimate_reading_seconds(l.text), slot * 0.85)
+                s = cursor + i * slot
+                timed_lines.append(TimedLine(l, sc.id, round(s, 3),
+                                             round(s + d, 3), True))
 
         timed_scenes.append(TimedScene(sc, round(cursor, 3), round(scene_dur, 3),
                                        timed_shots, timed_lines))

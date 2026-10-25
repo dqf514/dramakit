@@ -201,6 +201,18 @@ def make_silence(out: str | Path, duration: float, *, rate: int = 44100) -> str:
     return str(out)
 
 
+def extract_audio(src: str | Path, out: str | Path, *, volume: float = 1.0) -> str:
+    """Extract the audio stream of a video to an mp3 (empty file if none)."""
+    out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
+    af = f"volume={volume}" if abs(volume - 1.0) > 1e-3 else "anull"
+    r = _run([ffmpeg_bin(), "-y", "-i", str(src), "-vn", "-af", af,
+              "-c:a", "libmp3lame", "-q:a", "4", str(out)], quiet=True)
+    if r.returncode != 0 or not out.exists() or out.stat().st_size == 0:
+        out.unlink(missing_ok=True)
+        return ""
+    return str(out)
+
+
 def concat_audio(parts: Sequence[str | Path], out: str | Path) -> str:
     """Concat audio files (re-encoded to a uniform mp3 stream)."""
     out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)

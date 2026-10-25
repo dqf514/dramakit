@@ -1572,6 +1572,11 @@ function renderCast(){
           <div class="grow"><label class="fl">发型</label><input class="f" data-f="hair" value="${attr(c.hair||"")}"></div>
           <div class="grow"><label class="fl">负面词</label><input class="f" data-f="negative_prompt" value="${attr(c.negative_prompt||"")}"></div>
         </div>
+        <div class="row" style="margin-top:6px">
+          <div class="grow"><label class="fl">专属音色（随定妆设计）</label><input class="f" data-f="voice_id" value="${attr(c.voice_id||"")}" placeholder="zh-CN-YunxiNeural"></div>
+          <div style="width:86px"><label class="fl">音高</label><input class="f" data-f="voice_pitch" value="${attr(c.voice_pitch||"")}" placeholder="-12Hz"></div>
+          <div style="width:86px"><label class="fl">语速</label><input class="f" data-f="voice_rate" value="${attr(c.voice_rate||"")}" placeholder="-8%"></div>
+        </div>
         <div class="lockrow">
           <label><input type="checkbox" data-f="locked" ${c.locked?"checked":""}> 锁定锚点（AI 不改写）</label>
           <label><input type="checkbox" data-reset ${c.locked?"checked":""}> 顺带重置相关提示词</label>

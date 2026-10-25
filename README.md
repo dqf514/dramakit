@@ -278,21 +278,26 @@ llm:                                      # 旧版单模型入口；默认模型
 
 tts:
   provider: edge                          # 免费开箱即用
+  speak_narration: false                  # 旁白只做屏幕文字，不进配音轨
+  voice_locales: ["zh-CN"]               # 音色池只取纯普通话（不含港台腔/方言）
   voice_map:                              # 角色→音色
     林凡: zh-CN-YunjianNeural
     苏晚: zh-CN-XiaoyiNeural
+  # 角色音色的「音高/语速」微调在角色定妆时一起设计（见角色库）
 
 comfyui:
   base_url: http://192.168.1.50:8188      # 你的视频服务器
   mode: image_then_video                  # 出图再图生视频
+  i2v_workflow: config/comfyui/i2v_minimax_h3.json   # MiniMax H3 原生图生视频
 
 segment:
   episode_duration: 90                    # 每集约 90 秒
 
 compose:
-  width: 1080
-  height: 1920                            # 竖屏
+  width: 1280
+  height: 720                             # 横屏 16:9
   burn_subtitles: true
+  h3_audio: bed                          # H3 原生音频当配乐/环境声垫底（人声走 TTS 轨）
 
 ai:                                       # AI 原生层（一键配置/标签/检索）
   enabled: true
@@ -490,12 +495,19 @@ TTS / 音乐同理实现 `BaseTTS` / `BaseMusic`，在 `providers/__init__.py` �
 
 ### 6.7 什么算“无缝”
 
-- **一键全链**：十二阶段按固定顺序执行，已完成节点自动跳过。
+- **一键全链**：十三阶段按固定顺序执行，已完成节点自动跳过。
 - **断点续跑**：状态写进 `project.json`，崩溃、换模型、换 ComfyUI 后直接重跑。
 - **只废下游**：改台词作废该句配音/字幕/合成；改角色锚点重置相关提示词；单镜返工只重出该镜。
 - **后台任务**：画面/视频可能跑几十分钟，任务在服务端线程中执行，浏览器轮询，可随时切页。
 - **时间轴只认配音**：每句音频时长决定场景长度，镜头按比例铺满，字幕同一条时间轴，合成不跑偏。
 - **失败不连坐**：ComfyUI 挂了只影响画面；AI 端点不可用时配置/打标/检索回退规则，其它阶段照跑。
+- **合成前先校验**：`precheck` 阶段逐镜核对画面/配音/字幕文件与 H3 提示词字段，
+  有硬伤就阻断该集合成并给出原因，不让 ffmpeg 白跑一遍。
+- **旁白不上麦**：旁白只出屏幕文字（顶部独立样式、半透明底板，不压对白区），不进配音轨。
+- **声音随定妆设计**：角色音色 + 专属音高/语速在定妆阶段一起定，音色池只取纯普通话。
+- **H3 官方提示词**：出视频用 MiniMax H3 官方三字段格式
+  （`integrated_multimodal_description` / `overall_soundscape` / `non_diegetic_music`），
+  并把 H3 原生音频（配乐+环境声）压在人声下当垫底，省掉外部曲库。
 
 ---
 

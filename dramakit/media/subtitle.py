@@ -57,8 +57,16 @@ def _ass_header(style: dict, width: int, height: int) -> str:
     margin_v = style.get("margin_v", 220)
     bold = -1 if style.get("bold", True) else 0
     align = style.get("alignment", 2)
+    # narration cards: own slot at the top so they never sit on the dialogue
+    narr_font = style.get("narration_font", font)
+    narr_size = style.get("narration_font_size", 14)
+    narr_color = style.get("narration_color", "&H00A0DCFA")
+    narr_back = style.get("narration_back_color", "&H66000000")
+    narr_margin = style.get("narration_margin_v", 40)
+    narr_align = style.get("narration_alignment", 8)
     # ASS font sizes are relative to script resolution; scale up for 1080-wide
     scaled = int(round(size * (height / 288)))
+    narr_scaled = int(round(narr_size * (height / 288)))
     return f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {width}
@@ -69,7 +77,8 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,{font},{scaled},{primary},&H00FFFFFF,{outline_c},&H64000000,{bold},0,0,0,100,100,0,0,1,{outline},{shadow},{align},60,60,{margin_v},1
-Style: Speaker,{font},{int(scaled*0.72)},{style.get("speaker_color","&H0000E5FF")},&H00FFFFFF,{outline_c},&H64000000,{bold},0,0,0,100,100,0,0,1,{outline},0,{align},60,60,{margin_v + int(scaled*0.8)},1
+Style: Speaker,{font},{int(scaled*0.72)},{style.get("speaker_color","&H0000E5FF")},&H00FFFFFF,{outline_c},&H64000000,{bold},0,0,0,100,100,0,0,1,{outline},0,{align},60,60,{margin_v + int(scaled*1.25)},1
+Style: Narration,{narr_font},{narr_scaled},{narr_color},&H00FFFFFF,{outline_c},{narr_back},{bold},1,0,0,100,100,0,0,3,1,0,{narr_align},80,80,{narr_margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -83,6 +92,10 @@ def write_ass(cues: list[SubtitleCue], out_path: str | Path, *, style: dict,
     for c in cues:
         start, end = _ass_time(c.start), _ass_time(c.end)
         text = _clean(c.text).replace(":", "：")
+        if c.kind in (LineKind.NARRATION, LineKind.CAPTION):
+            # narration card: own style, no speaker label
+            parts.append(f"Dialogue: 0,{start},{end},Narration,,0,0,0,,{text}")
+            continue
         named = c.speaker and c.speaker not in ("旁白", "解说")
         if show_speaker and named:
             parts.append(f"Dialogue: 0,{start},{end},Speaker,,0,0,0,,{c.speaker}")

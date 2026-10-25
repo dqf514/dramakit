@@ -35,3 +35,11 @@ h3_*.py
 pw_*.py
 _pw_*
 *.progress.json
+recast*.py
+resetvoice.py
+resetcompose.py
+resetep2.py
+resetnarr.py
+chk_voices.py
+dbg_pool*.py
+test_h3prompt.py

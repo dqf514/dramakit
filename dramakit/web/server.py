@@ -691,7 +691,8 @@ def _make_handler(state: State):
             fields = body.get("fields") or {}
             allowed = ("role", "gender", "age", "personality", "appearance",
                        "visual_prompt", "outfit", "hair", "anchor_prompt",
-                       "negative_prompt", "consistency", "voice_id", "lora")
+                       "negative_prompt", "consistency", "voice_id", "lora",
+                       "voice_pitch", "voice_rate")
             with state.lock:
                 proj = store.load()
                 char = proj.character(name)

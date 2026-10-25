@@ -6,7 +6,7 @@ a minimum on-screen time is enforced so fast lines stay readable.
 from __future__ import annotations
 
 from ..media.subtitle import write_ass, write_srt
-from ..models import Status, SubtitleCue
+from ..models import Status, SubtitleCue, is_narration
 from .base import Context, build_timeline
 
 MIN_CUE = 0.8
@@ -27,15 +27,20 @@ def run(ctx: Context) -> dict:
                     continue
                 start = tl_line.start
                 end = max(tl_line.end, start + MIN_CUE)
+                narr = is_narration(l)
                 cues.append(SubtitleCue(
                     start=round(start, 3), end=round(end, 3),
-                    speaker=l.speaker if l.speaker not in ("旁白", "解说") else "",
+                    speaker="" if narr else l.speaker,
                     text=l.text, kind=l.kind))
         cues.sort(key=lambda c: c.start)
-        # avoid overlaps (clamp each cue to the next start)
+        # avoid overlaps, but only inside the same slot: narration cards are
+        # allowed to sit on screen while dialogue plays (different area).
         for i in range(len(cues) - 1):
-            if cues[i].end > cues[i + 1].start:
-                cues[i].end = max(MIN_CUE, cues[i + 1].start - 0.02)
+            cur, nxt = cues[i], cues[i + 1]
+            if cur.kind != nxt.kind:
+                continue
+            if cur.end > nxt.start:
+                cur.end = max(MIN_CUE, nxt.start - 0.02)
 
         srt = write_srt(cues, ctx.store.subtitle_path(ep, "srt"))
         ep.subtitle_path = ctx.store.rel(srt)
