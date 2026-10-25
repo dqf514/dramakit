@@ -18,6 +18,7 @@ import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..config import Config
+from ..media import ffmpeg as ff
 from ..models import Shot, Status
 from ..project import ProjectStore
 from .base import Context
@@ -106,6 +107,12 @@ def _extra(ctx: Context) -> dict:
 
 def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
              force: bool = False) -> tuple[str, bool, str]:
+    """Render one shot, image first and then video.
+
+    Kept for the single-shot paths (regen). The stage runs the two phases
+    separately - see `run` - so the image model and the video model are not
+    swapped in and out for every shot.
+    """
     vis = ctx.providers.visual
     if vis is None:
         return shot.id, False, "no visual provider"
@@ -175,6 +182,86 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
         return shot.id, False, msg
 
 
+def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
+    """Render only the still (and the flf end frame)."""
+    vis = ctx.providers.visual
+    c = ctx.cfg.comfyui
+    img_out = ctx.store.image_path(shot.id)
+    end_out = ctx.store.end_image_path(shot.id)
+    seed = _seed_for(ctx, shot)
+    meta: dict = dict(shot.gen_meta or {})
+    meta.update({"seed": seed, "mode": c.mode})
+    try:
+        if not img_out.exists():
+            refs = _fit_refs(ctx, _ref_images(ctx, shot, sc), shot)
+            vis.generate_image(
+                prompt=shot.prompt, negative=shot.negative_prompt,
+                width=c.width, height=c.height, seed=seed, steps=c.steps, cfg=c.cfg,
+                out_path=str(img_out), extra=_extra(ctx), ref_images=refs)
+            meta["refs"] = len(refs)
+        shot.image_path = ctx.store.rel(img_out)
+        if flf_enabled(ctx, shot) and not end_out.exists():
+            vis.generate_image(
+                prompt=shot.end_prompt or shot.prompt,
+                negative=shot.negative_prompt, width=c.width, height=c.height,
+                seed=(seed + 1) % (2**31) if seed >= 0 else seed,
+                steps=c.steps, cfg=c.cfg, out_path=str(end_out),
+                extra=_extra(ctx),
+                ref_images=_fit_refs(ctx, _ref_images(ctx, shot, sc), shot))
+            meta["end_seed"] = (seed + 1) % (2**31) if seed >= 0 else -1
+        if end_out.exists():
+            shot.end_image_path = ctx.store.rel(end_out)
+        shot.gen_meta = meta
+        return shot.id, True, ""
+    except Exception as e:  # noqa: BLE001
+        msg = str(e)[:200]
+        ctx.log.error("visual: 镜 %s 出图失败 %s", shot.id, msg)
+        return shot.id, False, msg
+
+
+def _gen_video(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
+    """Render only the video for one shot."""
+    vis = ctx.providers.visual
+    c = ctx.cfg.comfyui
+    img_out = ctx.store.image_path(shot.id)
+    end_out = ctx.store.end_image_path(shot.id)
+    vid_out = ctx.store.video_path(shot.id)
+    seed = _seed_for(ctx, shot)
+    meta: dict = dict(shot.gen_meta or {})
+    meta.update({"seed": seed, "mode": c.mode})
+    try:
+        use_flf = flf_enabled(ctx, shot) and end_out.exists()
+        last = str(end_out) if use_flf else ""
+        vprompt = shot.video_prompt or shot.prompt
+        try:
+            vis.generate_video(
+                prompt=vprompt, negative=shot.negative_prompt,
+                image_path=str(img_out) if img_out.exists() else "",
+                frames=c.frames, fps=c.fps, seed=seed, out_path=str(vid_out),
+                extra=_extra(ctx), last_image_path=last)
+        except Exception as e:  # noqa: BLE001
+            if not last:
+                raise
+            ctx.log.warning("visual: 镜 %s 首尾帧失败(%s)，退回单图 i2v",
+                            shot.id, str(e)[:120])
+            use_flf = False
+            vis.generate_video(
+                prompt=vprompt, negative=shot.negative_prompt,
+                image_path=str(img_out) if img_out.exists() else "",
+                frames=c.frames, fps=c.fps, seed=seed, out_path=str(vid_out),
+                extra=_extra(ctx))
+        shot.video_path = ctx.store.rel(vid_out)
+        meta["flf"] = use_flf
+        shot.gen_meta = meta
+        shot.status = Status.DONE
+        return shot.id, True, ""
+    except Exception as e:  # noqa: BLE001
+        msg = str(e)[:200]
+        shot.status = Status.FAILED
+        ctx.log.error("visual: 镜 %s 出视频失败 %s", shot.id, msg)
+        return shot.id, False, msg
+
+
 def _write_progress(ctx: "Context", stage: str, done: int, total: int) -> None:
     """Persist transient per-shot progress to a sidecar file the web console reads.
 
@@ -228,16 +315,40 @@ def run(ctx: Context) -> dict:
 
     ctx.log.info("visual: 生成 %d 个镜头（并发=%d，模式=%s）", len(jobs), c.concurrency, c.mode)
     ok_count = 0
-    with ThreadPoolExecutor(max_workers=max(1, c.concurrency)) as ex:
-        futs = [ex.submit(_gen_one, ctx, sc, shot, do_image=do_image, do_video=do_video)
-                for (_ep, sc, shot) in jobs]
-        for i, fut in enumerate(as_completed(futs), 1):
-            _sid, ok, _msg = fut.result()
-            ok_count += int(ok)
-            _write_progress(ctx, "visual", i, len(jobs))
-            if i % 5 == 0 or i == len(jobs):
-                ctx.save()
-                ctx.log.info("visual: %d/%d 完成", i, len(jobs))
+
+    # Two phases on purpose. The still model and the video model do not fit in
+    # one GPU at once, so alternating per shot makes ComfyUI swap 15GB of
+    # weights in and out for every single shot. Doing all the stills first and
+    # all the videos after keeps one model resident and the swap happens once.
+    def _run_phase(label: str, fn, total: int, offset: int) -> int:
+        nonlocal ok_count
+        done = 0
+        with ThreadPoolExecutor(max_workers=max(1, c.concurrency)) as ex:
+            futs = [ex.submit(fn, ctx, sc, shot) for (_ep, sc, shot) in jobs]
+            for i, fut in enumerate(as_completed(futs), 1):
+                _sid, ok, _msg = fut.result()
+                ok_count += int(ok)
+                done = i
+                _write_progress(ctx, "visual", offset + i, total)
+                if i % 5 == 0 or i == len(jobs):
+                    ctx.save()
+                    ctx.log.info("visual: %s %d/%d 完成", label, i, total)
+        return done
+
+    total = len(jobs) * (2 if (do_image and do_video) else 1)
+    offset = 0
+    if do_image:
+        ctx.log.info("visual: 第一批 · 出图（%d 张）", len(jobs))
+        offset += _run_phase("出图", _gen_image, total, offset)
+        ctx.save()
+    if do_video:
+        ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(jobs))
+        offset += _run_phase("出视频", _gen_video, total, offset)
+        ctx.save()
+    elif do_image:
+        for (_ep, _sc, shot) in jobs:
+            if shot.image_path and shot.status != Status.FAILED:
+                shot.status = Status.DONE
     ctx.save()
 
     for ep in ctx.target_episodes():
