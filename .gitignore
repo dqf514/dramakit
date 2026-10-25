@@ -29,3 +29,9 @@ tmp/
 Thumbs.db
 .idea/
 .vscode/
+
+# Ad-hoc local test scripts & artifacts (environment-specific)
+h3_*.py
+pw_*.py
+_pw_*
+*.progress.json
