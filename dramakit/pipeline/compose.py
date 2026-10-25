@@ -106,7 +106,7 @@ def _export_nle(ctx: Context, ep, tl, shot_clips: list[tuple[str, object]],
     out_dir.mkdir(parents=True, exist_ok=True)
 
     timeline = nle.Timeline(
-        name=f"{ctx.project.title or ctx.project.name} EP{ep.index:03d}",
+        name=f"{ctx.project.meta.title or ctx.project.meta.name} EP{ep.index:03d}",
         width=ctx.cfg.compose.width, height=ctx.cfg.compose.height,
         fps=ctx.cfg.compose.fps, duration=tl.duration,
     )
