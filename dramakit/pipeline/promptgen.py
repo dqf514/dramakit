@@ -137,12 +137,6 @@ def _h3_needed(ctx: Context) -> bool:
     return any("MiniMaxH3" in str(n.get("class_type", "")) for n in wf.values())
 
 
-def _episode_missing_h3(ctx: Context, ep, h3_needed: bool) -> bool:
-    if not h3_needed:
-        return False
-    return any(not sh.video_prompt for sc in ep.scenes for sh in sc.shots)
-
-
 def _aspect(ctx: Context) -> tuple[str, str]:
     """(aspect phrase, composition phrase) for the configured output size."""
     w = ctx.cfg.comfyui.width or 1280
@@ -252,11 +246,11 @@ def run(ctx: Context) -> dict:
     h3_needed = _h3_needed(ctx)
     count = 0
     for ep in ctx.target_episodes():
-        if ctx.stage_done(ep, "promptgen") and not _episode_missing_h3(ctx, ep, h3_needed):
-            continue
         dlg_map = _dialogue_by_shot(ctx, ep)
         for sc in ep.scenes:
             for shot in sc.shots:
+                # per shot, not per episode: a cleared or edited prompt has to
+                # come back even when the stage is already marked done
                 need_img = not shot.prompt
                 need_h3 = h3_needed and not shot.video_prompt
                 if not need_img and not need_h3:
