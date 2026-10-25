@@ -1299,8 +1299,10 @@ function renderWorkbench(){
       <div class="ef">
         <span class="mini">${epProgress(ep)}% 完成</span>
         ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ↗</a>':""}
+        ${ep.nle?'<a class="mini" href="'+ep.nle+'" target="_blank">FCPXML ↗</a>':""}
         ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ↗</a>':""}
         ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:var(--go2)">有视频</span>':""}
+        ${qcBadge(ep.qc)}
       </div>
     </div>`).join("");
 
@@ -1398,7 +1400,9 @@ function renderBoard(){
       </div>
     </div>
     <div class="muted" style="font-size:11.5px;margin-bottom:10px">第 ${ep.index} 集 · ${ep.scenes.length} 场 · ${shotCount} 镜
-      ${ep.video?`<a class="mini" href="${ep.video}" target="_blank" style="margin-left:6px">▶ 成片</a>`:""}</div>
+      ${ep.video?`<a class="mini" href="${ep.video}" target="_blank" style="margin-left:6px">▶ 成片</a>`:""}
+      ${ep.nle?`<a class="mini" href="${ep.nle}" target="_blank" style="margin-left:6px">FCPXML ↗</a>`:""}
+      ${qcBadge(ep.qc)}</div>
     <div id="boardBlocks">${blocks||'<div class="empty">本集还没有分镜</div>'}</div>`;
 
   $("#boardEpSel").onchange=e=>{S.boardEp=parseInt(e.target.value)||0; renderBoard();};
@@ -1629,6 +1633,20 @@ function renderCast(){
 }
 
 // ---------- assets ----------
+function qcBadge(qc){
+  if(!qc||!qc.metrics) return "";
+  const m=qc.metrics, errs=qc.errors||[], warns=qc.warnings||[];
+  const ok=!errs.length, bits=[];
+  if(m.width) bits.push(`${m.width}x${m.height}`);
+  if(m.duration) bits.push(`${m.duration.toFixed(0)}s`);
+  if(m.integrated_lufs!==undefined) bits.push(`${m.integrated_lufs.toFixed(1)} LUFS`);
+  if(m.true_peak_dbfs!==undefined) bits.push(`峰值 ${m.true_peak_dbfs.toFixed(1)}dB`);
+  if(m.av_drift!==undefined) bits.push(`声画差 ${m.av_drift.toFixed(2)}s`);
+  const cls=ok?(warns.length?"warn":"ok"):"bad";
+  const col=ok?(warns.length?"var(--warn,#d99)":"var(--go2)"):"var(--danger2)";
+  const tip=(errs.concat(warns)).join("\n");
+  return `<span class="envchip ${cls}" style="color:${col}" title="${attr(tip)}">QC ${ok?"通过":"未通过"}${bits.length?" · "+esc(bits.join(" · ")):""}</span>`;
+}
 function renderAssetsPage(){
   const kinds=[["","全部"],["image","画面"],["video","视频"],["audio","配音"],["bgm","配乐"],["cover","封面"],["subtitle","字幕"]];
   $("#page-assets").innerHTML=`

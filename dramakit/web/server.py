@@ -431,6 +431,8 @@ def _make_handler(state: State):
                     "cover": _media_url(slug, ep.cover_path),
                     "subtitle": _media_url(slug, ep.subtitle_path or ep.ass_path),
                     "bgm": _media_url(slug, ep.bgm_path),
+                    "qc": ep.qc_report or {},
+                    "nle": _media_url(slug, f"nle/ep_{ep.index:03d}/ep_{ep.index:03d}.fcpxml"),
                     "scenes": scenes,
                 })
             locations = []
