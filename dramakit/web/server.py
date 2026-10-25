@@ -248,6 +248,7 @@ def _make_handler(state: State):
                     h = check_node(spec, refs)
                     d = h.to_dict()
                     d["transfer"] = spec.transfer
+                    d["roles"] = list(spec.roles or [])
                     out.append(d)
                 return self._json({"ok": True, "nodes": out,
                                    "models": [r.rel for r in refs]})

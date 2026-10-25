@@ -1764,11 +1764,14 @@ async function loadNodes(){
   if(!r.ok){ box.innerHTML=`<div class="empty">加载失败：${esc(r.error||"")}</div>`; return; }
   const rows=(r.nodes||[]).map(n=>{
     const miss=n.missing||[];
+    const roles=(n.roles&&n.roles.length)?n.roles.join("/"):"any";
+    const depth=n.depth||0;
     return `<div class="noderow">
       <span class="dot ${n.online?"ok":"bad"}"></span>
       <b>${esc(n.name)}</b>
+      <span class="mini" style="color:var(--go2)">${esc(roles)}</span>
       <span class="muted" style="font-size:11px">${esc(n.base_url)}</span>
-      ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲</span>`:`<span class="mini" style="color:var(--danger2)">离线</span>`}
+      ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${depth?` · 队列 ${depth}`:""}</span>`:`<span class="mini" style="color:var(--danger2)">离线</span>`}
       ${miss.length?`<span class="mini" style="color:var(--warn,#d99)">缺 ${miss.length} 个模型</span>
         <span class="muted" style="font-size:10.5px">${miss.slice(0,4).map(esc).join("、")}${miss.length>4?" …":""}</span>`:`<span class="mini" style="color:var(--go2)">模型齐全</span>`}
       <span style="flex:1"></span>
@@ -1776,7 +1779,7 @@ async function loadNodes(){
     </div>`;
   }).join("");
   box.innerHTML=(rows||'<div class="empty">没有节点</div>')
-    +`<div class="muted" style="font-size:10.5px;margin-top:6px">清单来自工作流：${(r.models||[]).length} 个模型文件</div>`
+    +`<div class="muted" style="font-size:10.5px;margin-top:6px">清单来自工作流：${(r.models||[]).length} 个模型文件 · 角色 t2i/i2v 决定派发，队列深度决定先后</div>`
     +`<div id="nodeProg"></div>`;
   $$("#nodeBox [data-sync]").forEach(b=>b.onclick=()=>syncNodes(b.dataset.sync,b));
 }

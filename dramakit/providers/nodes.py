@@ -105,6 +105,7 @@ class NodeHealth:
     vram_used: int = 0
     missing: list[str] = field(default_factory=list)
     installed: int = 0
+    depth: int = 0                          # queued + running jobs
     error: str = ""
 
     @property
@@ -117,7 +118,7 @@ class NodeHealth:
             "version": self.version, "device": self.device,
             "vram_total": self.vram_total, "vram_used": self.vram_used,
             "vram_free": self.vram_free, "missing": list(self.missing),
-            "installed": self.installed, "error": self.error,
+            "installed": self.installed, "depth": self.depth, "error": self.error,
         }
 
 
@@ -156,6 +157,16 @@ class NodeClient:
             return r.json()
         except Exception as e:  # noqa: BLE001
             return {"error": str(e)[:200]}
+
+    def queue_depth(self) -> int:
+        """Queued + running jobs on this node."""
+        try:
+            r = self._get("/queue", timeout=10)
+            r.raise_for_status()
+            data = r.json()
+            return len(data.get("queue_running") or []) + len(data.get("queue_pending") or [])
+        except Exception:  # noqa: BLE001
+            return 0
 
     def installed_models(self) -> dict[str, set[str]]:
         """Files the node can load, per models subfolder.
@@ -199,6 +210,7 @@ def check_node(spec: NodeConfig, refs: list[ModelRef]) -> NodeHealth:
         h.vram_used = int(devices[0].get("vram_used") or 0)
     have = client.installed_models()
     h.installed = sum(len(v) for v in have.values())
+    h.depth = client.queue_depth()
     for ref in refs:
         names = have.get(ref.folder)
         if names is not None and ref.filename in names:

@@ -372,6 +372,7 @@ def nodes_cmd(
     name: str = typer.Argument("", help="节点名（sync 时指定；留空=全部）"),
     config: Optional[str] = typer.Option(None, "--config", "-c"),
     models_dir: str = typer.Option("", "--models-dir", help="本地 ComfyUI models 目录（同步源）"),
+    role: str = typer.Option("", "--role", help="只看某个角色的节点（t2i / i2v）"),
 ):
     """节点池：查看/自检 ComfyUI 节点，并同步缺失的模型文件。
 
@@ -388,15 +389,16 @@ def nodes_cmd(
     fleet = nodes_from_config(cfg)
 
     def _one(spec):
+        roles = "/".join(spec.roles or []) or "any"
         h = check_node(spec, refs)
         if not h.online:
             console.print(f"[red]✗[/red] {spec.name:14s} {spec.base_url}  "
-                          f"离线（{h.error}）")
+                          f"[{roles}]  离线（{h.error}）")
         else:
             miss = (f"  缺 {len(h.missing)} 个模型" if h.missing else "  模型齐全")
             color = "yellow" if h.missing else "green"
             console.print(f"[{color}]●[/{color}] {spec.name:14s} {spec.base_url}  "
-                          f"v{h.version}  {h.device}  "
+                          f"[{roles}]  v{h.version}  {h.device}  "
                           f"显存 {h.vram_free/1024**3:.1f}/{h.vram_total/1024**3:.1f}G"
                           f"{miss}")
             for m in h.missing[:12]:
@@ -406,13 +408,20 @@ def nodes_cmd(
     if action in ("list", "check"):
         console.print(f"[bold]ComfyUI 节点池[/bold]（清单来自工作流，共 "
                       f"{len(refs)} 个模型文件）")
+        shown = 0
         for spec in fleet:
             if not spec.enabled:
                 continue
+            if role and role not in (spec.roles or []) and spec.roles:
+                continue
+            shown += 1
             _one(spec)
+        if role and not shown:
+            console.print(f"[yellow]没有角色为 {role} 的节点[/yellow]")
         if action == "list":
             console.print("\n同步模型：dj nodes sync <名字>   "
                           "（节点需在 config/default.yaml 的 comfyui.nodes 里配置）")
+            console.print("派发：给节点配 roles: [t2i] / [i2v]，出图和出视频会自动分流到对应机器")
         return
 
     if action == "sync":

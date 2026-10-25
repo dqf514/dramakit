@@ -222,6 +222,10 @@ class NodeConfig(BaseModel):
     name: str = "node"
     base_url: str = "http://127.0.0.1:8188"
     enabled: bool = True
+    # What this node is for: "t2i" (stills), "i2v" (video). Empty = any task.
+    # Specialising a node keeps one model resident instead of swapping between
+    # two, which is where most of the per-shot time went.
+    roles: list[str] = Field(default_factory=list)
     # --- how to ship model files to this node ---
     #   shared - the node's models dir is mounted here; copy into it
     #   scp    - copy over ssh to remote_models

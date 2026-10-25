@@ -9,13 +9,14 @@ from .base import BaseImageVideo, BaseLLM, BaseMusic, BaseTTS
 from .comfyui import ComfyUIClient, build_visual
 from .llm import OpenAICompatLLM, build_llm
 from .music import build_music
+from .pool import ComfyUIPool, build_pool
 from .tts import build_tts, resolve_voice
 
 __all__ = [
     "BaseLLM", "BaseTTS", "BaseImageVideo", "BaseMusic",
-    "OpenAICompatLLM", "ComfyUIClient",
+    "OpenAICompatLLM", "ComfyUIClient", "ComfyUIPool",
     "build_llm", "build_tts", "build_visual", "build_music", "resolve_voice",
-    "Providers",
+    "build_pool", "Providers",
 ]
 
 
@@ -46,7 +47,11 @@ class Providers:
     @property
     def visual(self) -> Optional[BaseImageVideo]:
         if self._visual is None and self.cfg.comfyui.enabled:
-            self._visual = build_visual(self.cfg.comfyui, self.root)
+            # with extra nodes in the fleet, dispatch by role and queue depth
+            if self.cfg.comfyui.nodes:
+                self._visual = build_pool(self.cfg, self.root)
+            else:
+                self._visual = build_visual(self.cfg.comfyui, self.root)
         return self._visual
 
     @property

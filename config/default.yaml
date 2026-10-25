@@ -226,9 +226,10 @@ comfyui:
   # 工作流即清单：扫描 config/comfyui/*.json 的模型加载节点，自动得出要传的模型。
   # 新增节点后 `dj nodes check` 看缺什么，`dj nodes sync <名字>` 自动补齐（带进度）。
   nodes: []
-  #  - name: gpu3090-a
-  #    base_url: http://192.168.1.50:8188
-  #    transfer: shared        # shared=该节点 models 目录已挂载到本机；scp=走 ssh 传
+  #  - name: gpu3090-v0        # 3090#0，专做视频
+  #    base_url: http://<3090IP>:8188
+  #    roles: [i2v]            # t2i=出图 / i2v=出视频；留空=什么都接
+  #    transfer: scp           # shared=该节点 models 目录已挂载到本机；scp=走 ssh 传
   #    local_models: /mnt/gpu3090/ComfyUI/models
   #    # 或用 scp：
   #    # transfer: scp
@@ -236,6 +237,14 @@ comfyui:
   #    # ssh_user: ubuntu
   #    # ssh_key: ~/.ssh/id_ed25519
   #    # remote_models: /home/ubuntu/ComfyUI/models
+  #  - name: gpu3090-v1        # 3090#1，专做视频
+  #    base_url: http://<3090IP>:8189
+  #    roles: [i2v]
+  #    transfer: scp
+  #  - name: img-box          # 出图专机
+  #    base_url: http://<IMGIP>:8188
+  #    roles: [t2i]
+  #    transfer: scp
   # 本机 ComfyUI 的 models 目录（模型文件存放处，也是同步来源）
   models_dir: E:\\ComfyUI\\models
   mode: image_then_video # image | video | image_then_video

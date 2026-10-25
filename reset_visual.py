@@ -13,7 +13,7 @@ from dramakit.models import Status
 
 cfg = Config.load(r"E:\dramakit\config\default.yaml")
 root = Path(r"E:\dramakit\projects\测试短剧")
-store = ProjectStore(root, cfg)
+store = ProjectStore(root)
 project = store.load()
 
 clear_prompt = "--keep-prompt" not in sys.argv
