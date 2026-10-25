@@ -149,6 +149,14 @@ tts:
   concurrency: 4
   use_proxy: false                          # 直连(false)；本地 CosyVoice 必须 false
   silence_pad_ms: 120                       # 每句尾部留白，避免字幕/语音太挤
+  # 旁白/解说是否朗读。false = 只做屏幕文字（独有样式，不挡画面），不进配音轨
+  speak_narration: false
+  # --- 音色池筛选（自动选角时只从这里挑，避免港台腔/方言混进短剧）---
+  voice_locales: ["zh-CN"]                  # 只用这些语言前缀
+  voice_pool: []                            # 显式白名单（留空=按 locales 过滤）
+  voice_exclude: []                         # 额外排除
+  voice_notes: {}                           # 音色备注（喂给配音导演 LLM）
+    # zh-CN-YunyangNeural: 成熟稳重男声，适合长辈/反派
   # 角色名 → 音色（不填则按性别回退到上面的默认音色）
   voice_map: {}
     # 林凡: zh-CN-YunxiNeural
@@ -276,8 +284,8 @@ storyboard:
 
 # --------------------------- 合成 compose -----------------------------------
 compose:
-  width: 1920
-  height: 1080                              # 横屏 16:9
+  width: 1280
+  height: 720                               # 横屏 16:9 · 720p
   fps: 30
   video_bitrate: 6M
   audio_bitrate: 192k
@@ -290,7 +298,10 @@ compose:
   motion_effect: kenburns                   # 静图镜头的运动：kenburns | zoompan | none
   kenburns_scale: 1.12                      # 静图最大缩放幅度
   loudness_normalize: true
-  target_loudness_lufs: -16.0               # 短视频平台常用 -14~-16 LUFS
+  target_loudness_lufs: -16.0
+  # H3 原生音频：bed=只当配乐/环境声垫底（人声走 TTS 轨，避免双声混叠）；discard=完全丢弃
+  h3_audio: bed
+  h3_audio_gain: 0.45               # 短视频平台常用 -14~-16 LUFS
   burn_subtitles: true # 硬字幕（红果/抖音常用，不可关闭显示）
   also_write_srt: true                      # 同时输出软字幕 .srt
   show_speaker_name: true                   # 台词上方显示角色名
@@ -305,6 +316,13 @@ compose:
     bold: true
     alignment: 2                            # 底部居中
     speaker_color: "&H0000E5FF"             # 角色名高亮色
+    # 旁白专用样式：顶部居中 + 半透明底板 + 斜体暖色，不占用底部对白区
+    narration_font: Microsoft YaHei
+    narration_font_size: 14
+    narration_color: "&H00A0DCFA"           # 暖米色
+    narration_back_color: "&H66000000"      # 40% 透明黑底板
+    narration_margin_v: 40                  # 距顶部距离
+    narration_alignment: 8                  # 顶部居中
   generate_cover: true
   cover_from_shot: first                    # first | best | last
 
@@ -323,6 +341,7 @@ pipeline:
     - voice
     - subtitle
     - music
+    - precheck
     - compose
   resume: true                              # 跳过已完成节点，可断点续跑
   stop_after: null                          # 例: storyboard —— 只跑到分镜就停

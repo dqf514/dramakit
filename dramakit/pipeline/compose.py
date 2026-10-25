@@ -51,6 +51,9 @@ def _scene_voice(ctx: Context, tscene, tmp: Path) -> str:
     parts: list[str] = []
     for i, tl_line in enumerate(tscene.lines):
         l = tl_line.line
+        # narration is screen-only: it contributes no voice and no silence gap
+        if tl_line.is_narration:
+            continue
         d = max(l.duration, 0.05)
         if l.audio_path:
             ap = ctx.store.abs(l.audio_path)
@@ -107,10 +110,43 @@ def compose_episode(ctx: Context, ep) -> str:
     ff.concat_audio(scene_voices, voice)
     ep.voice_path = ctx.store.rel(voice)
 
+    # --- MiniMax H3 native audio bed ---
+    # H3 renders its own stereo mix (score + ambience). Keep it as a bed under
+    # the TTS dialogue instead of throwing it away — that is where the BGM
+    # comes from. The H3 prompt does not carry any spoken lines, so there is
+    # no second voice fighting the TTS track.
+    bed = None
+    if cc.h3_audio == "bed":
+        beds: list[str] = []
+        for tshot in tl.shots:
+            vid = tshot.shot.video_path
+            if not vid:
+                continue
+            vp = ctx.store.abs(vid)
+            if not vp.exists():
+                continue
+            raw = ff.extract_audio(vp, tmp / f"h3raw_{len(beds):04d}.mp3",
+                                   volume=cc.h3_audio_gain)
+            if not raw:
+                continue
+            beds.append(ff.pad_audio(raw, tmp / f"h3bed_{len(beds):04d}.mp3",
+                                      tshot.duration))
+        if beds:
+            bed = tmp / "h3_bed.mp3"
+            ff.concat_audio(beds, bed)
+            ctx.log.info("compose: 第%d集 H3 原生音频垫底 %d 段", ep.index, len(beds))
+
     # --- music ---
     bgm = ctx.store.abs(ep.bgm_path) if ep.bgm_path else None
     if bgm and not bgm.exists():
         bgm = None
+    if bed and bgm:
+        merged = tmp / "bed_mix.mp3"
+        ff.mix_voice_bgm(bed, bgm, merged,
+                         bgm_volume=ctx.cfg.music.bgm_volume, duck=False, target_lufs=None)
+        bgm = merged
+    elif bed:
+        bgm = bed
     mix = tmp / "mix.mp3"
     target = cc.target_loudness_lufs if cc.loudness_normalize else None
     ff.mix_voice_bgm(voice, str(bgm) if bgm else None, mix,
@@ -160,6 +196,10 @@ def run(ctx: Context) -> dict:
     made = 0
     for ep in ctx.target_episodes():
         if ctx.stage_done(ep, "compose") and ep.video_path and ctx.store.abs(ep.video_path).exists():
+            continue
+        if ep.compose_blocked:
+            ctx.log.error("compose: 第%d集被 precheck 阻断，跳过（%s）",
+                          ep.index, ep.compose_blocked[:160])
             continue
         if not ep.scenes:
             ctx.log.warning("compose: 第%d集无内容，跳过", ep.index)
