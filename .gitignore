@@ -66,3 +66,10 @@ dl_one.py
 dl_flux.py
 dl_flux3.py
 dl_par.py
+chk_res.py
+dump_wf.py
+dump_sg.py
+dump_sys.py
+verify_safetensors.py
+_klein_*.json
+_klein_*.md
