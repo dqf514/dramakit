@@ -503,7 +503,11 @@ class ComfyUIClient(BaseImageVideo):
                        extra: Optional[dict] = None,
                        ref_images: Optional[list[str]] = None) -> str:
         extra = dict(extra or {})
-        wf = self._pick_workflow(self.cfg.t2i_workflow, "t2i")
+        # a reference workflow takes the output size from the reference image,
+        # so it only works when there is one
+        want_ref = bool(ref_images) and bool(self.cfg.t2i_workflow_ref)
+        wf = self._pick_workflow(
+            self.cfg.t2i_workflow_ref if want_ref else self.cfg.t2i_workflow, "t2i")
         graph = copy.deepcopy(self._load_workflow(wf))
         nm, _info, ref_slots = self._resolved_nodes("t2i", graph)
         if ref_slots:

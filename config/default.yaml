@@ -180,7 +180,10 @@ comfyui:
   # --- 进度监听：优先 WebSocket，失败自动回退轮询 /history ---
   use_websocket: true
   ws_fallback_to_poll: true
+  # 出图用 FLUX 3 Image Klein。带角色/场景参考图时用多参考图那版，
+  # 没有参考图的空镜用普通版（多参考版无参考时会退化成正方形空潜空间）。
   t2i_workflow: config/comfyui/t2i_flux3_klein.json
+  t2i_workflow_ref: config/comfyui/t2i_flux3_klein_ref.json
   i2v_workflow: config/comfyui/i2v_minimax_h3.json
   auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
   auto_map: true       # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
@@ -203,15 +206,16 @@ comfyui:
     positive: "104"      # CLIPTextEncode（写 text）
     negative: "105"      # CLIPTextEncode（写 text，FLUX 3 留空）
     seed: "107"          # KSampler（写 seed / noise_seed）
-    width: "106"         # EmptyFlux2LatentImage（写 width）32 的倍数
-    height: "106"        # EmptyFlux2LatentImage（写 height）16:9
+    width: "106"         # EmptyFlux2LatentImage（写 width，普通版用）
+    height: "106"        # EmptyFlux2LatentImage（写 height，普通版用）
     steps: "107"         # KSampler（写 steps）
     cfg: "107"           # KSampler（写 cfg）
     sampler: "107"       # KSampler（写 sampler_name / scheduler）
     checkpoint: "101"    # UNETLoader（写 unet_name）
     clip: "102"          # CLIPLoader（写 clip_name）
     vae: "103"           # VAELoader（写 vae_name）
-    ref_image: ""        # 可选：角色参考图 LoadImage 节点（consistency=ref 时注入）
+    sampling: "112"      # ModelSamplingFlux（写 width / height）
+    ref_image: "201"     # LoadImage：角色参考图（第二个槽位=场景参考图，自动推断）
   i2v_nodes:
     image: "1"           # LoadImage（写 image，上传后的首帧）
     last_image: ""       # H3 单图 i2v，暂不用尾帧

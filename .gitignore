@@ -59,6 +59,12 @@ test_pool.py
 test_compose_parts.py
 test_charref.py
 test_fitref.py
+test_refshot.py
+test_grade_audio.py
+accept.py
+regen_refs.py
+reset_compose.py
+reset_visual.py
 pw_qc.py
 bisect_flux3.py
 diag_flux3.py

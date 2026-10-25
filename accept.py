@@ -39,6 +39,17 @@ def loudness(p: Path) -> dict:
     return out
 
 
+def _rate(value) -> float:
+    """'30/1' -> 30.0"""
+    try:
+        if isinstance(value, str) and "/" in value:
+            num, _, den = value.partition("/")
+            return float(num) / float(den or 1)
+        return float(value)
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
 def main():
     SHOTS.mkdir(parents=True, exist_ok=True)
     ok = True
@@ -57,7 +68,7 @@ def main():
               f"峰值 {ld.get('true_peak_dbfs')} dBFS")
         checks = [
             ("分辨率 1280x720", (w, h) == (1280, 720)),
-            ("帧率 24", abs(float(v.get("avg_frame_rate", 0)) - 24) < 0.5),
+            ("帧率 30", abs(_rate(v.get("avg_frame_rate")) - 30) < 0.5),
             ("像素格式 yuv420p", v.get("pix_fmt") == "yuv420p"),
             ("有音轨", bool(a.get("codec_name"))),
             ("音画时长差 < 0.2s",

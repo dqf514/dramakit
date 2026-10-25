@@ -268,6 +268,9 @@ class ComfyUIConfig(BaseModel):
     use_proxy: bool = False
     # workflow templates (JSON exported from ComfyUI "API format")
     t2i_workflow: str = "config/comfyui/t2i_sdxl.json"
+    # 带参考图的出图工作流（FLUX 3 的多参考图版）。有参考图时用它，
+    # 没有时用上面的普通版 —— 多参考图版在无参考时会退化成正方形空潜空间。
+    t2i_workflow_ref: str = ""
     i2v_workflow: str = "config/comfyui/i2v_animatediff.json"
     upscale_workflow: str = ""                        # optional
     auto_workflows: bool = True                       # missing file -> scan config/comfyui/
