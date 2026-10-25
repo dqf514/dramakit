@@ -1828,9 +1828,11 @@ async function loadSettings(){
     <h1 class="page">设置</h1>
     <div class="sub">模型按优先级与角色分配；没被勾选的任务由默认模型兜底。保存会原位写回 YAML，注释保留。</div>
     <div class="card">
-      <h3>模型清单 <span class="muted" style="font-weight:400;font-size:11px">${S.modelEntries.length} 个 · 顺序＝优先级</span></h3>
+      <h3>模型清单 <span class="muted" id="mCount" style="font-weight:400;font-size:11px">${S.modelEntries.length} 个 · 顺序＝优先级</span></h3>
       <div class="chips" style="margin-bottom:10px">
         <span class="muted" style="font-size:11px;align-self:center">添加：</span>
+        <span class="chip" id="addOneAll" style="border-color:var(--confirm);color:var(--confirm)" title="新增一个勾选全部任务的模型并置顶设为默认：它一个人负责分析/分集/剧本/分镜/提示词/配置/动作/检索/打标。下方已有卡片原样保留，随时可改回分工模式">⚡ 一个模型跑全部</span>
+        <span class="muted" style="align-self:center;color:var(--line)">|</span>
         ${provs.map(p=>`<span class="chip" data-add="${esc(p.id)}" title="${esc(p.hint||"")}">${esc(p.label)}</span>`).join("")}
       </div>
       <div id="modelList"></div>
@@ -1859,6 +1861,7 @@ async function loadSettings(){
       <div id="setupOut"></div>
     </div>`;
   $$("[data-add]",box).forEach(c=>c.onclick=()=>addModel(c.dataset.add,provs));
+  $("#addOneAll").onclick=addAllInOne;
   $("#mSave").onclick=saveModels;
   $("#aiSave").onclick=saveAI;
   $("#probeBtn").onclick=showProbe;
@@ -1866,6 +1869,7 @@ async function loadSettings(){
 }
 function renderModelList(){
   const box=$("#modelList"); if(!box) return;
+  const cnt=$("#mCount"); if(cnt) cnt.textContent=`${S.modelEntries.length} 个 · 顺序＝优先级`;
   const roles=S.modelRoles||[];
   if(!S.modelEntries.length){
     box.innerHTML='<div class="empty">还没有模型。点上方 Provider 添加一个。</div>'; return;
@@ -1964,6 +1968,24 @@ function addModel(provId, provs){
     roles:first?(S.modelRoles||[]).map(r=>r.id):[]});
   if(first||!S.modelDefault) S.modelDefault=id;
   renderModelList();
+}
+function addAllInOne(){
+  harvestModels();
+  const roles=(S.modelRoles||[]).map(r=>r.id);
+  if(!roles.length){ toast("没有可用任务列表","warn"); return; }
+  // 便捷：沿用当前默认/第一张卡的连接信息（通常就是主力模型），用户只需核对地址和模型名
+  const cur=S.modelEntries.find(x=>x.id===S.modelDefault)||S.modelEntries[0]||{};
+  const id="m"+Date.now().toString(36);
+  // 置顶（列表顺序＝优先级），勾满全部任务并设为默认兜底 → 它一个人包干所有活
+  S.modelEntries.unshift({id,label:cur.label?`${cur.label.replace(/（.*?）/g,"").trim()}·全包`:"全能模型（全包）",
+    base_url:cur.base_url||"http://localhost:11434/v1",
+    model:cur.model||"",api_key:"",
+    temperature:num(cur.temperature,0.7),max_tokens:Math.round(num(cur.max_tokens,4096)),
+    timeout:num(cur.timeout,300),use_proxy:!!cur.use_proxy,
+    roles:roles});
+  S.modelDefault=id;
+  renderModelList();
+  toast("已置顶一个勾满全部任务的模型。核对地址/模型名后点「保存模型清单」即可；下方卡片原样保留，想恢复分工把它的任务取消勾选或删除即可","ok");
 }
 async function testModel(i){
   harvestModels();
