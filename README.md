@@ -38,11 +38,14 @@
 |------|----------|----------|----------|
 | LLM 剧本/分镜 | DeepSeek / 通义千问 / Kimi / OpenAI | Ollama / LM Studio / vLLM | Ollama |
 | 配音 TTS | MiniMax / OpenAI-TTS | CosyVoice（可克隆音色） | **Edge-TTS** |
-| 画面/视频 | 任意 REST 出图服务 | **ComfyUI**（SDXL + AnimateDiff） | ComfyUI |
+| 画面/视频 | 任意 REST 出图服务 | **ComfyUI**（FLUX 3 出图 + MiniMax H3 出视频） | ComfyUI |
 | 配乐 BGM | Suno API | MusicGen | 本地曲库 |
 | 合成 | — | ffmpeg | ffmpeg |
 
 全部通过 `config/default.yaml` 切换，代码零改动。
+
+> **渲染节点池**：`comfyui.nodes` 可以挂多台 ComfyUI 机器，用 `roles: [t2i]/[i2v]`
+> 指定专长，流水线按角色 + 队列深度自动派发；模型按工作流自动推导清单并同步过去。
 
 ---
 
@@ -349,10 +352,10 @@ export DRAMAKIT_LLM_API_KEY=sk-xxxx
                         │ 图 / 视频              │ 逐句音频                 │ BGM
                         └────────────────────────┼─────────────────────────┘
                                                  ▼
-                            voice → subtitle → music → compose（ffmpeg）
+                      voice → subtitle → music → precheck → compose（ffmpeg） → qc
                                                  │
                                                  ▼
-                            9:16 成片 mp4 · 硬字幕 srt · 封面
+                          16:9 成片 mp4 · 硬字幕 · 封面 · FCPXML 时间线
 ```
 
 四层职责：
