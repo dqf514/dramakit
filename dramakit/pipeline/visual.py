@@ -69,6 +69,29 @@ def _ref_images(ctx: Context, shot: Shot, scene=None) -> list[str]:
     return out
 
 
+def _fit_refs(ctx: Context, refs: list[str], shot: Shot) -> list[str]:
+    """Bring reference images to the delivery aspect.
+
+    FLUX 3 takes the output size from the reference image, and the character
+    sheets are portrait while the episode is 16:9. Fitting them first keeps
+    the render at the right shape.
+    """
+    if not refs:
+        return refs
+    c = ctx.cfg.comfyui
+    out_dir = ctx.store.root / "tmp" / "refs"
+    out: list[str] = []
+    for i, path in enumerate(refs):
+        dst = out_dir / f"{shot.id}_{i}.png"
+        try:
+            ff.fit_reference(path, dst, c.width, c.height)
+            out.append(str(dst))
+        except Exception as e:  # noqa: BLE001
+            ctx.log.warning("参考图适配失败(%s)，用原图: %s", path, str(e)[:120])
+            out.append(path)
+    return out
+
+
 def flf_enabled(ctx: Context, shot: Shot) -> bool:
     c = ctx.cfg.comfyui
     if not c.first_last_frame or shot.flf is False:
@@ -93,7 +116,7 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
     meta: dict = {"seed": seed, "mode": c.mode}
     try:
         if do_image and (force or not img_out.exists()):
-            refs = _ref_images(ctx, shot, sc)
+            refs = _fit_refs(ctx, _ref_images(ctx, shot, sc), shot)
             vis.generate_image(
                 prompt=shot.prompt, negative=shot.negative_prompt,
                 width=c.width, height=c.height, seed=seed, steps=c.steps, cfg=c.cfg,
@@ -113,7 +136,8 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
                     width=c.width, height=c.height,
                     seed=(seed + 1) % (2**31) if seed >= 0 else seed,
                     steps=c.steps, cfg=c.cfg, out_path=str(end_out),
-                    extra=_extra(ctx), ref_images=_ref_images(ctx, shot, sc))
+                    extra=_extra(ctx),
+                    ref_images=_fit_refs(ctx, _ref_images(ctx, shot, sc), shot))
                 meta["end_seed"] = (seed + 1) % (2**31) if seed >= 0 else -1
             last = str(end_out) if use_flf and end_out.exists() else ""
             vid_out = ctx.store.video_path(shot.id)

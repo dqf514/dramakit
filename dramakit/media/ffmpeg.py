@@ -259,6 +259,25 @@ def pad_audio(src: str | Path, out: str | Path, total_duration: float) -> str:
     return str(out)
 
 
+def fit_reference(src: str | Path, out: str | Path, width: int, height: int) -> str:
+    """Fit an image into a canvas without distorting it.
+
+    FLUX 3's reference conditioning takes the output size from the reference
+    image, so a portrait character sheet has to be brought to the delivery
+    aspect first. The sides are filled with a blurred copy of the same image
+    rather than black bars, which the model reads as "portrait on a soft
+    background" instead of "letterboxed photo".
+    """
+    out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
+    fc = (f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+          f"crop={width}:{height},boxblur=24:2[b];"
+          f"[0:v]scale={width}:{height}:force_original_aspect_ratio=decrease[s];"
+          f"[b][s]overlay=(W-w)/2:(H-h)/2")
+    _run([ffmpeg_bin(), "-y", "-i", str(src), "-filter_complex", fc,
+          "-frames:v", "1", str(out)], quiet=False)
+    return str(out)
+
+
 def mix_tracks(parts: Sequence[tuple[str | Path, float]], out: str | Path, *,
                duration: Optional[float] = None) -> str:
     """Mix several audio stems with individual gains into one track.

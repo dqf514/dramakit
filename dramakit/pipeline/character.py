@@ -26,6 +26,14 @@ VIEW_TEXT = {
     "three_quarter": "three-quarter view, slight body angle, neutral standing pose",
 }
 
+# FLUX 3 reads a scene caption, not a tag list, and it takes "reference
+# sheet" literally - the old wording came back as technical line art.
+FLUX3_VIEW = {
+    "front": "seen from the front, facing the camera, standing at ease",
+    "side": "seen from the side in profile, facing left, standing at ease",
+    "three_quarter": "seen from a three-quarter angle, body slightly turned, standing at ease",
+}
+
 
 def _seed(name: str, view: str) -> int:
     digest = hashlib.sha1(f"{name}:{view}".encode("utf-8")).hexdigest()
@@ -83,6 +91,16 @@ def build_anchors(ctx: Context, chars: list[Character]) -> int:
 def _ref_prompt(ctx: Context, c: Character, view: str) -> str:
     ad = ctx.project.art_direction
     style = ad.style_prompt_prefix or ad.style or "cinematic realistic"
+    if ctx.cfg.comfyui.prompt_format == "flux3":
+        return (
+            f"Full-color studio photograph, full-body portrait of {c.anchor()}, "
+            f"{FLUX3_VIEW.get(view, FLUX3_VIEW['front'])}. The whole body is "
+            f"visible from head to feet, centered in the frame with a little "
+            f"space around it, photographed against a plain light gray seamless "
+            f"backdrop, soft even light from the front, natural skin texture and "
+            f"fabric detail, a neutral expression, no props, no text, no "
+            f"watermark, {style}."
+        )
     return (
         f"character reference sheet, {c.anchor()}, "
         f"{VIEW_TEXT.get(view, VIEW_TEXT['front'])}, full body, "
@@ -95,6 +113,13 @@ def _loc_prompt(ctx: Context, loc: Location) -> str:
     ad = ctx.project.art_direction
     style = ad.style_prompt_prefix or ad.style or "cinematic realistic"
     desc = loc.visual_prompt or loc.description or loc.name
+    if ctx.cfg.comfyui.prompt_format == "flux3":
+        return (
+            f"Full-color photograph, a wide establishing view of {desc}. "
+            f"The space is empty - no people, no figures, no text anywhere. "
+            f"{ad.era}, {style}, the architecture and the furnishings are what "
+            f"the picture is about, even daylight, sharp from edge to edge."
+        )
     return (
         f"location reference photo, empty scene, {desc}, "
         f"no people, no text, no watermark, {ad.era}, {style}, "

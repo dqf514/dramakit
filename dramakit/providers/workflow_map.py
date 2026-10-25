@@ -60,8 +60,13 @@ def _of_type(graph: dict, types: Iterable[str]) -> list[str]:
 
 
 def _walks(graph: dict, start: str, max_depth: int = 8) -> list[str]:
-    """Breadth-first ancestors of `start` (nearest first)."""
+    """Breadth-first ancestors of `start` (nearest first).
+
+    Order is stable: a set would make the result depend on hashing, and the
+    caller picks the first CLIPTextEncode it finds.
+    """
     seen: set[str] = set()
+    order: list[str] = []
     queue = [(start, 0)]
     while queue:
         cur, depth = queue.pop(0)
@@ -70,8 +75,9 @@ def _walks(graph: dict, start: str, max_depth: int = 8) -> list[str]:
         for up in _links(graph.get(cur, {})).values():
             if up in graph and up not in seen and up != start:
                 seen.add(up)
+                order.append(up)
                 queue.append((up, depth + 1))
-    return list(seen)
+    return order
 
 
 def _ancestor_of_type(graph: dict, start: str, types: Iterable[str]) -> str:
@@ -121,6 +127,11 @@ def _positive_negative(graph: dict, sampler: str) -> tuple[str, str]:
             return ""
         if (graph[up].get("class_type") or "") in CLIP_TYPES:
             return up
+        # a reference-conditioning node carries its own positive/negative
+        # inputs, so follow the same field one level down
+        inner = _links(graph[up]).get(field, "")
+        if inner in graph and (graph[inner].get("class_type") or "") in CLIP_TYPES:
+            return inner
         for anc in _walks(graph, up):
             if (graph[anc].get("class_type") or "") in CLIP_TYPES:
                 return anc
@@ -164,7 +175,10 @@ def _ref_slots(graph: dict) -> list[str]:
         ct = node.get("class_type") or ""
         if "IPAdapter" not in ct and "Reference" not in ct and "InstantID" not in ct:
             continue
-        for field in ("image", "image2", "ref_image", "reference_image"):
+        fields = ("image", "image2", "ref_image", "reference_image")
+        # ReferenceMultiLatent names its slots images.image0, images.image1, ...
+        fields += tuple(f"images.image{i}" for i in range(8))
+        for field in fields:
             up = _links(node).get(field, "")
             if not up or up not in graph:
                 continue
