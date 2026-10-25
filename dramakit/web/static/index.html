@@ -609,6 +609,7 @@ async function boot(){
   renderAllPages();
   if(!S.booted){ S.activePage = S.projects.length ? "workbench" : "guide"; S.booted=true; }
   switchPage(S.activePage, true);
+  startProgressPoll();
 }
 
 function renderHeader(){
@@ -710,6 +711,8 @@ async function selectProject(slug, quiet){
   const d=await getJSON("/api/projects/"+encodeURIComponent(slug));
   if(!d.ok){ toast("加载项目失败："+esc(d.error||""),"err"); return; }
   S.detail=d;
+  const pr=await getJSON("/api/progress?project="+encodeURIComponent(slug));
+  S.progress=(pr&&pr.ok)?(pr.progress||{}):{};
   if(!S.boardEp || !(d.episodes||[]).some(e=>e.index===S.boardEp)) S.boardEp=(d.episodes[0]||{}).index||0;
   renderHeader(); renderProjects(); renderTags();
   renderAllPages();
@@ -1239,6 +1242,41 @@ function epProgress(ep){
   const vals=STAGES.map(s=>(ep.stage_status||{})[s]);
   return Math.round(vals.filter(v=>v==="done").length/STAGES.length*100);
 }
+function runningStageName(){
+  const eps=(S.detail&&S.detail.episodes)||[];
+  let runningStage="";
+  for(const ep of eps){ for(const s of STAGES){ if((ep.stage_status||{})[s]==="running") runningStage=s; } }
+  return runningStage;
+}
+function runningProgressHtml(){
+  const s=runningStageName();
+  if(!s) return "";
+  const p=(S.progress||{})[s];
+  const zh=STAGE_ZH[s]||s;
+  let txt=`<span style="color:var(--go2)">● ${esc(zh)} 进行中</span>`;
+  if(p&&p.total) txt+=` <span class="muted">已完成 ${p.done}/${p.total} 镜</span>`;
+  return `<div style="margin-top:8px;font-size:12px">${txt}</div>`;
+}
+let progressPollTimer=null;
+function startProgressPoll(){
+  if(progressPollTimer) clearInterval(progressPollTimer);
+  progressPollTimer=setInterval(async ()=>{
+    if(!S.current) return;
+    // 只在有阶段 running 且停留在进度相关页时刷新，避免打扰其它操作
+    if(!runningStageName()) return;
+    if(!["workbench","pipeline","board"].includes(S.activePage)) return;
+    try{
+      const d=await getJSON("/api/projects/"+encodeURIComponent(S.current));
+      if(!d.ok) return;
+      S.detail=d;
+      const pr=await getJSON("/api/progress?project="+encodeURIComponent(S.current));
+      if(pr&&pr.ok) S.progress=pr.progress||{};
+      if(S.activePage==="workbench") renderWorkbench();
+      else if(S.activePage==="pipeline") renderRun();
+      else if(S.activePage==="board") renderBoard();
+    }catch(e){/* 忽略瞬时错误 */}
+  }, 8000);
+}
 function renderWorkbench(){
   const box=$("#page-workbench");
   const d=S.detail;
@@ -1286,6 +1324,7 @@ function renderWorkbench(){
     </div>
     <div class="card"><h3>制作阶段 <span class="muted" style="font-weight:400">完成 ${doneStages}/12</span></h3>
       <div class="stagebar">${stageHtml}</div>
+      ${runningProgressHtml()}
       <div class="muted" style="font-size:11px;margin-top:8px">阶段按顺序执行；画面/配音可单独重跑。点击阶段跳到流水线并勾选它。</div>
     </div>
     <h2 class="page" style="font-size:14px;margin:14px 0 8px">分集</h2>

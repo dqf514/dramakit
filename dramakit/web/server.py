@@ -205,6 +205,19 @@ def _make_handler(state: State):
                     if r.get("path"):
                         r["media_url"] = _media_url(slug, r["path"])
                 return self._json({"ok": True, "assets": rows})
+            if path == "/api/progress":
+                slug = (query.get("project") or [""])[0]
+                if not slug:
+                    return self._err("project required", 400)
+                pf = (state.projects_root / slug) / ".progress.json"
+                data: dict = {}
+                if pf.exists():
+                    try:
+                        import json as _json
+                        data = _json.loads(pf.read_text(encoding="utf-8"))
+                    except Exception:  # noqa: BLE001
+                        data = {}
+                return self._json({"ok": True, "progress": data})
             return self._err(f"no such endpoint: {path}", 404)
 
         # ---- POST /api ----

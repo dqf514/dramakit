@@ -149,6 +149,28 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
         return shot.id, False, msg
 
 
+def _write_progress(ctx: "Context", stage: str, done: int, total: int) -> None:
+    """Persist transient per-shot progress to a sidecar file the web console reads.
+
+    Kept out of project.json (owned by the pipeline's save cycle) so it can be
+    updated every shot without touching the Project model. Best-effort: any
+    failure is swallowed so progress reporting never breaks generation.
+    """
+    try:
+        import json as _json, time as _time
+        p = ctx.store.root / ".progress.json"
+        data: dict = {}
+        if p.exists():
+            try:
+                data = _json.loads(p.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                data = {}
+        data[stage] = {"done": done, "total": total, "ts": int(_time.time())}
+        p.write_text(_json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def run(ctx: Context) -> dict:
     c = ctx.cfg.comfyui
     if not c.enabled:
@@ -186,6 +208,7 @@ def run(ctx: Context) -> dict:
         for i, fut in enumerate(as_completed(futs), 1):
             _sid, ok, _msg = fut.result()
             ok_count += int(ok)
+            _write_progress(ctx, "visual", i, len(jobs))
             if i % 5 == 0 or i == len(jobs):
                 ctx.save()
                 ctx.log.info("visual: %d/%d 完成", i, len(jobs))
