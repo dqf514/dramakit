@@ -244,6 +244,24 @@ class Catalog:
                            "characters": [c.name for c in proj.characters]})
         bump("project")
 
+        # character & location reference images (project-level, generated in the
+        # character stage) — without these the asset browser can't show 定妆三视图 /
+        # 场景参考图 even though they exist on disk and in project.json.
+        cst = _s(proj.stage_status.get("character"))
+        for c in proj.characters:
+            ctags = [c.name] + ([c.role] if c.role else [])
+            seen: set[str] = set()
+            for img in list(c.refs()) + ([c.ref_sheet] if c.ref_sheet else []):
+                if img and img not in seen:
+                    seen.add(img)
+                    _media(self, slug, "image", f"{c.name}/{Path(img).name}", 0,
+                           img, ctags, "角色参考", cst, bump)
+        for loc in proj.locations:
+            for img in loc.ref_images:
+                if img:
+                    _media(self, slug, "image", f"{loc.name}/{Path(img).name}", 0,
+                           img, [loc.name], "场景参考", cst, bump)
+
         for ep in proj.episodes:
             ep_tags_base = [f"第{ep.index}集"]
             t = _tag(f"{ep.title} {ep.logline} {ep.hook} {' '.join(ep.key_beats)}",
