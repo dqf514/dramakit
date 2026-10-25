@@ -494,6 +494,7 @@ class ComfyUIClient(BaseImageVideo):
             graph = copy.deepcopy(self._load_workflow(wf))
             nm, _info, _refs = self._resolved_nodes("i2v", graph)
         self._set(graph, nm, "positive", "text", prompt)
+        self._set(graph, nm, "positive", "prompt", prompt)  # MiniMax H3 native node uses "prompt"; others ignore it
         self._set(graph, nm, "negative", "text", negative)
         if image_path and Path(image_path).exists():
             server_name = extra.get("uploaded_image") or self.upload_image(image_path)

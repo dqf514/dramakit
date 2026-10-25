@@ -17,11 +17,11 @@
 #   LMStudio   base_url: http://localhost:1234/v1           model: <你加载的模型>
 llm:
   provider: openai_compat
-  base_url: http://localhost:11434/v1 # 默认指向本地 Ollama
-  api_key: ollama # 本地随便填；云端用环境变量覆盖
-  model: qwen2.5:14b
+  base_url: https://api.minimax.cn/v1 # 默认指向本地 Ollama
+  api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4 # 本地随便填；云端用环境变量覆盖
+  model: MiniMax-M3.1-Flash
   temperature: 0.7
-  max_tokens: 4096
+  max_tokens: 102400
   top_p: 1.0
   timeout: 300.0
   max_retries: 3
@@ -42,12 +42,12 @@ models:
   default: m1
   entries:
   - id: m1
-    label: 本地主力
-    base_url: http://localhost:11434/v1
-    model: qwen2.5:14b
-    api_key: ollama
+    label: miniMax-M3.1
+    base_url: https://api.minimax.cn/v1
+    model: MiniMax-M3.1-Flash
+    api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4
     temperature: 0.7
-    max_tokens: 4096
+    max_tokens: 102400
     timeout: 300.0
     use_proxy: false
     roles:
@@ -59,6 +59,7 @@ models:
     - config
     - actions
     - search
+    - tag
   - id: m2
     label: 打标小模型
     base_url: http://localhost:11434/v1
@@ -183,7 +184,7 @@ comfyui:
   use_websocket: true
   ws_fallback_to_poll: true
   t2i_workflow: config/comfyui/t2i_sdxl.json
-  i2v_workflow: config/comfyui/i2v_animatediff.json
+  i2v_workflow: config/comfyui/i2v_minimax_h3.json
   auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
   auto_map: true       # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
   upscale_workflow: ""                      # 可选：放大工作流
@@ -198,31 +199,31 @@ comfyui:
     positive: "6"        # 正向提示词 CLIPTextEncode
     negative: "7"        # 负向提示词 CLIPTextEncode
     seed: "3"            # KSampler（写 seed / noise_seed）
-    width: 768 # EmptyLatentImage（写 width）
-    height: 1344 # EmptyLatentImage（写 height）
+    width: 1344 # EmptyLatentImage（写 width）H3 要求 32 倍数
+    height: 768 # EmptyLatentImage（写 height）16:9 原生 ~1MP
     steps: 25 # KSampler（写 steps）
     cfg: 6.5 # KSampler（写 cfg）
     sampler: "3"         # KSampler（写 sampler_name / scheduler）
     checkpoint: "4"      # CheckpointLoaderSimple（写 ckpt_name）
     ref_image: ""        # 可选：角色参考图 LoadImage 节点（consistency=ref 时注入）
   i2v_nodes:
-    image: "10"          # LoadImage（写 image，上传后的名字）
-    last_image: ""       # 可选：尾帧 LoadImage 节点（首尾帧工作流用）
-    positive: "6"
-    negative: "7"
-    seed: "3"
-    frames: 32 # 帧数节点（写 length / frames）
-    fps: 16 # 合成节点（写 frame_rate / fps）
+    image: "1"           # LoadImage（写 image，上传后的首帧）
+    last_image: ""       # H3 单图 i2v，暂不用尾帧
+    positive: "104"      # MiniMaxH3ImageToVideo（写 prompt）
+    negative: ""         # H3 无负向提示词
+    seed: "15"           # RandomNoise（写 noise_seed）
+    frames: "104"        # MiniMaxH3ImageToVideo（写 length，17k+5 网格自动对齐）
+    fps: "91"            # CreateVideo（写 fps）
   mode: image_then_video # image | video | image_then_video
-  width: 768
-  height: 1344                              # ≈9:16 竖屏
+  width: 1280
+  height: 720                               # ≈16:9 横屏
   steps: 25
   cfg: 6.5
   sampler: dpmpp_2m
   scheduler: karras
   checkpoint: sd_xl_base_1.0.safetensors
-  frames: 32                                # 每镜头视频帧数
-  fps: 16
+  frames: 124                               # 每镜头视频帧数（H3 17k+5 网格，124≈5s@24fps）
+  fps: 24
   seed_mode: character # random | fixed | character（按角色固定种子保一致性）
   fixed_seed: 12345
   save_intermediate: true                   # 保留 tmp/ 中间文件便于排查
@@ -275,8 +276,8 @@ storyboard:
 
 # --------------------------- 合成 compose -----------------------------------
 compose:
-  width: 1080
-  height: 1920                              # 竖屏 9:16
+  width: 1920
+  height: 1080                              # 横屏 16:9
   fps: 30
   video_bitrate: 6M
   audio_bitrate: 192k
