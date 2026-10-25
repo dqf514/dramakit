@@ -59,6 +59,10 @@ class _Node:
         self._queue = (now, depth)
         return depth
 
+    def forget_queue(self) -> None:
+        """Drop the cached queue reading so the next pick re-measures."""
+        self._queue = (0.0, 0)
+
 
 class ComfyUIPool(BaseImageVideo):
     """A fleet of ComfyUI servers with role-based dispatch."""
@@ -82,7 +86,7 @@ class ComfyUIPool(BaseImageVideo):
             except Exception as e:  # noqa: BLE001
                 last = e
                 log.warning("节点 %s 渲染失败，转移: %s", node.name, str(e)[:160])
-                node._queue = (0.0, 0)  # force a fresh queue reading
+                node.forget_queue()
         raise ComfyUIError(
             f"没有可用的渲染节点（任务={role}，尝试过 {', '.join(tried) or '无'}）"
             + (f"：{last}" if last else ""))
