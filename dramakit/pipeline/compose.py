@@ -276,6 +276,26 @@ def compose_episode(ctx: Context, ep) -> str:
     music = ""
     if parts:
         music = ff.mix_tracks(parts, tmp / "music.mp3", duration=tl.duration)
+
+    # The music stem is the only thing that proves "there is a BGM": the final
+    # mix is loud either way because the dialogue is in it. Measure the stem.
+    mix_info: dict = {"bed_segments": len(beds) if bed else 0,
+                      "library_bgm": bool(bgm)}
+    if music:
+        measured = ff.measure_loudness(music)
+        mix_info["music_lufs"] = round(float(measured.get("input_i", 0.0)), 2)
+        if mix_info["music_lufs"] < -60:
+            ctx.log.warning("compose: 第%d集 音乐轨是静音的（%.1f LUFS）",
+                            ep.index, mix_info["music_lufs"])
+        else:
+            ctx.log.info("compose: 第%d集 音乐轨 %.1f LUFS（垫底 %d 段%s）",
+                         ep.index, mix_info["music_lufs"], mix_info["bed_segments"],
+                         " + 曲库" if bgm else "")
+    else:
+        mix_info["music_lufs"] = None
+        ctx.log.warning("compose: 第%d集 没有任何音乐轨", ep.index)
+    ep.qc_report = {**(ep.qc_report or {}), "mix": mix_info}
+
     mix = tmp / "mix.mp3"
     target = cc.target_loudness_lufs if cc.loudness_normalize else None
     ff.mix_voice_bgm(voice, music or None, mix,

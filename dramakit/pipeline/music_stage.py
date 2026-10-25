@@ -40,6 +40,11 @@ def run(ctx: Context) -> dict:
         if path:
             ep.bgm_path = ctx.store.rel(path)
             made += 1
+        elif mc.provider == "library":
+            ctx.log.warning(
+                "music: 第%d集 没有曲库可用（%s 里没有匹配的曲子），"
+                "成片的音乐将只来自 H3 原生音频",
+                ep.index, mc.library_dir)
         ctx.mark(ep, "music", Status.DONE if path else Status.SKIPPED)
         ctx.save()
     ctx.log.info("music: 生成 %d 集 BGM", made)

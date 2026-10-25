@@ -176,10 +176,21 @@ def run(ctx: Context) -> dict:
         if not ep.video_path:
             continue
         report = check_episode(ctx, ep)
-        ep.qc_report = report
+        # compose already recorded the mix measurements (music stem, bed
+        # segments) - keep them alongside the delivery checks
+        previous = ep.qc_report or {}
+        ep.qc_report = {**{k: v for k, v in previous.items() if k == "mix"},
+                        **report}
         out = qc_dir / f"ep_{ep.index:03d}.json"
-        out.write_text(json.dumps(report, ensure_ascii=False, indent=2),
+        out.write_text(json.dumps(ep.qc_report, ensure_ascii=False, indent=2),
                        encoding="utf-8")
+        mix = (ep.qc_report.get("mix") or {})
+        if mix.get("music_lufs") is None:
+            ctx.log.warning("qc: 第%d集 没有音乐轨", ep.index)
+        elif mix.get("music_lufs", -99) < -60:
+            ctx.log.error("qc: 第%d集 音乐轨静音（%.1f LUFS）",
+                          ep.index, mix["music_lufs"])
+            ep.qc_report["ok"] = False
         if report["ok"]:
             ctx.mark(ep, "qc", Status.DONE)
             m = report["metrics"]
