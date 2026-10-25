@@ -271,6 +271,16 @@ class ComfyUIConfig(BaseModel):
     # 首尾帧：用 start+end 两张关键帧驱动 i2v（需支持双图的模型/工作流）
     first_last_frame: bool = False
     flf_workflow: str = ""                            # 双图 i2v 工作流；留空则退回单图
+    # 模型文件名。FLUX / FLUX 3 这类"扩散模型 + 文本编码器 + VAE"三件套的架构，
+    # checkpoint 写 UNETLoader 的 unet_name，clip/vae 各写自己的加载节点。
+    clip_name: str = ""                               # CLIPLoader 的 clip_name
+    vae_name: str = ""                                # VAELoader 的 vae_name
+    # 出图提示词格式：sdxl = 关键词堆叠；flux3 = 完整场景描述（FLUX 3 Image Klein）
+    prompt_format: Literal["sdxl", "flux3"] = "sdxl"
+    # 出视频分辨率（H3 原生 16:9 是 1344x768，必须是 32 的倍数）。
+    # 留空则用工作流里写死的值。
+    video_width: int = 0
+    video_height: int = 0
     # node id overrides inside the workflow to inject prompts/seed/size
     t2i_nodes: dict = Field(default_factory=lambda: {        "positive": "6", "negative": "7", "seed": "3",
         "width": "5", "height": "5", "steps": "3", "cfg": "3",
@@ -379,6 +389,17 @@ class ComposeConfig(BaseModel):
     #   discard = 丢弃 H3 音频，只用 TTS 人声 + 曲库 BGM
     h3_audio: Literal["bed", "discard"] = "bed"
     h3_audio_gain: float = 0.45               # H3 垫底音量（相对人声）
+    # --- 专业后期 ---
+    # AI 镜头各自生成，曝光/饱和/白平衡各不相同，剪在一起会露馅。
+    # 逐镜测量后统一到本集中位数，是"业余感"最大的单一来源。
+    grade_shots: bool = True
+    grade_strength: float = 0.85              # 0=不改，1=完全拉到目标
+    lut: str = ""                             # 可选 .cube LUT，给全片套统一色调
+    # H3 每镜生成的原生音频响度不一致，垫底时必须先归一，否则 BGM 忽大忽小
+    normalize_bed_loudness: bool = True
+    bed_target_lufs: float = -24.0            # 垫底比人声低，混音时再压
+    # 导出 FCPXML 时间线，人可以在 Resolve / Premiere 里接着精修
+    nle_export: bool = True
     # subtitles
     burn_subtitles: bool = True                       # 硬字幕（红果常用）
     also_write_srt: bool = True
@@ -407,7 +428,8 @@ class PipelineConfig(BaseModel):
     output_dir: str = "projects"
     stages_enabled: list[str] = Field(default_factory=lambda: [
         "ingest", "analyze", "character", "segment", "script", "storyboard",
-        "promptgen", "visual", "voice", "subtitle", "music", "compose",
+        "promptgen", "visual", "voice", "subtitle", "music", "precheck",
+        "compose", "qc",
     ])
     resume: bool = True                               # skip DONE nodes
     stop_after: Optional[str] = None                  # e.g. "storyboard"

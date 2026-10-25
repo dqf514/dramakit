@@ -1,12 +1,13 @@
 """Pipeline package: stages + runner."""
-from . import (analyze, character, compose, ingest, music_stage, promptgen, script,
-               segment, storyboard, subtitle, visual, voice)
+from . import (analyze, character, compose, ingest, music_stage, precheck, promptgen,
+               qc, script, segment, storyboard, subtitle, visual, voice)
 from .base import Context, Timeline, build_timeline
 from .runner import ORDER, make_context, run_pipeline
 
 __all__ = [
     "ingest", "analyze", "character", "segment", "script", "storyboard",
-    "promptgen", "visual", "voice", "subtitle", "music_stage", "compose",
+    "promptgen", "visual", "voice", "subtitle", "music_stage", "precheck",
+    "compose", "qc",
     "Context", "Timeline", "build_timeline",
     "run_pipeline", "make_context", "ORDER",
 ]

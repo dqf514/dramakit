@@ -138,6 +138,51 @@ class ComfyUIClient(BaseImageVideo):
         except Exception:  # noqa: BLE001
             return []
 
+    def list_model_files(self) -> dict[str, list[str]]:
+        """Model files the server can actually see, per folder.
+
+        FLUX-style architectures split the model across diffusion_models /
+        text_encoders / vae, so checking only `checkpoints` misses everything.
+        """
+        wanted = {
+            "checkpoints": ("CheckpointLoaderSimple", "ckpt_name"),
+            "diffusion_models": ("UNETLoader", "unet_name"),
+            "text_encoders": ("CLIPLoader", "clip_name"),
+            "vae": ("VAELoader", "vae_name"),
+            "loras": ("LoraLoaderModelOnly", "lora_name"),
+        }
+        out: dict[str, list[str]] = {}
+        for folder, (node_type, param) in wanted.items():
+            try:
+                info = self.object_info(node_type)
+                node = info.get(node_type, {})
+                req = node.get("input", {}).get("required", {})
+                out[folder] = list(req.get(param, [[]])[0] or [])
+            except Exception:  # noqa: BLE001
+                out[folder] = []
+        return out
+
+    def workflow_model_files(self, rel: str, kind: str = "") -> list[tuple[str, str]]:
+        """(folder, filename) pairs the workflow needs, from its loader nodes."""
+        from .nodes import MODEL_LOADERS
+        try:
+            graph = self._load_workflow(rel, kind)
+        except Exception:  # noqa: BLE001
+            return []
+        out: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for node in graph.values():
+            spec = MODEL_LOADERS.get(str(node.get("class_type", "")))
+            if not spec:
+                continue
+            folder, param = spec
+            name = str((node.get("inputs") or {}).get(param) or "")
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            out.append((folder, name))
+        return out
+
     def validate_workflow(self, rel: str, nodes_map: dict, kind: str = "") -> dict:
         """Check a workflow: node types exist on the server, mapped semantic ids
         resolve. With auto_map on, stale ids are repaired from the graph."""
@@ -290,6 +335,24 @@ class ComfyUIClient(BaseImageVideo):
         node = self._node(graph, nodes_map, key)
         if node is not None:
             node.setdefault("inputs", {})[field] = value
+
+    def _set_any(self, graph: dict, nodes_map: dict, key: str,
+                 fields: tuple[str, ...], value) -> bool:
+        """Write `value` to the first field of `fields` the node actually has.
+
+        Loader nodes name their file differently depending on the architecture:
+        SDXL uses `ckpt_name`, FLUX / FLUX 3 use `unet_name`. One semantic key
+        ("checkpoint") has to cover both.
+        """
+        node = self._node(graph, nodes_map, key)
+        if node is None:
+            return False
+        inputs = node.setdefault("inputs", {})
+        for field in fields:
+            if field in inputs:
+                inputs[field] = value
+                return True
+        return False
 
     def _seed_value(self, requested: int) -> int:
         if requested is not None and requested >= 0:
@@ -453,12 +516,22 @@ class ComfyUIClient(BaseImageVideo):
         self._set(graph, nm, "seed", "noise_seed", real_seed)
         self._set(graph, nm, "width", "width", width or self.cfg.width)
         self._set(graph, nm, "height", "height", height or self.cfg.height)
+        # ModelSamplingFlux carries its own resolution (FLUX shift sampling)
+        if nm.get("sampling"):
+            self._set(graph, nm, "sampling", "width", width or self.cfg.width)
+            self._set(graph, nm, "sampling", "height", height or self.cfg.height)
         self._set(graph, nm, "steps", "steps", steps or self.cfg.steps)
         self._set(graph, nm, "cfg", "cfg", cfg or self.cfg.cfg)
         self._set(graph, nm, "sampler", "sampler_name", extra.get("sampler", self.cfg.sampler))
         self._set(graph, nm, "sampler", "scheduler", extra.get("scheduler", self.cfg.scheduler))
-        self._set(graph, nm, "checkpoint", "ckpt_name",
-                  extra.get("checkpoint", self.cfg.checkpoint))
+        # model files: the loader's field name depends on the architecture
+        # (ckpt_name for SDXL, unet_name for FLUX / FLUX 3)
+        self._set_any(graph, nm, "checkpoint", ("ckpt_name", "unet_name"),
+                      extra.get("checkpoint", self.cfg.checkpoint))
+        if self.cfg.clip_name:
+            self._set_any(graph, nm, "clip", ("clip_name",), self.cfg.clip_name)
+        if self.cfg.vae_name:
+            self._set_any(graph, nm, "vae", ("vae_name",), self.cfg.vae_name)
         for nid, fields in (extra.get("graph_overrides") or {}).items():
             if nid in graph:
                 graph[nid].setdefault("inputs", {}).update(fields)
@@ -514,6 +587,10 @@ class ComfyUIClient(BaseImageVideo):
         self._set(graph, nm, "frames", "context_length", frames or self.cfg.frames)
         self._set(graph, nm, "fps", "frame_rate", fps or self.cfg.fps)
         self._set(graph, nm, "fps", "fps", fps or self.cfg.fps)
+        # video resolution (H3 takes it on the model node itself)
+        if self.cfg.video_width and self.cfg.video_height:
+            self._set(graph, nm, "width", "width", self.cfg.video_width)
+            self._set(graph, nm, "height", "height", self.cfg.video_height)
         for nid, fields in (extra.get("graph_overrides") or {}).items():
             if nid in graph:
                 graph[nid].setdefault("inputs", {}).update(fields)

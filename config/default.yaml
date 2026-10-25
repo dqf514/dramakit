@@ -180,7 +180,7 @@ comfyui:
   # --- 进度监听：优先 WebSocket，失败自动回退轮询 /history ---
   use_websocket: true
   ws_fallback_to_poll: true
-  t2i_workflow: config/comfyui/t2i_sdxl.json
+  t2i_workflow: config/comfyui/t2i_flux3_klein.json
   i2v_workflow: config/comfyui/i2v_minimax_h3.json
   auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
   auto_map: true       # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
@@ -190,18 +190,25 @@ comfyui:
   # 留空则自动退回单图 i2v，不影响现有流程。
   first_last_frame: false
   flf_workflow: "" # 例：config/comfyui/i2v_flf.json
+  # --- FLUX 3 Image Klein 的三件套（UNETLoader / CLIPLoader / VAELoader）---
+  clip_name: qwen3vl_4b_int8_convrot.safetensors
+  vae_name: flux2-vae.safetensors
+  # 出图提示词格式：flux3 = 完整场景描述；sdxl = 关键词堆叠
+  prompt_format: flux3
   # 语义名 → 节点ID（字符串）。全部可留空/删掉：auto_map 会按图结构自动推断；
   # 想锁定某个节点再手填，手填优先。工作流换编号后失效项会被自动忽略并重新推断。
   t2i_nodes:
-    positive: "6"        # 正向提示词 CLIPTextEncode
-    negative: "7"        # 负向提示词 CLIPTextEncode
-    seed: "3"            # KSampler（写 seed / noise_seed）
-    width: 1344 # EmptyLatentImage（写 width）H3 要求 32 倍数
-    height: 768 # EmptyLatentImage（写 height）16:9 原生 ~1MP
-    steps: 25 # KSampler（写 steps）
-    cfg: 6.5 # KSampler（写 cfg）
-    sampler: "3"         # KSampler（写 sampler_name / scheduler）
-    checkpoint: "4"      # CheckpointLoaderSimple（写 ckpt_name）
+    positive: "104"      # CLIPTextEncode（写 text）
+    negative: "105"      # CLIPTextEncode（写 text，FLUX 3 留空）
+    seed: "107"          # KSampler（写 seed / noise_seed）
+    width: "106"         # EmptyFlux2LatentImage（写 width）32 的倍数
+    height: "106"        # EmptyFlux2LatentImage（写 height）16:9
+    steps: "107"         # KSampler（写 steps）
+    cfg: "107"           # KSampler（写 cfg）
+    sampler: "107"       # KSampler（写 sampler_name / scheduler）
+    checkpoint: "101"    # UNETLoader（写 unet_name）
+    clip: "102"          # CLIPLoader（写 clip_name）
+    vae: "103"           # VAELoader（写 vae_name）
     ref_image: ""        # 可选：角色参考图 LoadImage 节点（consistency=ref 时注入）
   i2v_nodes:
     image: "1"           # LoadImage（写 image，上传后的首帧）
@@ -211,6 +218,8 @@ comfyui:
     seed: "15"           # RandomNoise（写 noise_seed）
     frames: "104"        # MiniMaxH3ImageToVideo（写 length，17k+5 网格自动对齐）
     fps: "91"            # CreateVideo（写 fps）
+    width: "104"         # MiniMaxH3ImageToVideo（写 width）
+    height: "104"        # MiniMaxH3ImageToVideo（写 height）
   # ---- 节点池：额外的 ComfyUI 机器（方案B 的调度对象）----
   # 工作流即清单：扫描 config/comfyui/*.json 的模型加载节点，自动得出要传的模型。
   # 新增节点后 `dj nodes check` 看缺什么，`dj nodes sync <名字>` 自动补齐（带进度）。
@@ -228,13 +237,16 @@ comfyui:
   # 本机 ComfyUI 的 models 目录（模型文件存放处，也是同步来源）
   models_dir: E:\\ComfyUI\\models
   mode: image_then_video # image | video | image_then_video
-  width: 1280
-  height: 720                               # ≈16:9 横屏
-  steps: 25
-  cfg: 6.5
-  sampler: dpmpp_2m
-  scheduler: karras
-  checkpoint: sd_xl_base_1.0.safetensors
+  width: 1344                             # 出图分辨率（FLUX 3 / H3 都吃 32 的倍数）
+  height: 768                              # 16:9 横屏原生
+  steps: 16                               # FLUX 3 Klein 蒸馏版：16 步
+  cfg: 1.0                                # 蒸馏版无引导，cfg 必须 1
+  sampler: euler
+  scheduler: simple
+  checkpoint: flux3-image-klein-int8-convrot.safetensors
+  # 出视频分辨率（H3 原生 16:9 = 1344x768，32 的倍数）
+  video_width: 1344
+  video_height: 768
   frames: 124                               # 每镜头视频帧数（H3 17k+5 网格，124≈5s@24fps）
   fps: 24
   seed_mode: character # random | fixed | character（按角色固定种子保一致性）

@@ -40,8 +40,8 @@
       "vae": ["11", 0],
       "first_frame": ["1", 0],
       "prompt": "placeholder",
-      "width": 864,
-      "height": 480,
+      "width": 1344,
+      "height": 768,
       "length": 124
     }
   },

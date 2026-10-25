@@ -301,18 +301,25 @@ def comfy_test(config: Optional[str] = typer.Option(None, "--config", "-c"),
     except Exception:  # noqa: BLE001
         pass
 
-    # 4) checkpoints
+    # 4) model files the server can see
     try:
-        cks = c.list_checkpoints()
-        if cks:
-            cur = cfg.comfyui.checkpoint
-            mark = "[green]✓[/green]" if cur in cks else "[red]✗ 配置的这个不在服务器上[/red]"
-            console.print(f"  当前 checkpoint: {cur} {mark}")
-            if cur not in cks:
-                avail = ", ".join(cks[:12])
-                console.print(f"    服务器可用: {avail}")
+        have = c.list_model_files()
+        for label, rel, kind in (("出图", cfg.comfyui.t2i_workflow, "t2i"),
+                                 ("图生视频", cfg.comfyui.i2v_workflow, "i2v")):
+            need = c.workflow_model_files(rel, kind)
+            missing = [(f, n) for f, n in need
+                       if have.get(f) is not None and n not in have.get(f, [])]
+            if not need:
+                continue
+            if missing:
+                console.print(f"  [red]✗[/red] {label} 工作流缺模型（服务器上看不到）:")
+                for folder, name in missing:
+                    console.print(f"      - {folder}/{name}")
+            else:
+                console.print(f"  [green]✓[/green] {label} 工作流模型齐全 "
+                              f"（{len(need)} 个文件）")
     except Exception as e:  # noqa: BLE001
-        console.print(f"[yellow]  读取 checkpoint 列表失败: {e}[/yellow]")
+        console.print(f"[yellow]  读取模型列表失败: {e}[/yellow]")
 
     # 5) workflow validation
     for label, rel, nmap, kind in (

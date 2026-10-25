@@ -259,6 +259,43 @@ def pad_audio(src: str | Path, out: str | Path, total_duration: float) -> str:
     return str(out)
 
 
+def mix_tracks(parts: Sequence[tuple[str | Path, float]], out: str | Path, *,
+               duration: Optional[float] = None) -> str:
+    """Mix several audio stems with individual gains into one track.
+
+    Used to build the music stem: the H3 bed and the library BGM each have
+    their own level, and the result sits under the dialogue as one unit.
+    """
+    out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
+    usable = [(p, g) for p, g in parts if p and Path(p).exists()]
+    if not usable:
+        return ""
+    if len(usable) == 1:
+        path, gain = usable[0]
+        cmd = [ffmpeg_bin(), "-y", "-i", str(path)]
+        af = f"volume={gain},aresample=44100"
+        if duration:
+            cmd += ["-t", f"{duration:.3f}"]
+        cmd += ["-af", af, "-c:a", "libmp3lame", "-q:a", "3", str(out)]
+        _run(cmd, quiet=False)
+        return str(out)
+    inputs: list[str] = []
+    filters: list[str] = []
+    labels: list[str] = []
+    for i, (path, gain) in enumerate(usable):
+        inputs += ["-i", str(path)]
+        filters.append(f"[{i}:a]volume={gain},aresample=44100[a{i}]")
+        labels.append(f"[a{i}]")
+    filters.append(f"{''.join(labels)}amix=inputs={len(labels)}:duration=longest:dropout_transition=0[m]")
+    cmd = [ffmpeg_bin(), "-y", *inputs, "-filter_complex", ";".join(filters),
+           "-map", "[m]"]
+    if duration:
+        cmd += ["-t", f"{duration:.3f}"]
+    cmd += ["-c:a", "libmp3lame", "-q:a", "3", str(out)]
+    _run(cmd, quiet=False)
+    return str(out)
+
+
 def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path, *,
                   bgm_volume: float = 0.22, duck: bool = True,
                   target_lufs: Optional[float] = None) -> str:
@@ -284,6 +321,48 @@ def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path,
               f"aresample=44100{af_tail}[a]")
     _run([ffmpeg_bin(), "-y", "-i", str(voice), "-i", str(bgm),
           "-filter_complex", fc, "-map", "[a]",
+          "-c:a", "libmp3lame", "-q:a", "3", str(out)], quiet=False)
+    return str(out)
+
+
+def measure_loudness(src: str | Path) -> dict:
+    """Measure a track with EBU R128 (loudnorm's analysis pass).
+
+    Returns the measured_* values loudnorm needs for a linear second pass.
+    """
+    r = _run([ffmpeg_bin(), "-i", str(src), "-af",
+              "loudnorm=I=-24:TP=-2.0:LRA=11:print_format=json",
+              "-f", "null", "-"], quiet=True)
+    text = (r.stderr or "") + (r.stdout or "")
+    start = text.rfind("{")
+    end = text.rfind("}")
+    if start < 0 or end <= start:
+        return {}
+    try:
+        return json.loads(text[start:end + 1])
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def normalize_loudness(src: str | Path, out: str | Path, target_lufs: float = -24.0,
+                        tp: float = -2.0, lra: float = 11.0,
+                        sample_rate: int = 44100) -> str:
+    """Bring one track to a target loudness using loudnorm's two-pass linear mode.
+
+    The single-pass dynamic mode pumps and changes the character of the audio
+    between shots; measuring first and applying a fixed gain does not.
+    """
+    out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
+    m = measure_loudness(src)
+    af = (f"loudnorm=I={target_lufs}:TP={tp}:LRA={lra}")
+    if m.get("input_i"):
+        af += (f":measured_I={m['input_i']}:measured_TP={m['input_tp']}"
+               f":measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}")
+        if m.get("target_offset"):
+            af += f":offset={m['target_offset']}"
+        af += ":linear=true"
+    af += f",aresample={sample_rate}"
+    _run([ffmpeg_bin(), "-y", "-i", str(src), "-af", af,
           "-c:a", "libmp3lame", "-q:a", "3", str(out)], quiet=False)
     return str(out)
 

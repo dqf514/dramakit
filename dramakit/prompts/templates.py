@@ -194,7 +194,7 @@ STORYBOARD_USER = """为下面这场戏设计分镜（竖屏手机观看）。
 PROMPT_SYSTEM = """你是AI绘画提示词工程师，为短剧分镜写高质量的出图/出视频提示词。
 只输出JSON。"""
 
-PROMPT_USER = """为下面这个竖屏(9:16)镜头生成AI绘画提示词。
+PROMPT_USER = """为下面这个{{aspect}}镜头生成AI绘画提示词。
 
 镜头：{{shot_type}} / 运镜 {{camera_move}}
 画面：{{action}}
@@ -207,10 +207,61 @@ PROMPT_USER = """为下面这个竖屏(9:16)镜头生成AI绘画提示词。
 镜头情绪：{{mood}}
 
 规则：
-- prompt: 英文提示词。结构必须是【角色锚点在前】+ 动作表情 + 环境 + 光线 + 镜头(shot type,角度)+ 画风 + 画质词；竖屏构图 vertical composition, 9:16
+- prompt: 英文提示词。结构必须是【角色锚点在前】+ 动作表情 + 环境 + 光线 + 镜头(shot type,角度)+ 画风 + 画质词；{{composition}}
 - negative_prompt: 英文负面词，在全局负面基础上补充本镜头要避免的
 - 若出镜多个角色，prompt中按姓名逐一描述外貌，避免混淆
 {% if end_frame %}- end_prompt: 同一镜头最后一帧的英文提示词。只描述最终姿态/位置/表情，角色锚点、服装、场景和光线必须与 prompt 完全一致；不要新增角色，不要换装
+{% endif %}
+输出JSON：
+{"prompt":"","negative_prompt":"","end_prompt":""}"""
+
+
+# --------------------------------------------------------------------------- #
+# PROMPTGEN — FLUX 3 Image Klein (full scene caption, not keyword soup)
+#
+# FLUX 3 does not read SDXL-style prompts. It takes one continuous scene
+# caption (100-350 words) that a human would write for a still frame. A short
+# keyword prompt produces a generic, interchangeable image - BFL's own docs
+# say to never use the model without a prompt upsampler for this reason.
+# The rules below are distilled from BFL's official upsampler system prompt.
+# --------------------------------------------------------------------------- #
+FLUX3_IMAGE_SYSTEM = """你是 FLUX 3 出图提示词导演。
+
+FLUX 3 Image Klein 接收的是"一段完整场景描述"（full scene caption），不是关键词堆叠。
+短提示词会得到泛化、平庸、可替换任何情节的画面。只输出JSON。
+
+硬规则：
+- prompt 必须是英文，一段连续散文，100~350 词，不要分行成条目
+- 以媒介与风格开头：Full-color outdoor photograph, ... / Full-color indoor photograph, ... /
+  Studio photograph, ... / Close-up photograph, ...
+- 顺序：媒介与风格 → 场景 → 光线 → 镜头 → 人物（位置/外貌/服装/材质/状态）→ 前景与背景
+- 用画面相对位置：frame-left / frame-right / upper / lower / foreground / midground / background
+- 角色锚点必须原样沿用，一个字都不要改写；多角色时按姓名逐一描述，避免混淆
+- 不要写画质套话：8k / masterpiece / best quality / ultra detailed / trending
+- 不要写"This image shows"这类元叙述，不要以情绪或品质判断收尾
+- 背景只占约六分之一；虚焦或远景只写形状、颜色、剪影，不编造身份，不编造可读文字
+- 画面里需要出现的文字，逐字用双引号写出并说明字体、颜色、位置
+- negative_prompt 必须留空：FLUX 3 常规 checkpoint 不使用负向提示词
+"""
+
+FLUX3_IMAGE_USER = """为下面这个{{aspect}}镜头写一段 FLUX 3 完整场景描述。
+
+镜头：{{shot_type}} / 运镜 {{camera_move}}
+画面：{{action}}
+出镜角色及锁定锚点（必须原样沿用，外貌/发型/服装一个字都不要改写）：
+{{character_anchors}}
+场景：{{location}} / {{time_of_day}}
+场景设定（保持一致，不要改建筑风格/陈设）：{{location_visual}}
+本场剧情：{{scene_summary}}
+全剧画风：{{style}}；年代：{{era}}；色调：{{color_palette}}
+镜头情绪：{{mood}}
+
+要求：
+- 开头用"Full-color outdoor photograph"这类摄影惯例短语承接全剧画风
+- 人物在画面中的位置、姿态、视线、手上动作要具体可执行
+- 环境要给出该场景自己的具体物件，不要写成通用素材库
+- 描述里不要提及画幅比例，"TARGET CANVAS" 之类的词也不要出现
+{% if end_frame %}- end_prompt: 同一镜头最后一帧的完整场景描述。只改最终姿态/位置/表情，角色锚点、服装、场景和光线必须与 prompt 完全一致；不要新增角色，不要换装
 {% endif %}
 输出JSON：
 {"prompt":"","negative_prompt":"","end_prompt":""}"""

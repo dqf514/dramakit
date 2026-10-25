@@ -1,15 +1,17 @@
-"""Stage 11 — compose: assemble each episode into a finished 1080x1920 mp4.
+"""Stage 11 — compose: assemble each episode into a finished mp4.
 
 Per episode:
   1. build the timeline (dialogue-driven; shots stretched to cover each scene)
   2. each shot -> a normalized clip (generated video re-timed, still image given
      Ken Burns motion, or a black card placeholder when no visual exists)
+  2b. colour grade: measure every shot, pull them onto one look
   3. concat shots -> scene picture; concat scenes -> episode picture (silent)
   4. concat line audio per scene (silence for any missing) -> pad to scene dur;
      concat scenes -> episode dialogue track (sample-aligned with the picture)
   5. mix dialogue + BGM (sidechain ducking, loudness normalize)
   6. mux picture + mix, burn ASS subtitles -> episodes/ep_XXX.mp4
   7. grab a cover frame
+  8. export an FCPXML timeline so an editor can pick the episode up in an NLE
 """
 from __future__ import annotations
 
@@ -17,6 +19,8 @@ import logging
 from pathlib import Path
 
 from ..media import ffmpeg as ff
+from ..media import grade as gr
+from ..media import nle
 from ..models import Status
 from .base import Context, build_timeline
 
@@ -45,6 +49,106 @@ def _shot_clip(ctx: Context, tshot, cc, tmp: Path, idx: int) -> str:
     # 3) placeholder card
     return ff.color_clip(out, dur, width=cc.width, height=cc.height, fps=cc.fps,
                          color="0x101014")
+
+
+def _grade_shots(ctx: Context, cc, clips: list[tuple[str, object]],
+                 tmp: Path) -> list[tuple[str, object]]:
+    """Pull every shot onto one look.
+
+    AI shots are rendered independently, so each one lands on a slightly
+    different exposure / saturation / white balance. Cut together they read as
+    amateur. Measuring all of them and targeting the episode median is the
+    cheapest big win in the whole post chain.
+    """
+    if not clips:
+        return clips
+    measured = [gr.analyze(path) for path, _ in clips]
+    target = gr.median_stats(measured)
+    lut = cc.lut or None
+    if lut and not Path(lut).exists():
+        ctx.log.warning("compose: LUT 文件不存在，跳过: %s", lut)
+        lut = None
+    out: list[tuple[str, object]] = []
+    changed = 0
+    for i, (path, tshot) in enumerate(clips):
+        if not gr.grade_filter(measured[i], target, strength=cc.grade_strength, lut=lut):
+            out.append((path, tshot))
+            continue
+        dst = tmp / f"grade_{i:04d}.mp4"
+        gr.grade_shot(path, dst, target, strength=cc.grade_strength, lut=lut,
+                      measured=measured[i], crf=cc.crf, preset=cc.preset,
+                      fps=cc.fps)
+        out.append((str(dst), tshot))
+        changed += 1
+    if changed:
+        ctx.log.info("compose: 统一调色 %d/%d 镜（目标 luma=%.1f sat=%.1f tint=%+.1f）",
+                     changed, len(clips), target.luma, target.sat, target.tint)
+    return out
+
+
+def _export_nle(ctx: Context, ep, tl, shot_clips: list[tuple[str, object]],
+                music_path: str | None) -> str | None:
+    """Export the episode as an FCPXML timeline an editor can open.
+
+    The clips are copied to a persistent folder first: the working files live
+    in tmp/ and are deleted after compose, and a timeline whose media is gone
+    is worthless.
+    """
+    if not shot_clips:
+        return None
+    out_dir = ctx.store.root / "nle" / f"ep_{ep.index:03d}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    timeline = nle.Timeline(
+        name=f"{ctx.project.title or ctx.project.name} EP{ep.index:03d}",
+        width=ctx.cfg.compose.width, height=ctx.cfg.compose.height,
+        fps=ctx.cfg.compose.fps, duration=tl.duration,
+    )
+
+    # picture spine: one clip per shot, at its exact timeline position
+    for (src, tshot), timed in zip(shot_clips, tl.shots):
+        dst = out_dir / f"shot_{timed.shot.id}.mp4"
+        try:
+            import shutil
+            shutil.copy2(src, dst)
+        except Exception:  # noqa: BLE001
+            dst = Path(src)
+        timeline.video.append(nle.Clip(
+            src=dst, offset=timed.start, duration=timed.duration, start=0.0,
+            name=f"shot_{timed.shot.id}", has_video=True, has_audio=False))
+
+    # dialogue lane: the per-line TTS clips
+    dialogue: list[nle.Clip] = []
+    for tl_line in tl.lines:
+        if tl_line.is_narration or not tl_line.line.audio_path:
+            continue
+        ap = ctx.store.abs(tl_line.line.audio_path)
+        if not ap.exists():
+            continue
+        dialogue.append(nle.Clip(
+            src=ap, offset=tl_line.start,
+            duration=max(tl_line.end - tl_line.start, 0.05), start=0.0,
+            name=f"{tl_line.line.speaker}_{tl_line.line.id}",
+            has_video=False, has_audio=True))
+    if dialogue:
+        timeline.lanes[1] = ("Dialogue", dialogue)
+
+    # music lane: the bed / BGM stem
+    if music_path and Path(music_path).exists():
+        stem = out_dir / "music.mp3"
+        try:
+            import shutil
+            shutil.copy2(music_path, stem)
+        except Exception:  # noqa: BLE001
+            stem = Path(music_path)
+        timeline.lanes[2] = ("Music", [nle.Clip(
+            src=stem, offset=0.0, duration=tl.duration, start=0.0,
+            name="music", has_video=False, has_audio=True)])
+
+    out = out_dir / f"ep_{ep.index:03d}.fcpxml"
+    nle.write_fcpxml(timeline, out)
+    ctx.log.info("compose: 第%d集 已导出 FCPXML 时间线 %s", ep.index, out.name)
+    return str(out)
 
 
 def _scene_voice(ctx: Context, tscene, tmp: Path) -> str:
@@ -80,14 +184,24 @@ def compose_episode(ctx: Context, ep) -> str:
     tmp.mkdir(parents=True, exist_ok=True)
 
     # --- picture ---
+    # Build every shot clip first, grade them as a set (the grade target is the
+    # episode median, so it needs all shots), then group them into scenes.
+    shot_clips: list[tuple[str, object]] = []
+    scene_ranges: list[tuple[int, int]] = []
+    for tscene in tl.scenes:
+        begin = len(shot_clips)
+        for tshot in tscene.shots:
+            shot_clips.append(
+                (_shot_clip(ctx, tshot, cc, tmp, len(shot_clips)), tshot))
+        scene_ranges.append((begin, len(shot_clips)))
+    if cc.grade_shots:
+        shot_clips = _grade_shots(ctx, cc, shot_clips, tmp)
+
     scene_videos: list[str] = []
     scene_voices: list[str] = []
-    shot_idx = 0
     for si, tscene in enumerate(tl.scenes):
-        clips = []
-        for tshot in tscene.shots:
-            clips.append(_shot_clip(ctx, tshot, cc, tmp, shot_idx))
-            shot_idx += 1
+        begin, end = scene_ranges[si]
+        clips = [path for path, _ in shot_clips[begin:end]]
         if not clips:  # scene with no shots -> single card for its duration
             clips.append(ff.color_clip(tmp / f"sc_{si}_card.mp4", tscene.duration,
                                        width=cc.width, height=cc.height, fps=cc.fps,
@@ -118,17 +232,22 @@ def compose_episode(ctx: Context, ep) -> str:
     bed = None
     if cc.h3_audio == "bed":
         beds: list[str] = []
-        for tshot in tl.shots:
+        for i, tshot in enumerate(tl.shots):
             vid = tshot.shot.video_path
             if not vid:
                 continue
             vp = ctx.store.abs(vid)
             if not vp.exists():
                 continue
-            raw = ff.extract_audio(vp, tmp / f"h3raw_{len(beds):04d}.mp3",
-                                   volume=cc.h3_audio_gain)
+            raw = ff.extract_audio(vp, tmp / f"h3raw_{i:04d}.mp3")
             if not raw:
                 continue
+            # Every H3 shot is generated separately, so its native score comes
+            # out at a different level. Normalise each one to the same
+            # loudness or the bed audibly pumps from shot to shot.
+            if cc.normalize_bed_loudness:
+                raw = ff.normalize_loudness(raw, tmp / f"h3norm_{i:04d}.mp3",
+                                           target_lufs=cc.bed_target_lufs, tp=-2.0)
             beds.append(ff.pad_audio(raw, tmp / f"h3bed_{len(beds):04d}.mp3",
                                       tshot.duration))
         if beds:
@@ -136,21 +255,25 @@ def compose_episode(ctx: Context, ep) -> str:
             ff.concat_audio(beds, bed)
             ctx.log.info("compose: 第%d集 H3 原生音频垫底 %d 段", ep.index, len(beds))
 
-    # --- music ---
+    # --- music stem ---
+    # One music track under the dialogue: the H3 bed and the library BGM each
+    # with their own level. Mixing them here (instead of chaining two passes
+    # of bgm_volume) keeps the balance predictable.
     bgm = ctx.store.abs(ep.bgm_path) if ep.bgm_path else None
     if bgm and not bgm.exists():
         bgm = None
-    if bed and bgm:
-        merged = tmp / "bed_mix.mp3"
-        ff.mix_voice_bgm(bed, bgm, merged,
-                         bgm_volume=ctx.cfg.music.bgm_volume, duck=False, target_lufs=None)
-        bgm = merged
-    elif bed:
-        bgm = bed
+    parts: list[tuple[str, float]] = []
+    if bed:
+        parts.append((bed, cc.h3_audio_gain))
+    if bgm:
+        parts.append((bgm, ctx.cfg.music.bgm_volume))
+    music = ""
+    if parts:
+        music = ff.mix_tracks(parts, tmp / "music.mp3", duration=tl.duration)
     mix = tmp / "mix.mp3"
     target = cc.target_loudness_lufs if cc.loudness_normalize else None
-    ff.mix_voice_bgm(voice, str(bgm) if bgm else None, mix,
-                     bgm_volume=ctx.cfg.music.bgm_volume,
+    ff.mix_voice_bgm(voice, music or None, mix,
+                     bgm_volume=1.0,
                      duck=ctx.cfg.music.duck_voice, target_lufs=target)
 
     # --- mux + burn subtitles ---
@@ -182,6 +305,15 @@ def compose_episode(ctx: Context, ep) -> str:
     ep.status = Status.DONE
     ep.video_path = ctx.store.rel(final)
     ctx.mark(ep, "compose", Status.DONE)
+
+    # --- NLE hand-off ---
+    # A single FCPXML an editor can open in Resolve / Premiere / FCP, so the
+    # automated render is a starting point rather than a dead end.
+    if cc.nle_export:
+        try:
+            _export_nle(ctx, ep, tl, shot_clips, music or None)
+        except Exception as e:  # noqa: BLE001
+            ctx.log.warning("compose: 第%d集 FCPXML 导出失败: %s", ep.index, str(e)[:160])
 
     # cleanup intermediates unless asked to keep
     if not ctx.cfg.comfyui.save_intermediate:

@@ -143,21 +143,40 @@ def _episode_missing_h3(ctx: Context, ep, h3_needed: bool) -> bool:
     return any(not sh.video_prompt for sc in ep.scenes for sh in sc.shots)
 
 
+def _aspect(ctx: Context) -> tuple[str, str]:
+    """(aspect phrase, composition phrase) for the configured output size."""
+    w = ctx.cfg.comfyui.width or 1280
+    h = ctx.cfg.comfyui.height or 720
+    if w >= h:
+        return "横屏(16:9)镜头", "横屏构图 horizontal composition, 16:9"
+    return "竖屏(9:16)镜头", "竖屏构图 vertical composition, 9:16"
+
+
 def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                       flf: bool, location_visual: str) -> None:
-    """Fill the still-image prompt (SDXL/FLUX style) for one shot."""
+    """Fill the still-image prompt for one shot.
+
+    FLUX 3 and SDXL want completely different prompts, so the template is
+    chosen by config: FLUX 3 needs one continuous scene caption, SDXL wants
+    keyword structure.
+    """
     ad = ctx.project.art_direction
-    user = T.render(T.PROMPT_USER, shot_type=shot.shot_type.value,
+    flux3 = ctx.cfg.comfyui.prompt_format == "flux3"
+    system = T.FLUX3_IMAGE_SYSTEM if flux3 else T.PROMPT_SYSTEM
+    template = T.FLUX3_IMAGE_USER if flux3 else T.PROMPT_USER
+    aspect, composition = _aspect(ctx)
+    user = T.render(template, shot_type=shot.shot_type.value,
                     camera_move=shot.camera_move, action=shot.action,
                     character_anchors=visuals, location=sc.location or "场景",
                     location_visual=location_visual or "（按剧情合理生成）",
                     scene_summary=sc.summary or "", time_of_day=sc.time_of_day,
                     style=ad.style_prompt_prefix or ad.style, era=ad.era,
-                    color_palette=ad.color_palette, mood=sc.mood, end_frame=flf)
+                    color_palette=ad.color_palette, mood=sc.mood, end_frame=flf,
+                    aspect=aspect, composition=composition)
     try:
-        data = llm.complete_json(T.PROMPT_SYSTEM, user)
+        data = llm.complete_json(system, user)
         if isinstance(data, list):
-            data = data[0] if data else {}
+            data = data[0] if not data else {}
         shot.prompt = (data.get("prompt") or "").strip() or _fallback_prompt(ctx, shot, sc)
         shot.negative_prompt = (data.get("negative_prompt") or "").strip()
         if flf:
@@ -168,6 +187,10 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         shot.negative_prompt = ""
         if flf:
             shot.end_prompt = shot.prompt
+    if flux3:
+        # FLUX 3 does not use negative prompts (cfg = 1, distilled)
+        shot.negative_prompt = ""
+        return
     char_neg = _char_negative(ctx, shot)
     if char_neg:
         shot.negative_prompt = (shot.negative_prompt + ", " + char_neg).strip(", ")

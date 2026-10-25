@@ -19,8 +19,12 @@ SAMPLER_TYPES = {
 }
 LATENT_TYPES = {
     "EmptyLatentImage", "EmptySD3LatentImage", "EmptyLatentImagePresets",
+    "EmptyFlux2LatentImage",
 }
 CHECKPOINT_TYPES = {"CheckpointLoaderSimple", "CheckpointLoader", "UNETLoader"}
+TEXT_ENCODER_TYPES = {"CLIPLoader"}
+VAE_TYPES = {"VAELoader"}
+SAMPLING_TYPES = {"ModelSamplingFlux"}
 LOAD_IMAGE_TYPES = {"LoadImage", "LoadImageMask"}
 VIDEO_OUT_TYPES = {
     "VHS_VideoCombine", "SaveVideo", "SaveAnimatedWEBP", "SaveAnimatedPNG",
@@ -33,7 +37,7 @@ VIDEO_MARKERS = (
 
 _SEMANTIC_KEYS = (
     "positive", "negative", "seed", "width", "height",
-    "steps", "cfg", "sampler", "checkpoint", "ref_image",
+    "steps", "cfg", "sampler", "checkpoint", "ref_image", "clip", "vae",
 )
 
 
@@ -125,6 +129,16 @@ def _positive_negative(graph: dict, sampler: str) -> tuple[str, str]:
     return from_field("positive"), from_field("negative")
 
 
+def _loader_of_type(graph: dict, sampler: str, types: Iterable[str]) -> str:
+    """The loader node feeding the sampler, else the first one of that type."""
+    wanted = set(types)
+    for nid in _of_type(graph, wanted):
+        if nid in _walks(graph, sampler) or nid in _links(graph.get(sampler, {})).values():
+            return nid
+    found = _of_type(graph, wanted)
+    return sorted(found, key=_nkey)[0] if found else ""
+
+
 def _checkpoint(graph: dict, sampler: str) -> str:
     for nid in _of_type(graph, CHECKPOINT_TYPES):
         if nid in _walks(graph, sampler) or nid in _links(graph.get(sampler, {})).values():
@@ -194,6 +208,19 @@ def _frames_node(graph: dict, latent: str, sampler: str) -> str:
     return latent
 
 
+def _size_node(graph: dict, sampler: str) -> str:
+    """The node that carries the video width/height (e.g. MiniMaxH3ImageToVideo)."""
+    for nid in _walks(graph, sampler):
+        inp = graph[nid].get("inputs") or {}
+        if "width" in inp and "height" in inp:
+            return nid
+    for nid, node in graph.items():
+        inp = node.get("inputs") or {}
+        if "width" in inp and "height" in inp:
+            return nid
+    return ""
+
+
 def _fps_node(graph: dict) -> str:
     outputs = sorted(_of_type(graph, VIDEO_OUT_TYPES), key=_nkey)
     for nid in outputs:
@@ -227,15 +254,21 @@ def infer_workflow(graph: dict) -> dict:
         "height": latent if latent in _of_type(graph, LATENT_TYPES) else "",
         "steps": sampler, "cfg": sampler, "sampler": sampler,
         "checkpoint": checkpoint,
+        "clip": _loader_of_type(graph, sampler, TEXT_ENCODER_TYPES),
+        "vae": _loader_of_type(graph, sampler, VAE_TYPES),
+        "sampling": _loader_of_type(graph, sampler, SAMPLING_TYPES),
         "ref_image": refs[0] if refs else "",
     }
     images = _video_image_slots(graph, sampler, refs) if video else []
+    size = _size_node(graph, sampler)
     i2v = {
         "image": images[0] if images else "",
         "last_image": images[1] if len(images) > 1 else "",
         "positive": positive, "negative": negative, "seed": sampler,
         "frames": _frames_node(graph, latent, sampler) if video else "",
         "fps": _fps_node(graph) if video else "",
+        "width": size if video else "",
+        "height": size if video else "",
     }
 
     if positive and negative and positive == negative:

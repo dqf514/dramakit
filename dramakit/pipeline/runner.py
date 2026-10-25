@@ -9,14 +9,15 @@ from ..models import Status
 from ..project import ProjectStore
 from ..providers import Providers
 from . import (analyze, character, compose, ingest, music_stage, precheck, promptgen,
-               script, segment, storyboard, subtitle, visual, voice)
+               qc, script, segment, storyboard, subtitle, visual, voice)
 from .base import Context
 
 log = logging.getLogger("dramakit.runner")
 
 # canonical order
 ORDER = ["ingest", "analyze", "character", "segment", "script", "storyboard",
-         "promptgen", "visual", "voice", "subtitle", "music", "precheck", "compose"]
+         "promptgen", "visual", "voice", "subtitle", "music", "precheck",
+         "compose", "qc"]
 
 
 def _stage_fn(name: str) -> Optional[Callable]:
@@ -34,6 +35,7 @@ def _stage_fn(name: str) -> Optional[Callable]:
         "music": music_stage.run,
         "precheck": precheck.run,
         "compose": compose.run,
+        "qc": qc.run,
     }.get(name)
 
 

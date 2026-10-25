@@ -205,6 +205,7 @@ class Episode(BaseModel):
     status: Status = Status.PENDING
     stage_status: dict[str, Status] = Field(default_factory=dict)
     compose_blocked: str = ""                  # precheck 阶段写入的阻断原因（空=可合成）
+    qc_report: dict = Field(default_factory=dict)   # qc 阶段的成片质检报告
 
     @property
     def total_shots(self) -> int:

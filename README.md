@@ -512,6 +512,18 @@ TTS / 音乐同理实现 `BaseTTS` / `BaseMusic`，在 `providers/__init__.py` �
   （连通/版本/GPU/显存/模型齐全度）；**工作流即清单**——扫描 `config/comfyui/*.json`
   的模型加载节点自动推出要传的模型，`dj nodes sync <名字>` 缺什么补什么，
   带每文件与总体的进度、速度、ETA。前端「流水线 → 节点池」可直接点同步并看进度条。
+- **FLUX 3 Image Klein 出图**（2026-10-15 发布，5.6B 开放权重）：
+  FLUX 3 不读 SDXL 式关键词提示词，要的是**一段完整场景描述**（100~350 词）。
+  `comfyui.prompt_format: flux3` 会切换提示词模板，`negative_prompt` 自动置空
+  （蒸馏版 cfg=1，不使用负向词），采样固定 16 步 / euler / simple / shift=log(16)。
+- **专业后期层**：
+  - *统一调色*：AI 镜头各自生成，曝光/饱和/白平衡都不一样。逐镜用 `signalstats`
+    测量后拉到本集中位数（`compose.grade_shots`），这是"业余感"最大的单一来源。
+  - *垫底归一*：H3 每镜原生音频响度不同，逐镜 loudnorm 后再垫底，BGM 才不会忽大忽小。
+  - *FCPXML 导出*：每集导出一份 `nle/ep_XXX/ep_XXX.fcpxml`，
+    Resolve / Premiere / FCP 可直接打开，把自动成片当作粗剪继续精修。
+  - *成片 QC*（`qc` 阶段）：分辨率/帧率/时长/音画同步、EBU R128 响度与真峰、
+    黑帧、字幕文件，写进 `qc/ep_XXX.json`，硬伤直接判失败。
 
 ---
 
