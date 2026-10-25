@@ -508,6 +508,10 @@ TTS / 音乐同理实现 `BaseTTS` / `BaseMusic`，在 `providers/__init__.py` �
 - **H3 官方提示词**：出视频用 MiniMax H3 官方三字段格式
   （`integrated_multimodal_description` / `overall_soundscape` / `non_diegetic_music`），
   并把 H3 原生音频（配乐+环境声）压在人声下当垫底，省掉外部曲库。
+- **节点池（方案B 的前置）**：`dj nodes` 列出所有 ComfyUI 渲染节点并自检
+  （连通/版本/GPU/显存/模型齐全度）；**工作流即清单**——扫描 `config/comfyui/*.json`
+  的模型加载节点自动推出要传的模型，`dj nodes sync <名字>` 缺什么补什么，
+  带每文件与总体的进度、速度、ETA。前端「流水线 → 节点池」可直接点同步并看进度条。
 
 ---
 
@@ -592,6 +596,8 @@ dramakit/
 | `dj run <项目> [--stages --stop-after --episodes]` | 跑流水线 |
 | `dj status <项目>` | 看进度表 |
 | `dj voices` | 列出可用音色 |
+| `dj nodes` | 列出 ComfyUI 节点池并自检（连通/版本/显存/模型齐全度）|
+| `dj nodes sync <名字>` | 把工作流需要的模型同步到该节点（带进度）|
 | `dj config [--init/--dump]` | 查看/导出配置 |
 | `dj clean <项目> --what tmp\|intermediates` | 清理中间产物 |
 

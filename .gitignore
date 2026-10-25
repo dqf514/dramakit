@@ -43,3 +43,7 @@ resetnarr.py
 chk_voices.py
 dbg_pool*.py
 test_h3prompt.py
+test_sync.py
+test_latency.py
+test_timeh3.py
+test_bed.py

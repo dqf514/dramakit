@@ -359,6 +359,101 @@ def comfy_test(config: Optional[str] = typer.Option(None, "--config", "-c"),
             raise typer.Exit(1)
 
 
+@app.command(name="nodes")
+def nodes_cmd(
+    action: str = typer.Argument("list", help="list | check | sync"),
+    name: str = typer.Argument("", help="节点名（sync 时指定；留空=全部）"),
+    config: Optional[str] = typer.Option(None, "--config", "-c"),
+    models_dir: str = typer.Option("", "--models-dir", help="本地 ComfyUI models 目录（同步源）"),
+):
+    """节点池：查看/自检 ComfyUI 节点，并同步缺失的模型文件。
+
+    工作流即清单：扫描 config/comfyui/*.json 里的模型加载节点，
+    自动得出每个节点需要哪些模型文件，缺什么就补什么。
+    """
+    from .providers.nodes import (check_node, manifest, nodes_from_config,
+                                  sync_models, SyncReport)
+    cfg = Config.load(_find_config(config))
+    if models_dir:
+        cfg.comfyui.models_dir = models_dir
+    root = Path(".")
+    refs = manifest(cfg, root)
+    fleet = nodes_from_config(cfg)
+
+    def _one(spec):
+        h = check_node(spec, refs)
+        if not h.online:
+            console.print(f"[red]✗[/red] {spec.name:14s} {spec.base_url}  "
+                          f"离线（{h.error}）")
+        else:
+            miss = (f"  缺 {len(h.missing)} 个模型" if h.missing else "  模型齐全")
+            color = "yellow" if h.missing else "green"
+            console.print(f"[{color}]●[/{color}] {spec.name:14s} {spec.base_url}  "
+                          f"v{h.version}  {h.device}  "
+                          f"显存 {h.vram_free/1024**3:.1f}/{h.vram_total/1024**3:.1f}G"
+                          f"{miss}")
+            for m in h.missing[:12]:
+                console.print(f"    [yellow]缺[/yellow] {m}")
+        return h
+
+    if action in ("list", "check"):
+        console.print(f"[bold]ComfyUI 节点池[/bold]（清单来自工作流，共 "
+                      f"{len(refs)} 个模型文件）")
+        for spec in fleet:
+            if not spec.enabled:
+                continue
+            _one(spec)
+        if action == "list":
+            console.print("\n同步模型：dj nodes sync <名字>   "
+                          "（节点需在 config/default.yaml 的 comfyui.nodes 里配置）")
+        return
+
+    if action == "sync":
+        targets = [s for s in fleet if s.enabled and (not name or s.name == name)]
+        if not targets:
+            console.print(f"[red]没有匹配的节点:[/red] {name or '(全部)'}")
+            raise typer.Exit(1)
+        for spec in targets:
+            if spec.transfer == "none":
+                console.print(f"[yellow]跳过 {spec.name}:[/yellow] 未配置传输方式"
+                              f"（comfyui.nodes[].transfer: shared / scp）")
+                continue
+            h = check_node(spec, refs)
+            if not h.online:
+                console.print(f"[red]✗ {spec.name} 离线，跳过[/red]")
+                continue
+            todo = [r for r in refs if r.rel in set(h.missing)]
+            if not todo:
+                console.print(f"[green]✓[/green] {spec.name} 模型已齐全")
+                continue
+            report = SyncReport(node=spec.name)
+            total = sum(r.size for r in todo)
+            console.print(f"[bold]同步 {spec.name}[/bold]  {len(todo)} 个文件 / "
+                          f"{total/1024**3:.2f} GB")
+
+            def _upd():
+                d = report.to_dict()
+                bar_len = 24
+                filled = int(bar_len * d["percent"] / 100)
+                bar = "█" * filled + "░" * (bar_len - filled)
+                console.print(f"  {bar} {d['percent']:5.1f}%  "
+                              f"{d['bytes_done']/1024**3:.2f}/{d['bytes_total']/1024**3:.2f}G  "
+                              f"{d['speed_mb']:.1f}MB/s  ETA {d['eta']:.0f}s  "
+                              f"{d['file']}", end="\r")
+
+            sync_models(spec, todo, report, _upd)
+            console.print()
+            if report.failed:
+                for f in report.failed:
+                    console.print(f"  [red]✗[/red] {f}")
+            console.print(f"[green]✓[/green] {spec.name} 同步完成："
+                          f"{report.files_done}/{report.files_total} 个文件")
+        return
+
+    console.print(f"[red]未知操作:[/red] {action}（list | check | sync）")
+    raise typer.Exit(1)
+
+
 # --------------------------------------------------------------------------- #
 # AI-native layer: serve / setup / ai / tag / search
 # --------------------------------------------------------------------------- #

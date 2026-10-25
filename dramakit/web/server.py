@@ -92,6 +92,25 @@ class State:
         threading.Thread(target=_wrap, daemon=True).start()
         return jid
 
+    def start_job_progress(self, kind: str, fn) -> str:
+        """Like start_job, but fn gets a report() callable for live progress."""
+        jid = uuid.uuid4().hex[:12]
+        self.jobs[jid] = {"id": jid, "kind": kind, "status": "running",
+                          "result": None, "error": None, "progress": {}}
+
+        def _wrap():
+            def report(**kw):
+                self.jobs[jid]["progress"].update(kw)
+            try:
+                res = fn(report)
+                self.jobs[jid].update(status="done", result=res)
+            except Exception as e:  # noqa: BLE001
+                log.error("job %s failed: %s", jid, traceback.format_exc())
+                self.jobs[jid].update(status="error", error=str(e)[:500])
+
+        threading.Thread(target=_wrap, daemon=True).start()
+        return jid
+
 
 # --------------------------------------------------------------------------- #
 # Request handler
@@ -219,6 +238,19 @@ def _make_handler(state: State):
                     except Exception:  # noqa: BLE001
                         data = {}
                 return self._json({"ok": True, "progress": data})
+            if path == "/api/nodes":
+                from ..providers.nodes import (check_node, manifest,
+                                              nodes_from_config)
+                refs = manifest(state.cfg, Path("."))
+                fleet = [s for s in nodes_from_config(state.cfg) if s.enabled]
+                out = []
+                for spec in fleet:
+                    h = check_node(spec, refs)
+                    d = h.to_dict()
+                    d["transfer"] = spec.transfer
+                    out.append(d)
+                return self._json({"ok": True, "nodes": out,
+                                   "models": [r.rel for r in refs]})
             return self._err(f"no such endpoint: {path}", 404)
 
         # ---- POST /api ----
@@ -231,6 +263,8 @@ def _make_handler(state: State):
                 return self._json(self._api_ai_run(body))
             if path == "/api/run":
                 return self._json(self._api_run(body))
+            if path == "/api/nodes/sync":
+                return self._json(self._api_nodes_sync(body))
             if path == "/api/reindex":
                 return self._json(self._api_reindex(body))
             if path == "/api/new":
@@ -534,6 +568,38 @@ def _make_handler(state: State):
 
             jid = state.start_job("run_pipeline", _job)
             return {"ok": True, "job": jid}
+
+        def _api_nodes_sync(self, body: dict) -> dict:
+            """Ship the models a node is missing, with live progress."""
+            from ..providers.nodes import (check_node, manifest,
+                                          nodes_from_config, sync_models,
+                                          SyncReport)
+            refs = manifest(state.cfg, Path("."))
+            want = str(body.get("node") or "")
+            fleet = [s for s in nodes_from_config(state.cfg)
+                     if s.enabled and (not want or s.name == want)]
+            if not fleet:
+                return {"ok": False, "error": f"没有匹配的节点: {want or '(全部)'}"}
+            spec = fleet[0]
+            if spec.transfer == "none":
+                return {"ok": False,
+                        "error": "该节点未配置传输方式(comfyui.nodes[].transfer)"}
+            report = SyncReport(node=spec.name)
+
+            def _job(report_progress):
+                health = check_node(spec, refs)
+                if not health.online:
+                    raise RuntimeError("节点离线，无法同步")
+                todo = [r for r in refs if r.rel in set(health.missing)]
+                if not todo:
+                    return {"synced": 0, "message": "模型已齐全"}
+                sync_models(spec, todo, report,
+                            lambda: report_progress(**report.to_dict()))
+                return {"synced": report.files_done, "total": report.files_total,
+                        "failed": report.failed}
+
+            jid = state.start_job_progress("nodes_sync", _job)
+            return {"ok": True, "job": jid, "node": spec.name}
 
         def _api_reindex(self, body: dict) -> dict:
             slug = body.get("project", "")

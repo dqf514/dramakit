@@ -217,6 +217,29 @@ class TTSConfig(BaseModel):
 # --------------------------------------------------------------------------- #
 # ComfyUI (image + video generation)
 # --------------------------------------------------------------------------- #
+class NodeConfig(BaseModel):
+    """One ComfyUI server in the fleet (the local one or an extra machine)."""
+    name: str = "node"
+    base_url: str = "http://127.0.0.1:8188"
+    enabled: bool = True
+    # --- how to ship model files to this node ---
+    #   shared - the node's models dir is mounted here; copy into it
+    #   scp    - copy over ssh to remote_models
+    transfer: Literal["none", "shared", "scp"] = "none"
+    ssh_host: str = ""
+    ssh_user: str = ""
+    ssh_key: str = ""                            # e.g. ~/.ssh/id_ed25519
+    remote_models: str = ""                      # remote ComfyUI models dir (scp)
+    local_models: str = ""                       # mounted remote models dir (shared)
+    # --- auth ---
+    auth: Literal["none", "basic", "bearer"] = "none"
+    auth_username: str = ""
+    auth_password: str = ""
+    auth_token: str = ""
+    extra_headers: dict = Field(default_factory=dict)
+    verify_tls: bool = True
+
+
 class ComfyUIConfig(BaseModel):
     enabled: bool = True
     base_url: str = "http://127.0.0.1:8188"           # 远程机器填 http://<IP>:8188
@@ -249,8 +272,7 @@ class ComfyUIConfig(BaseModel):
     first_last_frame: bool = False
     flf_workflow: str = ""                            # 双图 i2v 工作流；留空则退回单图
     # node id overrides inside the workflow to inject prompts/seed/size
-    t2i_nodes: dict = Field(default_factory=lambda: {
-        "positive": "6", "negative": "7", "seed": "3",
+    t2i_nodes: dict = Field(default_factory=lambda: {        "positive": "6", "negative": "7", "seed": "3",
         "width": "5", "height": "5", "steps": "3", "cfg": "3",
         "checkpoint": "4", "sampler": "3",
         "ref_image": "",                              # 可选：角色参考图 LoadImage 节点
@@ -260,6 +282,12 @@ class ComfyUIConfig(BaseModel):
         "seed": "3", "frames": "14", "fps": "15",
         "last_image": "",                             # 可选：尾帧 LoadImage 节点
     })
+    # 节点池：额外的 ComfyUI 机器（方案B 的调度对象）。本地主节点不在此列。
+    # 每个节点都需要工作流里引用的模型文件，可用 `dj nodes sync` 自动补齐。
+    nodes: list[NodeConfig] = Field(default_factory=list)
+    # 本机 ComfyUI 的 models 目录（模型文件的存放处，也是同步时的来源）。
+    # 留空则默认用项目根目录下的 models/。
+    models_dir: str = ""
     # generation defaults
     mode: Literal["image", "video", "image_then_video"] = "image_then_video"
     width: int = 768

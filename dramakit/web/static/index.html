@@ -99,6 +99,9 @@ try{
   .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
   .dot.ok{background:var(--go2)} .dot.bad{background:var(--danger2)}
   .dot.warn{background:var(--warn)} .dot.na{background:var(--fg3)}
+  .noderow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:6px 0;border-bottom:1px solid var(--line)}
+  .noderow:last-child{border-bottom:none}
 
   /* ---------- AI command bar ---------- */
   #cmdbar{display:flex;gap:8px;padding:7px 14px;background:var(--bg2);
@@ -1742,6 +1745,9 @@ function renderRun(){
         <span class="muted" id="runStat"></span>
       </div>
     </div>
+    <div class="card"><h3>节点池 <span class="muted" style="font-weight:400;font-size:11px">ComfyUI 渲染节点 · 自检与模型同步</span></h3>
+      <div id="nodeBox"><div class="empty"><span class="spin"></span> 探测节点…</div></div>
+    </div>
     <div id="runOut"></div>`;
   $$("#stageBox .chip").forEach(c=>c.onclick=()=>{
     const s=c.dataset.stage; runSel.has(s)?runSel.delete(s):runSel.add(s); c.classList.toggle("on");
@@ -1749,6 +1755,58 @@ function renderRun(){
   $("#runAll").onclick=()=>{runSel=new Set(STAGES);renderRun();};
   $("#runNone").onclick=()=>{runSel=new Set();renderRun();};
   $("#runGo").onclick=doRun;
+  loadNodes();
+}
+async function loadNodes(){
+  const box=$("#nodeBox");
+  if(!box) return;
+  const r=await getJSON("/api/nodes");
+  if(!r.ok){ box.innerHTML=`<div class="empty">加载失败：${esc(r.error||"")}</div>`; return; }
+  const rows=(r.nodes||[]).map(n=>{
+    const miss=n.missing||[];
+    return `<div class="noderow">
+      <span class="dot ${n.online?"ok":"bad"}"></span>
+      <b>${esc(n.name)}</b>
+      <span class="muted" style="font-size:11px">${esc(n.base_url)}</span>
+      ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲</span>`:`<span class="mini" style="color:var(--danger2)">离线</span>`}
+      ${miss.length?`<span class="mini" style="color:var(--warn,#d99)">缺 ${miss.length} 个模型</span>
+        <span class="muted" style="font-size:10.5px">${miss.slice(0,4).map(esc).join("、")}${miss.length>4?" …":""}</span>`:`<span class="mini" style="color:var(--go2)">模型齐全</span>`}
+      <span style="flex:1"></span>
+      ${n.online&&miss.length?`<button class="btn xs confirm" data-sync="${attr(n.name)}">同步模型</button>`:""}
+    </div>`;
+  }).join("");
+  box.innerHTML=(rows||'<div class="empty">没有节点</div>')
+    +`<div class="muted" style="font-size:10.5px;margin-top:6px">清单来自工作流：${(r.models||[]).length} 个模型文件</div>`
+    +`<div id="nodeProg"></div>`;
+  $$("#nodeBox [data-sync]").forEach(b=>b.onclick=()=>syncNodes(b.dataset.sync,b));
+}
+function syncNodes(name,btn){
+  btn.disabled=true; btn.textContent="同步中…";
+  const out=$("#nodeProg");
+  out.innerHTML='<div class="muted" style="font-size:11px;margin-top:6px">正在准备…</div>';
+  postJSON("/api/nodes/sync",{node:name}).then(r=>{
+    if(!r.ok){ out.innerHTML=`<div class="mini" style="color:var(--danger2)">${esc(r.error||"失败")}</div>`; btn.disabled=false; btn.textContent="同步模型"; return; }
+    const t=setInterval(async ()=>{
+      const j=await getJSON("/api/jobs?id="+encodeURIComponent(r.job));
+      if(!j.ok||!j.job){ clearInterval(t); return; }
+      const job=j.job, p=job.progress||{};
+      if(p.file||p.phase){
+        const pct=p.percent||0, barLen=20, filled=Math.round(barLen*pct/100);
+        out.innerHTML=`<div style="margin-top:8px;font-size:11px">
+          <div style="letter-spacing:1px">${"█".repeat(filled)}${"░".repeat(barLen-filled)} ${pct.toFixed(1)}%</div>
+          <div class="muted" style="font-size:10.5px">${esc(p.file||"")} · ${((p.bytes_done||0)/1024**3).toFixed(2)}/${((p.bytes_total||0)/1024**3).toFixed(2)} GB · ${(p.speed_mb||0).toFixed(1)} MB/s · ETA ${p.eta||0}s</div>
+        </div>`;
+      }
+      if(job.status!=="running"){
+        clearInterval(t);
+        out.innerHTML = job.status==="done"
+          ? `<div class="mini" style="color:var(--go2);margin-top:6px">✓ 同步完成</div>`
+          : `<div class="mini" style="color:var(--danger2);margin-top:6px">✗ ${esc(job.error||"失败")}</div>`;
+        btn.disabled=false; btn.textContent="同步模型";
+        loadNodes();
+      }
+    },1000);
+  });
 }
 function stageStateFor(ep,stage){ const v=(ep.stage_status||{})[stage]; return v==="done"?"done":v||"pending"; }
 function parseEps(str){
