@@ -117,9 +117,11 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
                 meta["end_seed"] = (seed + 1) % (2**31) if seed >= 0 else -1
             last = str(end_out) if use_flf and end_out.exists() else ""
             vid_out = ctx.store.video_path(shot.id)
+            # H3 wants its own three-field prompt; fall back to the image prompt
+            vprompt = shot.video_prompt or shot.prompt
             try:
                 vis.generate_video(
-                    prompt=shot.prompt, negative=shot.negative_prompt,
+                    prompt=vprompt, negative=shot.negative_prompt,
                     image_path=str(img_out) if img_out.exists() else "",
                     frames=c.frames, fps=c.fps, seed=seed, out_path=str(vid_out),
                     extra=_extra(ctx), last_image_path=last)
@@ -130,7 +132,7 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
                                 shot.id, str(e)[:120])
                 use_flf = False
                 vis.generate_video(
-                    prompt=shot.prompt, negative=shot.negative_prompt,
+                    prompt=vprompt, negative=shot.negative_prompt,
                     image_path=str(img_out) if img_out.exists() else "",
                     frames=c.frames, fps=c.fps, seed=seed, out_path=str(vid_out),
                     extra=_extra(ctx))

@@ -72,15 +72,28 @@ CHARACTER_SHEET_USER = """为下面这些角色生成"角色锁定锚点"。锚�
 # --------------------------------------------------------------------------- #
 # VOICE CAST — assign a TTS voice to every character
 # --------------------------------------------------------------------------- #
-VOICE_CAST_SYSTEM = """你是短剧配音导演。根据角色性别、年龄、性格和定位，从给定音色表里
-为每个角色挑最合适的一个。只输出JSON。"""
+VOICE_CAST_SYSTEM = """你是短剧配音导演。根据剧情、角色定位、性别、年龄、性格，为每个角色
+设计一套专属声音（音色 + 音高/语速微调）。只输出JSON。
 
-VOICE_CAST_USER = """为下面这些角色分配配音音色。
+设计要点：
+- voice_id 必须从给定音色表里选完整名称
+- 同时给出该角色的音高/语速微调，用来区分年龄与身份：
+    pitch: "-16Hz" 更低沉年长 / "+10Hz" 更年轻明亮 / "+0Hz" 不改
+    rate:  "-10%" 更慢更沉稳 / "+8%" 更急更紧张 / "+0%" 不改
+- 主角与女主：清晰有辨识度，不要过度加工
+- 长辈：更低更慢；少年少女：更亮更快；反派：更低沉或更冷
+- 同一剧里尽量不重复 voice_id；必须复用时用不同 pitch/rate 拉开差别
+- 不要给"旁白"分配，旁白由系统单独处理"""
+
+VOICE_CAST_USER = """为下面这些角色设计专属声音。
+
+本剧设定：题材 {{genre}}；画风 {{style}}；年代 {{era}}
+本剧情绪基调：{{tone}}
 
 角色：
 {{characters}}
 
-可用音色（只能从中选，返回完整名称）：
+可用音色（只能从中选，返回完整名称；注释是该音色气质）：
 {{voices}}
 
 要求：
@@ -88,9 +101,10 @@ VOICE_CAST_USER = """为下面这些角色分配配音音色。
   长辈选更沉稳的，反派可选偏低沉或阴冷的音色。
 - 同一部剧里尽量不重复；角色较多时允许复用，但男女不能混用。
 - 不要给"旁白"分配，旁白由系统单独处理。
+- 每个角色都要给出 pitch 与 rate，让声音能听出年龄和身份差别。
 
 输出JSON：
-{"characters":[{"name":"","voice_id":""}]}"""
+{"characters":[{"name":"","voice_id":"","pitch":"","rate":""}]}"""
 
 
 # --------------------------------------------------------------------------- #
@@ -200,6 +214,54 @@ PROMPT_USER = """为下面这个竖屏(9:16)镜头生成AI绘画提示词。
 {% endif %}
 输出JSON：
 {"prompt":"","negative_prompt":"","end_prompt":""}"""
+
+
+# PROMPTGEN — MiniMax H3 official three-field video prompt (I2VA: first frame)
+# Rules distilled from the official H3 prompt spec (keyframe / T2VA skill).
+# --------------------------------------------------------------------------- #
+H3_VIDEO_SYSTEM = """你是 MiniMax H3 视频提示词导演，按官方规范为单个镜头生成 H3 提示词。
+只输出JSON。
+
+官方三字段（必须齐全，顺序固定）：
+integrated_multimodal_description / overall_soundscape / non_diegetic_music
+
+硬规则：
+- 所有描述性文字用英文书写；只有对白/歌词保留原文语言
+- integrated_multimodal_description 以 "[Shot 1] " 开头；只写这一个镜头，不要写切镜
+- 先写风格与初始构图，再写人物位置/服装/环境/光线，然后动作与运镜，最后对白
+- 运镜用官方术语并融进自然英文散文，不要写成标签列表：
+  Zoom In/Zoom Out=变焦(机身不动)；Push In/Pull Out=推拉(机身前后移)；
+  Pan Left/Right=摇(固定机位水平转)；Truck Left/Right=移(机身水平平移)；
+  Tilt Up/Down=俯仰(固定机位垂直转)；Pedestal Up/Down=升降(机身垂直移动)；
+  Arc Shot=环绕；Tracking Shot=跟随；Static Shot=固定；POV=主观视角
+- 对白原样写进 <d>[zh-CN]台词</d>；说话人标注 (S1)/(S2)，只给真正发声的角色，
+  同一角色跨镜头复用同一编号；身份与说话动作写在 <d> 之外
+- overall_soundscape 用 1-4 句概括环境声、动作声、非语言人声，不要重复对白
+- non_diegetic_music 用 1-3 句描述观众听到的配乐：乐器、节奏速度、动态起伏；没有就给 N/A
+- 不要写 negative prompt，不要出现 "no text"、"without watermark" 这类否定描述
+- 画面是 16:9 横屏"""
+
+H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模式：图片是第一帧）。
+
+镜头：{{shot_type}} / 运镜 {{camera_move}}
+画面：{{action}}
+出镜角色（外貌/发型/服装必须与给定描述完全一致，不要改写）：
+{{character_anchors}}
+场景：{{location}} / {{time_of_day}}
+场景设定（保持一致）：{{location_visual}}
+本场剧情：{{scene_summary}}
+全剧画风：{{style}}；年代：{{era}}；色调：{{color_palette}}
+镜头情绪：{{mood}}
+本镜台词（speaker 已换成编号；没有台词就写"无"）：
+{{dialogue}}
+
+{{dialogue_note}}
+
+要求：
+- integrated_multimodal_description 以 [Shot 1] 开头，描述这一镜的完整画面与运动
+- 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词
+输出JSON：
+{"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}"""
 
 
 def render(template: str, **ctx) -> str:

@@ -50,6 +50,17 @@ class ShotType(str, enum.Enum):
 
 
 NARRATOR = "旁白"
+NARRATOR_SPEAKERS = {NARRATOR, "解说", "旁白者"}
+
+
+def is_narration(line: "Line") -> bool:
+    """True for lines that are shown as narration cards, not spoken dialogue.
+
+    Narration / caption lines carry the story voice-over; they are rendered as
+    their own on-screen text form and are not synthesized by the voice stage.
+    """
+    return (line.kind in (LineKind.NARRATION, LineKind.CAPTION)
+            or line.speaker in NARRATOR_SPEAKERS)
 
 
 # --------------------------------------------------------------------------- #
@@ -73,6 +84,8 @@ class Character(BaseModel):
     ref_sheet: str = ""                      # 主参考图（角色卡封面）
     locked: bool = False                     # 锁定后角色锚点不允许被 AI 改写
     voice_id: str = ""                       # 绑定音色
+    voice_pitch: str = ""                    # 专属音高微调，如 "-16Hz"（随定妆一起设计）
+    voice_rate: str = ""                     # 专属语速微调，如 "-10%"
     ref_image: str = ""                      # 旧版单图字段，兼容保留
     lora: str = ""                           # 角色 LoRA（ComfyUI 用）
 
@@ -137,8 +150,9 @@ class Shot(BaseModel):
     action: str = ""                          # 画面内容（中文，给人看）
     characters: list[str] = Field(default_factory=list)
     # generation
-    prompt: str = ""                          # 正向提示词
+    prompt: str = ""                          # 正向提示词（出图用）
     negative_prompt: str = ""
+    video_prompt: str = ""                     # MiniMax H3 官方三字段提示词（出视频用）
     end_prompt: str = ""                      # 尾帧提示词（首尾帧模式）
     seed: int = -1                            # -1 = 随机
     flf: Optional[bool] = None                # 首尾帧：None=跟随全局，False=覆盖关闭
@@ -190,6 +204,7 @@ class Episode(BaseModel):
     bgm_path: str = ""
     status: Status = Status.PENDING
     stage_status: dict[str, Status] = Field(default_factory=dict)
+    compose_blocked: str = ""                  # precheck 阶段写入的阻断原因（空=可合成）
 
     @property
     def total_shots(self) -> int:
