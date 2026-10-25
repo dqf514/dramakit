@@ -43,6 +43,10 @@ def _check_episode(ctx: Context, ep: Episode, h3: bool) -> tuple[list[str], list
         for shot in sc.shots:
             vid = ctx.store.abs(shot.video_path) if shot.video_path else None
             img = ctx.store.abs(shot.image_path) if shot.image_path else None
+            if not shot.prompt and not shot.video_prompt:
+                errors.append(f"镜 {shot.id} 没有出图提示词")
+            if not shot.prompt:
+                warnings.append(f"镜 {shot.id} 没有出图提示词（只有视频提示词）")
             if not shot.video_path and not shot.image_path:
                 errors.append(f"镜 {shot.id} 既没有画面也没有视频")
                 continue
