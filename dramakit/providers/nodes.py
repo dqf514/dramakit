@@ -275,39 +275,112 @@ def _copy_with_progress(src: Path, dst: Path, report: SyncReport,
     tmp.replace(dst)
 
 
+def _ssh_base(spec: NodeConfig) -> list[str]:
+    cmd = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
+    if spec.ssh_key:
+        cmd += ["-i", str(Path(spec.ssh_key).expanduser())]
+    return cmd
+
+
+def _ssh_mkdir(spec: NodeConfig, remote_dir: str) -> None:
+    """Create the target folder on the node (scp won't do it for us)."""
+    try:
+        subprocess.run(
+            _ssh_base(spec) + [f"{spec.ssh_user}@{spec.ssh_host}",
+                               f"mkdir -p {remote_dir}"],
+            capture_output=True, text=True, timeout=30)
+    except Exception as e:  # noqa: BLE001
+        log.warning("远端建目录失败(%s): %s", remote_dir, str(e)[:120])
+
+
+def _remote_size(spec: NodeConfig, remote_path: str) -> int:
+    """Size of the file on the node, 0 when it is not there."""
+    try:
+        stat = subprocess.run(
+            _ssh_base(spec) + [f"{spec.ssh_user}@{spec.ssh_host}",
+                               f"stat -c %s {remote_path} 2>/dev/null || echo 0"],
+            capture_output=True, text=True, timeout=20)
+        return int((stat.stdout or "0").strip() or 0)
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def _scp_with_progress(src: Path, spec: NodeConfig, remote_path: str,
                        report: SyncReport, on_update: Callable[[], None],
                        base: int = 0) -> None:
-    """Copy a file to a remote host with scp, polling the remote size."""
-    target = f"{spec.ssh_user}@{spec.ssh_host}:{remote_path}"
-    cmd = ["scp", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
-    if spec.ssh_key:
-        cmd += ["-i", str(Path(spec.ssh_key).expanduser())]
-    cmd += [str(src), target]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    """Copy a file to a remote host with scp, polling the remote size.
+
+    A transfer that dies halfway is resumed instead of restarted: the bytes
+    already on the node are kept and only the tail is sent. Models are 5-15GB,
+    so starting over is not an option.
+    """
+    total = src.stat().st_size
+    already = _remote_size(spec, remote_path)
+    if already and already < total:
+        _scp_resume(src, spec, remote_path, already, total,
+                    report, on_update, base)
+    else:
+        target = f"{spec.ssh_user}@{spec.ssh_host}:{remote_path}"
+        cmd = ["scp", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
+        if spec.ssh_key:
+            cmd += ["-i", str(Path(spec.ssh_key).expanduser())]
+        cmd += [str(src), target]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        t0 = time.time()
+        remote_size = 0
+        while proc.poll() is None:
+            time.sleep(1.0)
+            remote_size = _remote_size(spec, remote_path)
+            report.bytes_done = base + remote_size
+            elapsed = max(time.time() - t0, 0.001)
+            report.speed = remote_size / elapsed
+            if report.bytes_total:
+                report.eta = max(0.0, (report.bytes_total - remote_size) / max(report.speed, 1))
+            on_update()
+        if proc.returncode != 0:
+            err = (proc.stderr.read() or b"").decode("utf-8", "replace")[:300]
+            raise RuntimeError(f"scp 失败: {err}")
+
+    final = _remote_size(spec, remote_path)
+    if final != total:
+        raise RuntimeError(f"传输后大小不符: 远端 {final} != 本地 {total}")
+
+
+def _scp_resume(src: Path, spec: NodeConfig, remote_path: str, already: int,
+                total: int, report: SyncReport,
+                on_update: Callable[[], None], base: int) -> None:
+    """Send only the missing tail, writing it into place on the node."""
+    block = 1 << 20
+    start = (already // block) * block          # dd seeks in whole blocks
+    count = (total - start + block - 1) // block
+    cmd = _ssh_base(spec) + [
+        f"{spec.ssh_user}@{spec.ssh_host}",
+        f"dd of={remote_path} bs={block} seek={start // block} count={count} "
+        f"conv=notrunc status=none",
+    ]
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     t0 = time.time()
-    remote_size = 0
-    while proc.poll() is None:
-        time.sleep(1.0)
-        try:
-            stat = subprocess.run(
-                ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
-                + (["-i", str(Path(spec.ssh_key).expanduser())] if spec.ssh_key else [])
-                + [f"{spec.ssh_user}@{spec.ssh_host}",
-                   f"stat -c %s {remote_path} 2>/dev/null || echo 0"],
-                capture_output=True, text=True, timeout=20)
-            remote_size = int((stat.stdout or "0").strip() or 0)
-        except Exception:  # noqa: BLE001
-            remote_size = 0
-        report.bytes_done = base + remote_size
-        elapsed = max(time.time() - t0, 0.001)
-        report.speed = remote_size / elapsed
-        if report.bytes_total:
-            report.eta = max(0.0, (report.bytes_total - remote_size) / max(report.speed, 1))
-        on_update()
+    sent = already
+    with open(src, "rb") as f:
+        f.seek(start)
+        while True:
+            chunk = f.read(4 * 1024 * 1024)
+            if not chunk:
+                break
+            proc.stdin.write(chunk)
+            sent += len(chunk)
+            report.bytes_done = base + sent
+            elapsed = max(time.time() - t0, 0.001)
+            report.speed = (sent - already) / elapsed
+            if report.bytes_total:
+                report.eta = max(0.0, (report.bytes_total - sent) / max(report.speed, 1))
+            on_update()
+    proc.stdin.close()
+    proc.wait()
     if proc.returncode != 0:
         err = (proc.stderr.read() or b"").decode("utf-8", "replace")[:300]
-        raise RuntimeError(f"scp 失败: {err}")
+        raise RuntimeError(f"断点续传失败: {err}")
 
 
 def sync_models(spec: NodeConfig, refs: list[ModelRef], report: SyncReport,
@@ -339,6 +412,7 @@ def sync_models(spec: NodeConfig, refs: list[ModelRef], report: SyncReport,
         try:
             if spec.transfer == "scp":
                 remote = f"{spec.remote_models.rstrip('/')}/{ref.folder}/{ref.filename}"
+                _ssh_mkdir(spec, f"{spec.remote_models.rstrip('/')}/{ref.folder}")
                 _scp_with_progress(ref.path, spec, remote, report, on_update, base=base)
             else:
                 dst = Path(spec.local_models) / ref.folder / ref.filename
