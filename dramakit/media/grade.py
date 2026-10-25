@@ -182,7 +182,9 @@ def grade_shot(src: str | Path, out: str | Path, target: ColorStats,
     cmd = [ffmpeg_bin(), "-y", "-i", str(src), "-vf", vf]
     if fps:
         cmd += ["-r", str(fps)]
-    cmd += ["-c:v", "libx264", "-crf", str(crf), "-preset", preset,
+    # no audio: the graded clip has to match the others bit for bit when the
+    # scene is concatenated, and the mix is built from the voice and the bed
+    cmd += ["-an", "-c:v", "libx264", "-crf", str(crf), "-preset", preset,
             "-pix_fmt", "yuv420p", str(out)]
     _run(cmd, quiet=False)
     return str(out)
