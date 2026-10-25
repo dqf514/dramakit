@@ -65,9 +65,15 @@ def _grade_shots(ctx: Context, cc, clips: list[tuple[str, object]],
     measured = [gr.analyze(path) for path, _ in clips]
     target = gr.median_stats(measured)
     lut = cc.lut or None
-    if lut and not Path(lut).exists():
-        ctx.log.warning("compose: LUT 文件不存在，跳过: %s", lut)
-        lut = None
+    if lut:
+        lut_path = Path(lut)
+        if not lut_path.is_absolute():
+            lut_path = (ctx.store.root / lut_path)
+        if not lut_path.exists():
+            ctx.log.warning("compose: LUT 文件不存在，跳过: %s", lut)
+            lut = None
+        else:
+            lut = str(lut_path)
     out: list[tuple[str, object]] = []
     changed = 0
     for i, (path, tshot) in enumerate(clips):

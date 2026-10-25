@@ -1,228 +1,200 @@
-# ComfyUI 视频服务器部署完整指南
+# ComfyUI 渲染节点部署指南
 
-DramaKit 的画面/视频由你自己的 **ComfyUI 服务器** 生成。本文档把它从零装到能被
-DramaKit 远程调用，覆盖 Linux（推荐，生产）和 Windows 两种情况。
+DramaKit 的画面/视频由你自己的 **ComfyUI 服务器** 生成。本文把它从零装到能被
+DramaKit 远程调用，覆盖单机（Windows）、Linux 节点、以及**双 3090 算力池**三种情况。
 
-> 目标：一台装了 ComfyUI + AnimateDiff（图生视频）的机器，监听 `0.0.0.0:8188`，
-> DramaKit 通过 `comfyui.base_url` 远程提交工作流、拉取成片。
+> 当前技术栈（2026-10）：
+> - 出图：**FLUX 3 Image Klein**（5.6B，2026-10-15 发布，ComfyUI 0.42+ 原生支持）
+> - 出视频：**MiniMax H3**（I2V，自带配乐/环境声）
+> - 多机：`comfyui.nodes` 节点池，按角色派发 + 队列深度调度 + 模型自动同步
 
 ---
 
-## 0. 硬件与系统建议
+## 0. 硬件与系统
 
 | 项目 | 最低 | 推荐 |
 |------|------|------|
-| GPU | 8GB 显存（RTX 3060/A2000） | 12~24GB（RTX 4070Ti/4090/A5000） |
-| 显存用途 | SDXL 出图 | SDXL 出图 + AnimateDiff 视频 |
+| GPU | 8GB 显存 | 16GB（RTX 5080）/ 24GB（3090） |
+| 显存用途 | FLUX 3 int8 版出图 | 出图 + H3 出视频 |
 | 内存 | 16GB | 32GB+ |
-| 磁盘 | 50GB | 200GB+ SSD（模型很占地方） |
+| 磁盘 | 60GB | 200GB+ SSD（模型很占地方） |
 | 系统 | Ubuntu 22.04 / Windows 11 | Ubuntu 22.04 LTS |
-| 驱动 | CUDA 12.1+ | CUDA 12.4+ |
-
-8GB 显存（如你笔记本的 A2000）能跑 SDXL 出图和短视频 AnimateDiff；长视频/高分辨率
-建议上 12GB+ 或改用云端 GPU 服务器。
+| 驱动 | CUDA 12.4+ | CUDA 12.4+ |
 
 ---
 
-## 1. Linux 一键部署（推荐）
+## 1. Linux 一键部署（单机）
 
 ```bash
-# 1) 基础依赖
-sudo apt update && sudo apt install -y git python3-venv python3-pip wget libgl1
-
-# 2) 拉取 ComfyUI
-cd ~ && git clone https://github.com/comfyanonymous/ComfyUI.git
-cd ComfyUI
-
-# 3) 独立虚拟环境
-python3 -m venv venv && source venv/bin/activate
-pip install --upgrade pip
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-pip install -r requirements.txt
-
-# 4) 关键自定义节点（视频必需）
-cd custom_nodes
-git clone https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved.git
-git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
-git clone https://github.com/ltdrdata/ComfyUI-Manager.git     # 方便日后管理节点
-cd ComfyUI-AnimateDiff-Evolved && pip install -r requirements.txt && cd ..
-cd ComfyUI-VideoHelperSuite && pip install -r requirements.txt && cd ..
-cd ../..
-
-# 5) 首次启动（--listen 让它能被远程访问）
-source venv/bin/activate
-python main.py --listen 0.0.0.0 --port 8188
+bash deploy/setup_comfyui.sh          # 默认 ~/ComfyUI
+bash deploy/setup_comfyui.sh /opt/ComfyUI
 ```
 
-也可以直接用本仓库脚本：`bash deploy/setup_comfyui.sh`（见下）。
+脚本会装好系统依赖、ComfyUI、venv + PyTorch、自定义节点、模型目录，并提示你
+手动下载模型。
+
+### 需要的模型（体积大，脚本不代下）
+
+| 放哪 | 文件 | 用途 |
+|------|------|------|
+| `models/diffusion_models/` | `flux3-image-klein-int8-convrot.safetensors` | FLUX 3 出图 |
+| `models/text_encoders/` | `qwen3vl_4b_bf16.safetensors` | FLUX 3 文本编码器 |
+| `models/text_encoders/` | `minimax_h3_fl2va_*.safetensors`（+ 配套 qwen3vl 32b） | H3 出视频 |
+| `models/text_encoders/` | `qwen3.5_9b_flux3_prompt_upsampler_w4a8.safetensors` | FLUX 3 提示词扩写器（可选） |
+| `models/vae/` | `flux2-vae.safetensors` + H3 的 video/audio VAE | 解码 |
+| `models/loras/` | `minimax_h3_fl2v_turbo_4step_*.safetensors` | H3 turbo 加速 |
+
+> ⚠️ **文本编码器必须用 bf16 版**。`qwen3vl_4b_int8_convrot` 在 ComfyUI 0.42.0 上
+> 会产出垃圾条件：画面颜色语义对但完全没有空间结构。用 bf16 版。
 
 ---
 
-## 2. 下载模型
+## 2. 双 3090 节点（一台机器两个实例）
 
-放到 ComfyUI 对应目录：
+H3 单任务要吃 15.2G（扩散）+ 14.6G（文本编码），**一张 3090 塞不下两个任务**，
+所以要开两个 ComfyUI 实例，各绑一张卡：
 
-**出图（SDXL，写实短剧推荐）** → `models/checkpoints/`
-- `sd_xl_base_1.0.safetensors`（官方基模）
-- 或写实向微调：`juggernautXL`、`realvisxl`（Civitai 下载）
-
-**图生视频（AnimateDiff）** → `models/animatediff_models/`
-- `mm_sd_v15_v2.ckpt`（AnimateDiff 运动模型，配 SD1.5）
-- 运动模型目录若不存在就手动建：`mkdir -p models/animatediff_models`
-- AnimateDiff 还需要 SD1.5 底模 → `models/checkpoints/v1-5-pruned-emaonly.safetensors`
-
-**VAE / LoRA（可选）** → `models/vae/`、`models/loras/`
-- 角色一致性可训练角色 LoRA 放这里，然后在工作流里挂 LoRA 节点。
-
-下载示例：
 ```bash
-cd ~/ComfyUI
-wget -P models/checkpoints/ https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors
-wget -P models/checkpoints/ https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors
-mkdir -p models/animatediff_models
-wget -P models/animatediff_models/ https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt
+bash deploy/setup_gpu_node.sh          # 默认 ~/ComfyUI，端口 8188 / 8189
 ```
+
+它会：
+
+- 装 ComfyUI + 依赖 + `ComfyUI-GGUF`
+- 建 `models/` 目录（**两个实例共用**，模型只拷一份）
+- 注册 `dramakit-comfyui-0.service` / `dramakit-comfyui-1.service`（systemd 开机自启）
+
+手工等价写法：
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --listen 0.0.0.0 --port 8188
+CUDA_VISIBLE_DEVICES=1 python main.py --listen 0.0.0.0 --port 8189
+```
+
+### 3090 的注意事项
+
+- 3090 是 **Ampere**，没有原生 FP8。BFL 官方说明 30 系 **INT8 比同体积 FP8 更快**
+  （INT8 矩阵运算约 2× FP16），所以 H3 用 `w6a8` / `int8_convrot` 是对的选择。
+- 24G 显存的余量很大：**专机专用**（这个节点只出视频、不出图）能让 ComfyUI 的
+  模型缓存复用，每镜省掉约 78 秒的模型换入开销。
 
 ---
 
-## 3. 设为后台服务（systemd，开机自启）
+## 3. 接入 DramaKit 的节点池
 
-`sudo nano /etc/systemd/system/comfyui.service`：
+在 DramaKit 的 `config/default.yaml`：
+
+```yaml
+comfyui:
+  models_dir: E:\\ComfyUI\\models      # 本机 ComfyUI 的模型目录（也是同步的来源）
+  nodes:
+    - name: gpu3090-v0
+      base_url: http://<3090IP>:8188
+      roles: [i2v]                     # 只做视频
+      transfer: scp                    # shared=已挂载到本机 | scp=走 ssh
+      ssh_host: <3090IP>
+      ssh_user: ubuntu
+      ssh_key: ~/.ssh/id_ed25519
+      remote_models: /home/ubuntu/ComfyUI/models
+    - name: gpu3090-v1
+      base_url: http://<3090IP>:8189
+      roles: [i2v]
+      transfer: scp
+      ssh_host: <3090IP>
+      ssh_user: ubuntu
+      ssh_key: ~/.ssh/id_ed25519
+      remote_models: /home/ubuntu/ComfyUI/models
+```
+
+`roles` 决定派发：`t2i` 出图、`i2v` 出视频；**留空 = 什么都接**（本机就是兜底）。
+同角色内按**队列深度**挑最闲的节点，某节点中途挂了会自动重派给下一个。
+
+然后：
+
+```bash
+dj nodes check            # 连通性 + 版本 + 显存 + 缺哪些模型
+dj nodes sync gpu3090-v0  # 把缺的模型传过去（带进度/速度/ETA）
+dj nodes sync gpu3090-v1
+```
+
+模型清单不用人工维护：**工作流即清单** —— 扫描 `config/comfyui/*.json` 的模型加载
+节点自动推出"每个节点需要哪些文件"。
+
+> 节点池里所有节点共用同一套模型文件（清单来自同一份工作流）。
+> 想让 3090 用更高质量的 H3 量化版，需要给节点单独配一份工作流（见 TODO）。
+
+---
+
+## 4. 设为后台服务（systemd）
 
 ```ini
+# /etc/systemd/system/dramakit-comfyui.service
 [Unit]
-Description=ComfyUI Server
+Description=DramaKit ComfyUI
 After=network.target
 
 [Service]
 Type=simple
-User=你的用户名
-WorkingDirectory=/home/你的用户名/ComfyUI
-ExecStart=/home/你的用户名/ComfyUI/venv/bin/python main.py --listen 0.0.0.0 --port 8188
-Restart=on-failure
+User=YOUR_USER
+WorkingDirectory=/home/YOUR_USER/ComfyUI
+Environment=CUDA_VISIBLE_DEVICES=0
+ExecStart=/home/YOUR_USER/ComfyUI/venv/bin/python main.py --listen 0.0.0.0 --port 8188
+Restart=always
 RestartSec=5
+TimeoutStartSec=600
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-启用：
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now comfyui
-sudo systemctl status comfyui        # 看是否 running
-journalctl -u comfyui -f             # 看实时日志
+sudo systemctl enable --now dramakit-comfyui
+journalctl -u dramakit-comfyui -f
 ```
+
+`TimeoutStartSec=600` 是必要的：H3 每次要换入 15G 权重，systemd 默认 90 秒
+会误判成启动失败。
 
 ---
 
-## 4. 让 DramaKit 所在机器能访问（网络/防火墙）
+## 5. 在 DramaKit 里验证
 
-**同机**：`base_url: http://127.0.0.1:8188` 即可。
-
-**局域网/远程**：
 ```bash
-# 放行 8188（ufw 示例）
-sudo ufw allow 8188/tcp
+dj comfy-test          # 连通 / GPU / 工作流校验 / 模型齐全度
+dj nodes               # 节点池总览（角色、队列深度、缺哪些模型）
 ```
-- 云服务器还要在**安全组/防火墙**放行 8188 入站。
-- DramaKit 配置改成：`comfyui.base_url: http://<服务器IP>:8188`。
-- **安全提醒**：ComfyUI 默认无鉴权，公网暴露有风险。生产环境建议：
-  - 只在内网/VPN 内暴露；或
-  - 用 Nginx 反代 + Basic Auth / IP 白名单；或
-  - SSH 隧道：`ssh -L 8188:127.0.0.1:8188 user@server`，然后 DramaKit 连 `http://127.0.0.1:8188`。
 
-Nginx 反代 + Basic Auth 示例：
-```nginx
-server {
-    listen 80;
-    server_name comfy.example.com;
-    auth_basic "ComfyUI";
-    auth_basic_user_file /etc/nginx/.htpasswd;
-    location / {
-        proxy_pass http://127.0.0.1:8188;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;      # WebSocket 进度必需
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 600s;
-    }
-}
-```
-> 注意：DramaKit 用 WebSocket 监听生成进度，反代必须转发 `Upgrade/Connection` 头。
+工作流校验会逐节点核对：节点类型在服务器上存在吗、语义 ID（正向提示词、采样器、
+UNET/CLIP/VAE 加载器…）指得对吗、模型文件服务器看得见吗。
 
 ---
 
-## 5. 导出你自己的工作流并对上节点ID
-
-DramaKit 内置的 `config/comfyui/*.json` 是**模板**，你的图很可能不一样。正确做法：
-
-1. 在 ComfyUI 网页里搭好一个能正常出图/出视频的工作流。
-2. 打开右上角设置 → 勾选 **Dev mode Options**。
-3. 菜单点 **Save (API Format)**，导出成 JSON。
-4. 覆盖 `config/comfyui/t2i_sdxl.json`（或改配置里的路径）。
-5. 打开导出的 JSON，找到这些节点的 **ID**（就是 JSON 里的键），填到 `config/default.yaml`：
-
-   **出图 `t2i_nodes`**
-   | 语义 | 对应节点类型 | 要写的字段 |
-   |------|-------------|-----------|
-   | positive | CLIPTextEncode（正向） | text |
-   | negative | CLIPTextEncode（负向） | text |
-   | seed | KSampler | seed / noise_seed |
-   | width, height | EmptyLatentImage | width / height |
-   | steps, cfg, sampler | KSampler | steps / cfg / sampler_name / scheduler |
-   | checkpoint | CheckpointLoaderSimple | ckpt_name |
-
-   **图生视频 `i2v_nodes`**
-   | 语义 | 对应节点类型 | 字段 |
-   |------|-------------|------|
-   | image | LoadImage | image（DramaKit 会先上传再写名字） |
-   | positive/negative | CLIPTextEncode | text |
-   | seed | KSampler | seed |
-   | frames | EmptyLatentImage / ADE Context | batch_size / length / frames / context_length |
-   | fps | VHS_VideoCombine | frame_rate / fps |
-
-6. 校验连通：`dj doctor`（会 ping ComfyUI）。
-
-> 任何额外参数（如挂 LoRA、换 VAE、控制网）可以在代码里通过 `extra.graph_overrides`
-> 传 `{"节点ID": {"字段": 值}}` 直接注入，不用改工作流文件。
-
----
-
-## 6. Windows 部署（备选）
+## 6. Windows 单机（本仓库的默认环境）
 
 ```bat
-:: 1) 装 Python 3.11+ 和 Git，然后：
-git clone https://github.com/comfyanonymous/ComfyUI.git
-cd ComfyUI
-python -m venv venv
-venv\Scripts\activate
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-pip install -r requirements.txt
-
-:: 2) 自定义节点
-cd custom_nodes
-git clone https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved.git
-git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
-cd ..
-
-:: 3) 启动（监听所有网卡）
-python main.py --listen 0.0.0.0 --port 8188
+:: 启动ComfyUI.bat
+cd /d E:\ComfyUI
+E:\ComfyUI\venv\Scripts\python.exe main.py --port 8188
 ```
-防火墙放行 8188：
-```bat
-netsh advfirewall firewall add rule name="ComfyUI" dir=in action=allow protocol=TCP localport=8188
+
+模型放 `E:\ComfyUI\models`，DramaKit 侧配置：
+
+```yaml
+comfyui:
+  base_url: http://127.0.0.1:8188
+  models_dir: E:\\ComfyUI\\models
 ```
 
 ---
 
 ## 7. 常见问题
 
-- **DramaKit 报 `ComfyUI 不可达`**：确认 `python main.py --listen 0.0.0.0` 起了、防火墙放行、
-  `base_url` 的 IP/端口对。浏览器直接开 `http://IP:8188` 能看到界面才算通。
-- **出图全是黑图/报错**：多半是 checkpoint 名字对不上，改 `comfyui.checkpoint` 或工作流里的
-  `ckpt_name` 为你 `models/checkpoints/` 里真实的文件名。
-- **视频不动/报错**：AnimateDiff 运动模型没下好，或 `i2v_nodes` 的 frames/fps 节点ID对不上。
-  先在 ComfyUI 网页里手动跑通再对接。
-- **显存不足 OOM**：降低 `comfyui.width/height`（如 512x896）、减小 `frames`，或加 `--lowvram`
-  启动参数。
-- **进度卡住不动**：反代没转发 WebSocket。见第 4 节 Nginx 的 `Upgrade/Connection` 头。
+| 现象 | 原因 / 处理 |
+|------|-------------|
+| 出图有颜色但没结构 | 文本编码器用了 `int8_convrot`，换成 bf16 版 |
+| `dj nodes sync` 传到一半断了 | 用 `transfer: scp`（内置断点续传）或 `shared` 挂载 |
+| ComfyUI 报显存不足 | H3 出视频时同机不要跑出图；或让出图节点和视频节点分开（`roles`） |
+| systemd 说服务启动失败 | 调大 `TimeoutStartSec`；H3 换入权重很慢 |
+| 模型传过去但服务器看不见 | ComfyUI 有缓存，重启实例或等它刷新目录 |
+| `dj comfy-test` 说节点类型不存在 | 装对应的自定义节点（`ComfyUI-GGUF` 等） |
