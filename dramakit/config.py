@@ -198,6 +198,17 @@ class TTSConfig(BaseModel):
     use_proxy: bool = False                           # 直连(False)；本地 CosyVoice 必须 False
     # character name -> voice id; unresolved characters fall back by gender
     voice_map: dict[str, str] = Field(default_factory=dict)
+    # 旁白/解说是否朗读。False = 只做屏幕文字（独有样式），不进入配音轨
+    speak_narration: bool = False
+    # --- 音色池筛选 ---
+    # 只保留这些语言前缀的音色。默认纯普通话，避免粤语/台湾腔/方言混进短剧
+    voice_locales: list[str] = Field(default_factory=lambda: ["zh-CN"])
+    # 可选：显式音色白名单（留空 = 按 voice_locales 过滤）
+    voice_pool: list[str] = Field(default_factory=list)
+    # 可选：额外排除的音色
+    voice_exclude: list[str] = Field(default_factory=list)
+    # 音色 → 备注（喂给配音导演 LLM，说明年龄/气质）
+    voice_notes: dict[str, str] = Field(default_factory=dict)
     # emotion -> per-provider style/InstructSSML hint (optional)
     emotion_map: dict[str, str] = Field(default_factory=dict)
     silence_pad_ms: int = 120                         # tail silence per line
@@ -335,6 +346,11 @@ class ComposeConfig(BaseModel):
     kenburns_scale: float = 1.12                      # max zoom for stills
     loudness_normalize: bool = True
     target_loudness_lufs: float = -16.0
+    # MiniMax H3 原生音频（自带配乐/环境声/口型）的用法：
+    #   bed     = H3 只出配乐+环境声，压在人声下面当垫底（人声完全由 TTS 轨负责）
+    #   discard = 丢弃 H3 音频，只用 TTS 人声 + 曲库 BGM
+    h3_audio: Literal["bed", "discard"] = "bed"
+    h3_audio_gain: float = 0.45               # H3 垫底音量（相对人声）
     # subtitles
     burn_subtitles: bool = True                       # 硬字幕（红果常用）
     also_write_srt: bool = True

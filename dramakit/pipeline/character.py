@@ -194,6 +194,45 @@ def _fallback_voice(c: Character, voices: list[str]) -> str:
     return voices[0]
 
 
+# 标准普通话音色的气质备注：喂给配音导演 LLM，让它按年龄/气质挑
+VOICE_NOTES: dict[str, str] = {
+    "zh-CN-YunxiNeural": "青年男声，阳光清朗，适合男主/少年",
+    "zh-CN-YunjianNeural": "青年男声，硬朗有力，适合硬汉/战神/狠角色",
+    "zh-CN-YunxiaNeural": "少年男声，稚气，适合弟弟/学生",
+    "zh-CN-YunyangNeural": "成年男声，成熟稳重有分量，适合长辈/反派/老板",
+    "zh-CN-XiaoxiaoNeural": "青年女声，温柔标准，适合女主",
+    "zh-CN-XiaoyiNeural": "少女女声，甜美活泼，适合少女/甜宠",
+}
+
+# 内置兜底音色池：provider 音色表拉取失败时用（edge-tts 偶尔被网络抖动打空）
+FALLBACK_VOICES: list[str] = [
+    "zh-CN-YunxiNeural", "zh-CN-YunjianNeural", "zh-CN-YunxiaNeural",
+    "zh-CN-YunyangNeural", "zh-CN-XiaoxiaoNeural", "zh-CN-XiaoyiNeural",
+]
+
+
+def _curated_voices(ctx: Context, voices: list[str]) -> tuple[list[str], str]:
+    """Filter the provider voice list down to a usable, annotated pool.
+
+    Keeps only the configured locales (default: standard Mandarin, no dialects)
+    so the casting LLM cannot pick a Cantonese/Taiwanese voice for a mainland
+    drama, and annotates each voice with its age/timbre.
+    """
+    cfg = ctx.cfg.tts
+    pool = [v for v in voices if v not in set(cfg.voice_exclude or [])]
+    if cfg.voice_pool:
+        allowed = set(cfg.voice_pool)
+        pool = [v for v in pool if v in allowed]
+    else:
+        locs = cfg.voice_locales or ["zh-CN"]
+        pool = [v for v in pool
+                if any(v.startswith(f"{loc}-") and len(v.split("-")) == 3 for loc in locs)]
+    notes = {**VOICE_NOTES, **(cfg.voice_notes or {})}
+    listed = "\n".join(f"- {v}" + (f"   # {notes[v]}" if v in notes else "")
+                       for v in pool)
+    return pool, listed
+
+
 def cast_voices(ctx: Context, chars: list[Character]) -> int:
     """Assign a TTS voice to every character without one (LLM, then gender map)."""
     cfg = ctx.cfg.characters
@@ -205,28 +244,37 @@ def cast_voices(ctx: Context, chars: list[Character]) -> int:
     try:
         voices = ctx.providers.tts.list_voices()
     except Exception as e:  # noqa: BLE001
-        ctx.log.warning("character: 读取音色失败(%s)，跳过自动选角", str(e)[:120])
-        return 0
+        ctx.log.warning("character: 读取音色失败(%s)，改用内置兜底音色池", str(e)[:120])
+        voices = []
+    voices, voices_doc = _curated_voices(ctx, voices)
+    if not voices:
+        # provider 音色表为空（网络抖动/服务不可用）：退回内置池，别让整集选角失败
+        voices, voices_doc = _curated_voices(ctx, FALLBACK_VOICES)
+        ctx.log.warning("character: 音色表不可用，使用内置兜底音色池")
     if not voices:
         return 0
-    voices = voices[:24]
     lines = "\n".join(
         f"- name: {c.name}; role: {c.role}; gender: {c.gender}; age: {c.age}; "
         f"personality: {c.personality}" for c in pending)
+    ad = ctx.project.art_direction
     try:
         llm = ctx.providers.llm_for("script")
         data = llm.complete_json(
             T.VOICE_CAST_SYSTEM,
-            T.render(T.VOICE_CAST_USER, characters=lines,
-                     voices=", ".join(voices)))
+            T.render(T.VOICE_CAST_USER, characters=lines, voices=voices_doc,
+                     genre=ad.genre or "", style=ad.style or "", era=ad.era or "",
+                     tone=ad.color_palette or ""))
         if isinstance(data, list):
             data = {"characters": data}
-        by_name = {str(x.get("name", "")).strip(): str(x.get("voice_id", "")).strip()
+        by_name = {str(x.get("name", "")).strip(): x
                    for x in (data.get("characters") or []) if isinstance(x, dict)}
         for c in pending:
-            picked = by_name.get(c.name, "")
+            got = by_name.get(c.name, {})
+            picked = str(got.get("voice_id", "")).strip()
             if picked in voices:
                 c.voice_id = picked
+                c.voice_pitch = str(got.get("pitch", "")).strip()
+                c.voice_rate = str(got.get("rate", "")).strip()
     except Exception as e:  # noqa: BLE001
         ctx.log.warning("character: 自动选角 LLM 失败(%s)，按性别兜底", str(e)[:120])
     made = 0

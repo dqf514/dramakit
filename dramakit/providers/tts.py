@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -75,10 +76,18 @@ class EdgeTTS(BaseTTS):
             import edge_tts
             return [v["ShortName"] for v in await edge_tts.list_voices()
                     if v["Locale"].startswith("zh")]
-        try:
-            return asyncio.run(_run())
-        except Exception:  # noqa: BLE001
-            return []
+        # the voice list is fetched from the network and can come back empty on a
+        # transient failure; retry a couple of times before giving up
+        for attempt in range(3):
+            try:
+                voices = asyncio.run(_run())
+                if voices:
+                    return voices
+            except Exception:  # noqa: BLE001
+                pass
+            if attempt < 2:
+                time.sleep(1.0 + attempt)
+        return []
 
 
 # --------------------------------------------------------------------------- #
