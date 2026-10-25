@@ -9,7 +9,7 @@
   "102": {
     "class_type": "CLIPLoader",
     "inputs": {
-      "clip_name": "qwen3vl_4b_int8_convrot.safetensors",
+      "clip_name": "qwen3vl_4b_bf16.safetensors",
       "type": "flux3",
       "device": "default"
     }

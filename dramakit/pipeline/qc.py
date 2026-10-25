@@ -31,10 +31,17 @@ _BLACK_RE = re.compile(r"black_start:([\d.]+)\s+black_end:([\d.]+)")
 
 
 def _measure_loudness(path: str | Path) -> dict:
-    """Integrated loudness / LRA / true peak via EBU R128."""
+    """Integrated loudness / LRA / true peak via EBU R128.
+
+    ebur128 prints a running value on every frame; only the block after
+    "Summary:" holds the final measurement.
+    """
     r = ff._run([ff.ffmpeg_bin(), "-i", str(path), "-af",
                  "ebur128=peak=true", "-f", "null", "-"], quiet=True)
     text = (r.stderr or "") + (r.stdout or "")
+    idx = text.rfind("Summary:")
+    if idx >= 0:
+        text = text[idx:]
     out: dict = {}
     m = _I_RE.search(text)
     if m:
