@@ -56,6 +56,10 @@ test_pup.py
 test_qc.py
 test_llm.py
 test_pool.py
+test_compose_parts.py
+test_charref.py
+test_fitref.py
+pw_qc.py
 bisect_flux3.py
 diag_flux3.py
 diag2_flux3.py

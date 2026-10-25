@@ -1,0 +1,4 @@
+# shell scripts must stay LF - CRLF breaks them on Linux
+*.sh text eol=lf
+*.bash text eol=lf
+deploy/*.sh text eol=lf
