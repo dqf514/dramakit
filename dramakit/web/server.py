@@ -18,6 +18,7 @@ import mimetypes
 import threading
 import traceback
 import uuid
+from urllib.parse import quote
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -1245,7 +1246,8 @@ def _legacy_model_entries(cfg: Config) -> tuple[list[dict], str]:
 def _media_url(slug: str, rel_path: str) -> str:
     if not rel_path:
         return ""
-    return f"/media/{slug}/{rel_path.lstrip('/')}"
+    segs = "/".join(quote(s) for s in rel_path.lstrip("/").split("/") if s != "")
+    return f"/media/{quote(slug)}/{segs}"
 
 
 def _slim_workflow_report(rep: Optional[dict]) -> Optional[dict]:
