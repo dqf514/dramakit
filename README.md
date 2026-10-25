@@ -608,8 +608,9 @@ dramakit/
 | `dj run <项目> [--stages --stop-after --episodes]` | 跑流水线 |
 | `dj status <项目>` | 看进度表 |
 | `dj voices` | 列出可用音色 |
-| `dj nodes` | 列出 ComfyUI 节点池并自检（连通/版本/显存/模型齐全度）|
-| `dj nodes sync <名字>` | 把工作流需要的模型同步到该节点（带进度）|
+| `dj nodes` | 列出 ComfyUI 节点池并自检（连通/版本/显存/角色/队列深度/模型齐全度）|
+| `dj nodes sync <名字>` | 把工作流需要的模型同步到该节点（带进度、可断点续传）|
+| `dj nodes --role i2v` | 只看某个角色的节点（t2i 出图 / i2v 出视频）|
 | `dj config [--init/--dump]` | 查看/导出配置 |
 | `dj clean <项目> --what tmp\|intermediates` | 清理中间产物 |
 
