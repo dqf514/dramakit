@@ -124,27 +124,27 @@ def _clip(x: float, lo: float, hi: float) -> float:
 
 def grade_filter(src: ColorStats, target: ColorStats, strength: float = 1.0,
                  lut: str | Path | None = None) -> str:
-    """Build an ffmpeg filter chain that moves `src` toward `target`."""
+    """Build an ffmpeg filter chain that moves `src` toward `target`.
+
+    Only two corrections are applied, and the order matters:
+
+      saturation - a multiplier that leaves the brightness alone
+      white balance - a per-channel gain, then
+      brightness - last, so the clip lands on the target exposure
+
+    ffmpeg's `eq=contrast` is deliberately not used: it scales around
+    mid-grey, so on a dark shot it crushes the shadows instead of pulling the
+    shot toward its neighbours - it widens the very spread it is meant to
+    close.
+    """
     s = max(0.0, min(1.0, strength))
     parts: list[str] = []
-
-    # exposure -> eq=brightness is a luma offset in code values / 255
-    if target.luma > 0 and src.luma > 0:
-        delta = (target.luma - src.luma) / 255.0 * s
-        if abs(delta) > 0.004:
-            parts.append(f"eq=brightness={_clip(delta, -0.35, 0.35):.4f}")
 
     # saturation -> eq=saturation is a multiplier around the luma axis
     if target.sat > 1 and src.sat > 1:
         mul = (target.sat / src.sat) ** s
         if abs(mul - 1.0) > 0.02:
             parts.append(f"eq=saturation={_clip(mul, 0.2, 3.0):.4f}")
-
-    # contrast -> eq=contrast is a multiplier around mid grey
-    if target.contrast > 1 and src.contrast > 1:
-        mul = (target.contrast / src.contrast) ** s
-        if abs(mul - 1.0) > 0.02:
-            parts.append(f"eq=contrast={_clip(mul, 0.5, 2.0):.4f}")
 
     # white balance -> per-channel gain via lutrgb (U high = too blue)
     if abs(src.tint) > 3.0 and abs(target.tint) > 0.5:
@@ -157,6 +157,12 @@ def grade_filter(src: ColorStats, target: ColorStats, strength: float = 1.0,
                 f"lutrgb=r='clip(val*{gr:.4f},0,255)':"
                 f"g='clip(val*{gb:.4f},0,255)':"
                 f"b='clip(val*{bl:.4f},0,255)'")
+
+    # exposure last, so the clip lands on the target brightness
+    if target.luma > 0 and src.luma > 0:
+        delta = (target.luma - src.luma) / 255.0 * s
+        if abs(delta) > 0.004:
+            parts.append(f"eq=brightness={_clip(delta, -0.35, 0.35):.4f}")
 
     if lut:
         p = str(lut).replace("\\", "/").replace(":", "\\:")

@@ -18,6 +18,42 @@ def load():
     return out
 
 
+def write_markdown(rows) -> Path:
+    """A human-readable report of every round."""
+    out = ROUNDS / "总报告.md"
+    lines = ["# 10 轮短剧全链路迭代报告", "",
+             "每轮：换剧本 → 全流水线 → 自动质检 → 改代码 → 下一轮。", "",
+             "## 汇总", "",
+             "| 轮 | 项目 | 题材 | 结论 | 问题 | 成片响度 | 对白/垫底差 | 锐度中位 | 亮度差 | 字幕条 | 音轨 |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for n, rep in rows:
+        e = rep["episodes"][0] if rep["episodes"] else {}
+        m = e.get("mix") or {}
+        p = e.get("picture") or {}
+        s = e.get("subtitle") or {}
+        nl = e.get("nle") or {}
+        au = m.get("audibility") or {}
+        title = (e.get("title") or "")[:18]
+        lines.append(
+            f"| {n} | {rep['project'][:16]} | {title} | {rep['verdict']} | "
+            f"{rep['issue_count']} | {au.get('speech_lufs', '-')} / {au.get('gap_lu', '-')} LU | "
+            f"{p.get('sharp_median', '-')} | {p.get('luma_spread', '-')} | "
+            f"{s.get('cues', '-')} | {len(nl.get('lanes', []))} |")
+    lines += ["", "## 逐轮问题与处理", ""]
+    for n, rep in rows:
+        lines.append(f"### 第 {n} 轮 · {rep['project']} — {rep['verdict']}")
+        lines.append("")
+        if not rep["issues"]:
+            lines.append("无问题。")
+            lines.append("")
+            continue
+        for i in rep["issues"]:
+            lines.append(f"- **{i['area']}/{i['kind']}** ({i['where']}): {i['detail']}")
+        lines.append("")
+    out.write_text("\n".join(lines), encoding="utf-8")
+    return out
+
+
 def main():
     rows = load()
     if not rows:
@@ -55,6 +91,8 @@ def main():
             print("     无")
         for k, v in kinds.items():
             print(f"     {k}: {v[0][:70]}" + (f"  (共{len(v)}处)" if len(v) > 1 else ""))
+    md = write_markdown(rows)
+    print(f"\n总报告: {md}")
 
 
 if __name__ == "__main__":

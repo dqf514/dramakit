@@ -1,0 +1,168 @@
+{
+  "project": "轮次03_03",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "死去三年的新娘",
+      "picture": {
+        "frames": 16,
+        "sharp_median": 18.9,
+        "sharp_min": 14.0,
+        "luma_spread": 13.8,
+        "src_luma_spread": 28.2,
+        "graded_luma_spread": 6.1,
+        "sat_spread": 1.9
+      },
+      "voice": {
+        "lines": 13,
+        "rows": [
+          {
+            "id": "ln-f6a20e79",
+            "speaker": "沈默",
+            "emotion": "平静",
+            "duration": 1.01,
+            "chars": 3
+          },
+          {
+            "id": "ln-fec78873",
+            "speaker": "沈默",
+            "emotion": "平静",
+            "duration": 2.32,
+            "chars": 9
+          },
+          {
+            "id": "ln-c626da00",
+            "speaker": "程夏",
+            "emotion": "惊讶",
+            "duration": 2.29,
+            "chars": 7
+          },
+          {
+            "id": "ln-e938edf2",
+            "speaker": "沈默",
+            "emotion": "悲伤",
+            "duration": 2.22,
+            "chars": 7
+          },
+          {
+            "id": "ln-0135cadd",
+            "speaker": "沈默",
+            "emotion": "平静",
+            "duration": 3.01,
+            "chars": 9
+          },
+          {
+            "id": "ln-48a4ea57",
+            "speaker": "程夏",
+            "emotion": "愤怒",
+            "duration": 3.61,
+            "chars": 13
+          },
+          {
+            "id": "ln-5d556e04",
+            "speaker": "程夏",
+            "emotion": "愤怒",
+            "duration": 1.91,
+            "chars": 8
+          },
+          {
+            "id": "ln-09d848f7",
+            "speaker": "沈默",
+            "emotion": "平静",
+            "duration": 1.65,
+            "chars": 8
+          },
+          {
+            "id": "ln-5aaf334d",
+            "speaker": "程夏",
+            "emotion": "悲伤",
+            "duration": 4.61,
+            "chars": 10
+          },
+          {
+            "id": "ln-939dd757",
+            "speaker": "沈默",
+            "emotion": "平静",
+            "duration": 1.22,
+            "chars": 4
+          },
+          {
+            "id": "ln-1f4259d6",
+            "speaker": "沈默",
+            "emotion": "悲伤",
+            "duration": 4.22,
+            "chars": 12
+          },
+          {
+            "id": "ln-8a7b516f",
+            "speaker": "程夏",
+            "emotion": "紧张",
+            "duration": 1.94,
+            "chars": 5
+          },
+          {
+            "id": "ln-81e61868",
+            "speaker": "沈默",
+            "emotion": "平静",
+            "duration": 4.08,
+            "chars": 14
+          }
+        ],
+        "per_emotion": {
+          "平静": 2.21,
+          "惊讶": 2.29,
+          "悲伤": 3.68,
+          "愤怒": 2.76,
+          "紧张": 1.94
+        }
+      },
+      "mix": {
+        "episode": {
+          "i": -18.3,
+          "lra": 3.4,
+          "pk": -1.4
+        },
+        "voice": {
+          "i": -20.7,
+          "lra": 5.2,
+          "pk": -0.6
+        },
+        "music": {
+          "i": -35.1,
+          "lra": 5.8,
+          "pk": -17.5
+        },
+        "bed": {
+          "i": -24.5,
+          "lra": 5.8,
+          "pk": -6.9
+        },
+        "audibility": {
+          "speech_lufs": -20.2,
+          "bed_peak_lufs": -32.2,
+          "gap_lu": 12.0
+        },
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 30,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "nle": {
+        "spine": 10,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ]
+      }
+    }
+  ],
+  "issues": [],
+  "issue_count": 0,
+  "verdict": "PASS"
+}

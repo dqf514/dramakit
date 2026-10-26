@@ -6,10 +6,12 @@
       "title": "被逐少爷归来夺股",
       "picture": {
         "frames": 16,
-        "sharp_median": 1827.2,
-        "sharp_min": 446.1,
-        "luma_spread": 12.4,
-        "sat_spread": 3.1
+        "sharp_median": 25.9,
+        "sharp_min": 4.9,
+        "luma_spread": 7.3,
+        "src_luma_spread": 31.9,
+        "graded_luma_spread": 2.9,
+        "sat_spread": 2.7
       },
       "voice": {
         "lines": 14,
