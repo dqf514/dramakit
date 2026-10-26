@@ -156,6 +156,10 @@
         "lines": 14,
         "onsets": 21
       },
+      "story": {
+        "mismatched": 0,
+        "rows": []
+      },
       "mix": {
         "episode": {
           "i": -16.7,

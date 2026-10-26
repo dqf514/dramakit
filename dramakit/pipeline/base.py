@@ -67,6 +67,46 @@ def _line_duration(line: Line) -> float:
     return estimate_reading_seconds(line.text)
 
 
+def _shot_line_map(shots, n_lines: int) -> dict[str, list[int]] | None:
+    """Which lines each shot carries, and who gets the leftovers.
+
+    The storyboard says which lines a shot covers. When it does, the shot
+    lasts exactly as long as those lines, so the cut lands on a line boundary
+    and the camera is on the person who is talking.
+    """
+    if not shots or n_lines <= 0:
+        return None
+    claimed: dict[str, list[int]] = {}
+    used: set[int] = set()
+    for sh in shots:
+        idxs = []
+        for n in sh.line_indices:
+            if 1 <= n <= n_lines and n not in used:
+                idxs.append(n)
+                used.add(n)
+        if idxs:
+            claimed[sh.id] = idxs
+    if not claimed:
+        return None
+    missing = [n for n in range(1, n_lines + 1) if n not in used]
+    if missing:
+        # hand each leftover to the shot that sits closest to it in the list -
+        # a shot with no lines of its own (an establishing shot) takes it
+        # first, so the opening line is not dragged into a later close-up
+        n_shots = len(shots)
+        for n in missing:
+            want = (n - 0.5) / n_lines * n_shots
+            empty = [sh for sh in shots if not claimed.get(sh.id)]
+            if empty:
+                best = min(empty, key=lambda sh: abs(sh.index - want))
+            else:
+                best = min(shots, key=lambda sh: abs(min(claimed.get(sh.id) or [n]) - n))
+            claimed.setdefault(best.id, []).append(n)
+        for sid in claimed:
+            claimed[sid].sort()
+    return claimed
+
+
 def build_timeline(ep: Episode, min_shot: float = 1.0) -> Timeline:
     timed_scenes: list[TimedScene] = []
     cursor = 0.0
@@ -77,8 +117,21 @@ def build_timeline(ep: Episode, min_shot: float = 1.0) -> Timeline:
         narration = [l for l in sc.lines if is_narration(l)]
         raw_lines = [(_line_duration(l), l) for l in spoken]
         scene_audio = round(sum(d for d, _ in raw_lines), 3)
-        # 2) minimum picture length from shot durations
-        shot_sum = round(sum(max(sh.duration, min_shot) for sh in sc.shots), 3)
+
+        # 2) how long each shot lasts. When the storyboard says which lines a
+        #    shot carries, the shot is exactly as long as those lines - the cut
+        #    lands on the dialogue instead of drifting through it.
+        line_map = _shot_line_map(sc.shots, len(raw_lines))
+        shot_durs: list[float] = []
+        for sh in sc.shots:
+            d = max(sh.duration, min_shot)
+            if line_map:
+                idxs = line_map.get(sh.id) or []
+                owned = sum(raw_lines[i - 1][0] for i in idxs)
+                if owned > 0:
+                    d = owned
+            shot_durs.append(d)
+        shot_sum = round(sum(shot_durs), 3)
         scene_dur = max(scene_audio, shot_sum, min_shot)
 
         # 3) normalize shot durations to fill the scene exactly
@@ -87,20 +140,35 @@ def build_timeline(ep: Episode, min_shot: float = 1.0) -> Timeline:
             scale = scene_dur / shot_sum if shot_sum > 0 else 1.0
             shot_cursor = cursor
             for i, sh in enumerate(sc.shots):
-                d = max(sh.duration, min_shot) * scale
+                d = shot_durs[i] * scale
                 if i == len(sc.shots) - 1:               # absorb rounding on last
                     d = scene_dur - (shot_cursor - cursor)
                 d = max(d, min_shot)
                 timed_shots.append(TimedShot(sh, round(shot_cursor, 3), round(d, 3)))
                 shot_cursor += d
 
-        # 4) place spoken lines back-to-back from scene start
+        # 4) place the spoken lines: inside the shot that carries them, one
+        #    after another, so the picture and the dialogue stay together
         timed_lines: list[TimedLine] = []
-        line_cursor = cursor
-        for d, l in raw_lines:
-            timed_lines.append(TimedLine(l, sc.id, round(line_cursor, 3),
-                                         round(line_cursor + d, 3)))
-            line_cursor += d
+        if line_map and timed_shots:
+            by_shot: dict[str, list[int]] = line_map
+            for ts in timed_shots:
+                idxs = sorted(by_shot.get(ts.shot.id) or [])
+                inner = ts.start
+                for i in idxs:
+                    d, l = raw_lines[i - 1]
+                    share = d * (ts.duration / max(
+                        sum(raw_lines[j - 1][0] for j in idxs), 1e-6))
+                    timed_lines.append(TimedLine(l, sc.id, round(inner, 3),
+                                                 round(inner + share, 3)))
+                    inner += share
+        else:
+            line_cursor = cursor
+            for d, l in raw_lines:
+                timed_lines.append(TimedLine(l, sc.id, round(line_cursor, 3),
+                                             round(line_cursor + d, 3)))
+                line_cursor += d
+        timed_lines.sort(key=lambda t: t.start)
 
         # 5) narration: display-only cards spread across the scene. They overlap
         #    the spoken track in time but live in their own on-screen slot.

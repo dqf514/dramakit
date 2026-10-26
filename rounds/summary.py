@@ -61,7 +61,8 @@ def main():
         return
     print(f"{'轮':>3} {'项目':22s} {'结论':7s} {'问题':>4} "
           f"{'响度':>7} {'对白段':>7} {'垫底段':>7} {'差LU':>6} "
-          f"{'锐度中位':>8} {'亮度差':>7} {'字幕':>5} {'音轨':>5}")
+          f"{'锐度中位':>8} {'亮度差':>7} {'字幕':>5} {'音轨':>5} "
+          f"{'成片秒':>7} {'时间线秒':>8}")
     print("-" * 116)
     for n, rep in rows:
         e = rep["episodes"][0] if rep["episodes"] else {}
@@ -70,6 +71,7 @@ def main():
         s = e.get("subtitle") or {}
         nl = e.get("nle") or {}
         au = m.get("audibility") or {}
+        c = e.get("completeness") or {}
 
         def g(d, k):
             v = (d.get(k) if isinstance(d, dict) else None)
@@ -79,7 +81,8 @@ def main():
               f"{g(m.get('episode',{}),'i'):>7} {str(au.get('speech_lufs','-')):>7} "
               f"{str(au.get('bed_lufs','-')):>7} {str(au.get('gap_lu','-')):>6} "
               f"{str(p.get('sharp_median','-')):>8} {str(p.get('luma_spread','-')):>7} "
-              f"{str(s.get('cues','-')):>5} {str(len(nl.get('lanes',[]))):>5}")
+              f"{str(s.get('cues','-')):>5} {str(len(nl.get('lanes',[]))):>5} "
+              f"{str(c.get('duration','-')):>7} {str(c.get('timeline','-')):>8}")
     print("-" * 116)
     print("\n逐轮问题:")
     for n, rep in rows:

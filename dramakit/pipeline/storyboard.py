@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from ..models import Shot, ShotType, Status
+from ..models import Shot, ShotType, Status, is_narration
 from ..prompts import templates as T
 from ..utils.text import estimate_reading_seconds
 from .base import Context
@@ -44,8 +44,15 @@ def run(ctx: Context) -> dict:
             if sc.shots:
                 continue
             narration_sec = round(sum(estimate_reading_seconds(l.text) for l in sc.lines), 1)
+            # the lines are numbered for the model; the numbers it answers with
+            # have to be translated back to the spoken lines only, because the
+            # narration is never spoken
             lines_text = "\n".join(
-                f"- {l.speaker}({l.emotion}): {l.text}" for l in sc.lines) or "（无台词，纯画面）"
+                f"- {i}. {l.speaker}({l.emotion}): {l.text}"
+                for i, l in enumerate(sc.lines, 1)) or "（无台词，纯画面）"
+            spoken_at = [i for i, l in enumerate(sc.lines, 1)
+                         if not is_narration(l)]
+            spoken_pos = {full: k + 1 for k, full in enumerate(spoken_at)}
             prefer = "多用运动镜头增强节奏" if cfg.prefer_dynamic else "以固定镜头为主"
             # a short drama only holds attention if it cuts fast: the episode
             # gets a shot budget and every scene a share of what is left
@@ -72,13 +79,25 @@ def run(ctx: Context) -> dict:
             if isinstance(data, list):
                 data = data[0] if data else {}
             shots = []
+            n_lines = len(spoken_at)
             for i, s in enumerate(data.get("shots", []) or [], 0):
+                # which lines this shot carries, so the cut can land on them
+                idx: list[int] = []
+                for v in (s.get("lines") or []):
+                    try:
+                        n = int(v)
+                    except (TypeError, ValueError):
+                        continue
+                    k = spoken_pos.get(n)
+                    if k and k not in idx:
+                        idx.append(k)
                 shots.append(Shot(
                     id=_id("sh"), index=i, shot_type=_to_shot_type(s.get("shot_type", "中景")),
                     camera_move=s.get("camera_move", "固定"),
                     duration=_clamp(s.get("duration"), dmin, dmax, 3.0),
                     action=s.get("action", ""),
                     characters=[str(c) for c in (s.get("characters") or [])],
+                    line_indices=sorted(idx),
                 ))
             sc.shots = shots or _fallback_shots(sc, dmin, dmax)
         ctx.mark(ep, "storyboard", Status.DONE)
@@ -92,10 +111,16 @@ def _fallback_shots(sc, dmin: float, dmax: float) -> list[Shot]:
     """One medium shot per line (or a single shot for a silent scene)."""
     shots: list[Shot] = []
     items = sc.lines or [None]  # type: ignore[list-item]
+    spoken_no = 0
     for i, l in enumerate(items):
         action = l.text[:60] if l else sc.summary[:60]
+        idxs: list[int] = []
+        if l and not is_narration(l):
+            spoken_no += 1
+            idxs = [spoken_no]
         chars = [l.speaker] if (l and l.speaker not in ("旁白", "解说")) else []
+        # each shot carries the line it was made for, so the cut lands on it
         shots.append(Shot(id=_id("sh"), index=i, shot_type=ShotType.MEDIUM,
                           camera_move="固定", duration=max(dmin, min(dmax, 3.0)),
-                          action=action, characters=chars))
+                          action=action, characters=chars, line_indices=idxs))
     return shots

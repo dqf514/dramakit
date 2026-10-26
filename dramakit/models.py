@@ -149,6 +149,9 @@ class Shot(BaseModel):
     duration: float = 3.0                     # seconds
     action: str = ""                          # 画面内容（中文，给人看）
     characters: list[str] = Field(default_factory=list)
+    # which lines of the scene this shot carries (1-based). The timeline cuts
+    # on these, so the camera is on the person who is speaking.
+    line_indices: list[int] = Field(default_factory=list)
     # generation
     prompt: str = ""                          # 正向提示词（出图用）
     negative_prompt: str = ""

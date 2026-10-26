@@ -158,6 +158,74 @@
         "lines": 15,
         "onsets": 12
       },
+      "story": {
+        "mismatched": 7,
+        "rows": [
+          {
+            "line": "ln-53022281",
+            "speaker": "神秘男人",
+            "shot": "sh-72d51551",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "你也睡不着？"
+          },
+          {
+            "line": "ln-cf37dc4d",
+            "speaker": "神秘男人",
+            "shot": "sh-72d51551",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "林小满。"
+          },
+          {
+            "line": "ln-6b94bc11",
+            "speaker": "神秘男人",
+            "shot": "sh-72d51551",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "三年前，在建设银行。"
+          },
+          {
+            "line": "ln-08e20858",
+            "speaker": "林小满",
+            "shot": "sh-c2eb4e0e",
+            "on_screen": [
+              "神秘男人"
+            ],
+            "text": "你认错人了！"
+          },
+          {
+            "line": "ln-a9c62e5c",
+            "speaker": "林小满",
+            "shot": "sh-17fdd12f",
+            "on_screen": [
+              "神秘男人"
+            ],
+            "text": "那是伪造的……"
+          },
+          {
+            "line": "ln-cc17d8e1",
+            "speaker": "神秘男人",
+            "shot": "sh-6bfa40a3",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "明天上午九点，建行信贷部。"
+          },
+          {
+            "line": "ln-c3d900b0",
+            "speaker": "林小满",
+            "shot": "sh-f2e2b1b9",
+            "on_screen": [
+              "神秘男人"
+            ],
+            "text": "你到底想干什么？"
+          }
+        ]
+      },
       "mix": {
         "episode": {
           "i": -17.3,
@@ -204,7 +272,14 @@
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "story",
+      "kind": "speaker_off_screen",
+      "where": "-",
+      "detail": "7 句台词说话时镜头里是别人：神秘男人→「林小满」；神秘男人→「林小满」；神秘男人→「林小满」"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
 }
