@@ -270,7 +270,16 @@ def compose_episode(ctx: Context, ep) -> str:
         bgm = None
     parts: list[tuple[str, float]] = []
     if bed:
-        parts.append((bed, cc.h3_audio_gain))
+        # the bed level depends on the episode, so set it against the dialogue:
+        # the music's loudest moments have to stay clearly under the voices
+        try:
+            gain = ff.bed_gain_for(voice, bed, target_gap_lu=cc.music_gap_lu)
+        except Exception as e:  # noqa: BLE001
+            ctx.log.warning("compose: 垫底增益测算失败: %s", str(e)[:120])
+            gain = cc.h3_audio_gain
+        parts.append((bed, gain))
+        ctx.log.info("compose: 第%d集 垫底增益 x%.2f（目标比人声低 %d LU）",
+                     ep.index, gain, cc.music_gap_lu)
     if bgm:
         parts.append((bgm, ctx.cfg.music.bgm_volume))
     music = ""

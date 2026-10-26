@@ -5,60 +5,11 @@
       "index": 1,
       "title": "雨夜担保索赔两千万",
       "picture": {
-        "frames": [
-          {
-            "at": 2.8,
-            "sharp": 1875.5,
-            "luma": 63.5,
-            "sat": 5.9
-          },
-          {
-            "at": 8.5,
-            "sharp": 2139.9,
-            "luma": 50.7,
-            "sat": 4.7
-          },
-          {
-            "at": 14.2,
-            "sharp": 1143.4,
-            "luma": 67.3,
-            "sat": 6.0
-          },
-          {
-            "at": 19.9,
-            "sharp": 1952.7,
-            "luma": 56.6,
-            "sat": 5.9
-          },
-          {
-            "at": 25.6,
-            "sharp": 1480.6,
-            "luma": 49.2,
-            "sat": 4.0
-          },
-          {
-            "at": 31.3,
-            "sharp": 1440.8,
-            "luma": 61.3,
-            "sat": 5.7
-          },
-          {
-            "at": 37.0,
-            "sharp": 1557.0,
-            "luma": 60.5,
-            "sat": 5.0
-          },
-          {
-            "at": 42.7,
-            "sharp": 1814.8,
-            "luma": 70.0,
-            "sat": 5.9
-          }
-        ],
-        "sharp_median": 1814.8,
-        "sharp_min": 1143.4,
-        "luma_spread": 20.8,
-        "sat_spread": 2.0
+        "frames": 16,
+        "sharp_median": 1621.6,
+        "sharp_min": 1165.7,
+        "luma_spread": 22.2,
+        "sat_spread": 1.6
       },
       "voice": {
         "lines": 16,
@@ -189,9 +140,9 @@
       },
       "mix": {
         "episode": {
-          "i": -17.2,
-          "lra": 14.3,
-          "pk": -1.3
+          "i": -17.3,
+          "lra": 15.3,
+          "pk": -1.2
         },
         "voice": {
           "i": -29.5,
@@ -199,9 +150,9 @@
           "pk": -6.7
         },
         "music": {
-          "i": -39.1,
+          "i": -44.1,
           "lra": 11.5,
-          "pk": -20.1
+          "pk": -25.2
         },
         "bed": {
           "i": -24.2,
@@ -209,9 +160,9 @@
           "pk": -5.2
         },
         "audibility": {
-          "speech_lufs": -16.6,
-          "bed_lufs": -25.1,
-          "gap_lu": 8.6
+          "speech_lufs": -29.2,
+          "bed_peak_lufs": -41.2,
+          "gap_lu": 12.0
         },
         "black_segments": 0
       },

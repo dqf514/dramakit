@@ -1,0 +1,178 @@
+{
+  "project": "轮次02_02",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "被逐少爷归来夺股",
+      "picture": {
+        "frames": 16,
+        "sharp_median": 1827.2,
+        "sharp_min": 446.1,
+        "luma_spread": 12.4,
+        "sat_spread": 3.1
+      },
+      "voice": {
+        "lines": 14,
+        "rows": [
+          {
+            "id": "ln-b38436fd",
+            "speaker": "陆家管家",
+            "emotion": "轻蔑",
+            "duration": 1.1,
+            "chars": 5
+          },
+          {
+            "id": "ln-d7973934",
+            "speaker": "陆沉",
+            "emotion": "平静",
+            "duration": 2.8,
+            "chars": 11
+          },
+          {
+            "id": "ln-30a2f5a4",
+            "speaker": "陆明远",
+            "emotion": "得意",
+            "duration": 2.32,
+            "chars": 8
+          },
+          {
+            "id": "ln-c9cd5e90",
+            "speaker": "陆明远",
+            "emotion": "嘲讽",
+            "duration": 1.99,
+            "chars": 9
+          },
+          {
+            "id": "ln-ce667faa",
+            "speaker": "陆沉",
+            "emotion": "坚定",
+            "duration": 1.78,
+            "chars": 8
+          },
+          {
+            "id": "ln-91df258f",
+            "speaker": "陆沉",
+            "emotion": "坚定",
+            "duration": 3.02,
+            "chars": 14
+          },
+          {
+            "id": "ln-9a764ccb",
+            "speaker": "陆明远",
+            "emotion": "得意",
+            "duration": 3.22,
+            "chars": 10
+          },
+          {
+            "id": "ln-b80a3727",
+            "speaker": "陆沉",
+            "emotion": "平静",
+            "duration": 2.08,
+            "chars": 10
+          },
+          {
+            "id": "ln-d493f891",
+            "speaker": "陆明远",
+            "emotion": "愤怒",
+            "duration": 1.14,
+            "chars": 3
+          },
+          {
+            "id": "ln-da9ef086",
+            "speaker": "陆沉",
+            "emotion": "冷静",
+            "duration": 1.18,
+            "chars": 6
+          },
+          {
+            "id": "ln-e079e0f7",
+            "speaker": "陆沉",
+            "emotion": "笃定",
+            "duration": 1.56,
+            "chars": 8
+          },
+          {
+            "id": "ln-d4dd7d35",
+            "speaker": "陆沉",
+            "emotion": "平静",
+            "duration": 2.34,
+            "chars": 9
+          },
+          {
+            "id": "ln-9077ae7d",
+            "speaker": "周行长",
+            "emotion": "惊讶",
+            "duration": 2.05,
+            "chars": 10
+          },
+          {
+            "id": "ln-7dfe1d02",
+            "speaker": "陆明远",
+            "emotion": "紧张",
+            "duration": 0.97,
+            "chars": 3
+          }
+        ],
+        "per_emotion": {
+          "轻蔑": 1.1,
+          "平静": 2.41,
+          "得意": 2.77,
+          "嘲讽": 1.99,
+          "坚定": 2.4,
+          "愤怒": 1.14,
+          "冷静": 1.18,
+          "笃定": 1.56,
+          "惊讶": 2.05,
+          "紧张": 0.97
+        }
+      },
+      "mix": {
+        "episode": {
+          "i": -17.6,
+          "lra": 6.4,
+          "pk": -1.4
+        },
+        "voice": {
+          "i": -20.0,
+          "lra": 9.0,
+          "pk": -0.9
+        },
+        "music": {
+          "i": -35.1,
+          "lra": 4.5,
+          "pk": -16.9
+        },
+        "bed": {
+          "i": -24.1,
+          "lra": 4.5,
+          "pk": -5.9
+        },
+        "audibility": {
+          "speech_lufs": -20.0,
+          "bed_peak_lufs": -32.0,
+          "gap_lu": 12.0
+        },
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 29,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "nle": {
+        "spine": 10,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ]
+      }
+    }
+  ],
+  "issues": [],
+  "issue_count": 0,
+  "verdict": "PASS"
+}

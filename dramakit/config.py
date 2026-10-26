@@ -427,7 +427,9 @@ class ComposeConfig(BaseModel):
     #   bed     = H3 只出配乐+环境声，压在人声下面当垫底（人声完全由 TTS 轨负责）
     #   discard = 丢弃 H3 音频，只用 TTS 人声 + 曲库 BGM
     h3_audio: Literal["bed", "discard"] = "bed"
-    h3_audio_gain: float = 0.45               # H3 垫底音量（相对人声）
+    h3_audio_gain: float = 0.18               # H3 垫底音量（相对人声）
+    # 音乐垫底要比对白低这么多 LU 才听得清台词（每集会按实测自动校正）
+    music_gap_lu: float = 12.0
     # --- 专业后期 ---
     # AI 镜头各自生成，曝光/饱和/白平衡各不相同，剪在一起会露馅。
     # 逐镜测量后统一到本集中位数，是"业余感"最大的单一来源。

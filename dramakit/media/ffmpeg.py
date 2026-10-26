@@ -320,6 +320,57 @@ def mix_tracks(parts: Sequence[tuple[str | Path, float]], out: str | Path, *,
     return str(out)
 
 
+def momentary_lufs(path: str | Path, limit: int = 20000) -> list[float]:
+    """EBU R128 momentary (400ms) loudness over time.
+
+    The integrated loudness of a dialogue track is dragged down by the silences
+    between the lines, so it cannot answer "can you hear the speech over the
+    music". The momentary profile can: the loud windows are the speech, the
+    quiet ones are the bed alone.
+    """
+    r = _run([ffmpeg_bin(), "-i", str(path), "-af",
+              "ebur128=metadata=1,ametadata=mode=print:file=-",
+              "-f", "null", "-"], quiet=True)
+    import re
+    vals = [float(x) for x in re.findall(r"lavfi\.r128\.M=(-?[\d.]+)", r.stdout)]
+    return [v for v in vals if v > -120][:limit]
+
+
+def _speech_level(path: str | Path) -> float:
+    """Loudness of the speech itself: the median of the loud windows."""
+    vals = sorted(momentary_lufs(path))
+    if len(vals) < 20:
+        return -60.0
+    top = vals[int(len(vals) * 0.6):]
+    return top[len(top) // 2]
+
+
+def _bed_peak(path: str | Path) -> float:
+    """The bed's loudest moments - that is what can mask a voice."""
+    vals = sorted(momentary_lufs(path))
+    if len(vals) < 20:
+        return -60.0
+    return vals[int(len(vals) * 0.9)]
+
+
+def bed_gain_for(voice: str | Path, bed: str | Path,
+                 target_gap_lu: float = 12.0) -> float:
+    """The gain the music bed needs so the dialogue stays clear of it.
+
+    How loud the bed should be depends on the episode: the H3 score has its own
+    dynamics and the dialogue is not equally dense everywhere. Measuring the
+    speech and the bed's loudest moments, and setting the gap, keeps every
+    episode at the same balance.
+    """
+    speech = _speech_level(voice)
+    peak = _bed_peak(bed)
+    if speech <= -60 or peak <= -60:
+        return 1.0
+    import math
+    gain_db = speech - target_gap_lu - peak
+    return max(0.05, min(1.5, 10 ** (gain_db / 20.0)))
+
+
 def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path, *,
                   bgm_volume: float = 0.22, duck: bool = True,
                   target_lufs: Optional[float] = None) -> str:
