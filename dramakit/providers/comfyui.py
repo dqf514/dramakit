@@ -404,6 +404,26 @@ class ComfyUIClient(BaseImageVideo):
         """
         return self.cfg.timeout + max(0, frames) * 3.0
 
+    def _vram_frame_cap(self) -> int:
+        """Longest shot this card can render without thrashing.
+
+        H3 keeps its latent state resident while it samples, so a long shot
+        needs more room than a short one. Measured on a 16GB RTX 5080:
+        328 frames runs fine, 360 frames pushes model initialisation from
+        60 seconds to 24 minutes - the card swaps between CPU and GPU
+        instead of just running slowly. 24GB cards (the 3090s) take the
+        full 360.
+        """
+        try:
+            stats = self.system_stats()
+            total = int((stats.get("devices") or [{}])[0].get("vram_total") or 0)
+        except Exception:  # noqa: BLE001
+            return 243
+        for need, cap in ((22 << 30, 360), (15 << 30, 328)):
+            if total >= need:
+                return cap
+        return 243
+
     async def _wait_ws(self, prompt_id: str, timeout: Optional[float] = None) -> None:
         import websockets
         ws_base = self.base.replace("http://", "ws://").replace("https://", "wss://")
@@ -596,10 +616,11 @@ class ComfyUIClient(BaseImageVideo):
         real_seed = self._seed_value(seed)
         self._set(graph, nm, "seed", "seed", real_seed)
         self._set(graph, nm, "seed", "noise_seed", real_seed)
-        self._set(graph, nm, "frames", "length", frames or self.cfg.frames)
-        self._set(graph, nm, "frames", "frames", frames or self.cfg.frames)
-        self._set(graph, nm, "frames", "batch_size", frames or self.cfg.frames)
-        self._set(graph, nm, "frames", "context_length", frames or self.cfg.frames)
+        frames = min(frames or self.cfg.frames, self._vram_frame_cap())
+        self._set(graph, nm, "frames", "length", frames)
+        self._set(graph, nm, "frames", "frames", frames)
+        self._set(graph, nm, "frames", "batch_size", frames)
+        self._set(graph, nm, "frames", "context_length", frames)
         self._set(graph, nm, "fps", "frame_rate", fps or self.cfg.fps)
         self._set(graph, nm, "fps", "fps", fps or self.cfg.fps)
         # video resolution (H3 takes it on the model node itself)
