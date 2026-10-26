@@ -159,7 +159,8 @@
         "onsets": 12
       },
       "story": {
-        "mismatched": 7,
+        "mismatched": 1,
+        "off_screen_lines": 7,
         "rows": [
           {
             "line": "ln-53022281",
@@ -231,7 +232,7 @@
         "rows": []
       },
       "sync": {
-        "off_cut": 13,
+        "off_cut": 8,
         "rows": [
           {
             "line": "ln-b1496175",
@@ -248,39 +249,11 @@
             "text": "林小满。"
           },
           {
-            "line": "ln-6b94bc11",
-            "speaker": "神秘男人",
-            "shot": "sh-72d51551",
-            "drift": 4.36,
-            "text": "三年前，在建设银行。"
-          },
-          {
-            "line": "ln-86f48b1b",
-            "speaker": "神秘男人",
-            "shot": "sh-c2eb4e0e",
-            "drift": 2.13,
-            "text": "你替我签过担保。"
-          },
-          {
             "line": "ln-08e20858",
             "speaker": "林小满",
             "shot": "sh-c2eb4e0e",
             "drift": 3.82,
             "text": "你认错人了！"
-          },
-          {
-            "line": "ln-99983ad0",
-            "speaker": "神秘男人",
-            "shot": "sh-f8746cee",
-            "drift": 1.77,
-            "text": "三年前那份担保。"
-          },
-          {
-            "line": "ln-8859a4bb",
-            "speaker": "神秘男人",
-            "shot": "sh-f8746cee",
-            "drift": 3.82,
-            "text": "现在值两千万。"
           },
           {
             "line": "ln-a9c62e5c",
@@ -311,13 +284,6 @@
             "text": "明天上午九点，建行信贷部。"
           },
           {
-            "line": "ln-d2031e2b",
-            "speaker": "神秘男人",
-            "shot": "sh-f2e2b1b9",
-            "drift": 1.75,
-            "text": "你不去，我就去你租的地方。"
-          },
-          {
             "line": "ln-c3d900b0",
             "speaker": "林小满",
             "shot": "sh-f2e2b1b9",
@@ -325,6 +291,11 @@
             "text": "你到底想干什么？"
           }
         ]
+      },
+      "pacing": {
+        "average": 4.55,
+        "long": 0,
+        "rows": []
       },
       "mix": {
         "episode": {
@@ -380,15 +351,21 @@
       "area": "story",
       "kind": "speaker_off_screen",
       "where": "-",
-      "detail": "7 句台词说话时镜头里是别人：神秘男人→「林小满」；神秘男人→「林小满」；神秘男人→「林小满」"
+      "detail": "林小满 有 3/5 句台词时不在画面里，角色分配有问题"
     },
     {
       "area": "sync",
       "kind": "line_not_on_a_cut",
       "where": "-",
-      "detail": "13 句台词在镜头中途才开始（画面停在上一句的镜头上）：「睡不着。」迟 1.55s；「林小满。」迟 2.99s；「三年前，在建设银行。」迟 4.36s"
+      "detail": "8 句换了说话人但镜头没切（画面停在上一句的镜头上）：「睡不着。」迟 1.55s；「林小满。」迟 2.99s；「你认错人了！」迟 3.82s"
+    },
+    {
+      "area": "pacing",
+      "kind": "slow_average",
+      "where": "-",
+      "detail": "平均镜头 4.5s，偏慢（短剧通常 2~3 秒一刀）"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 3,
   "verdict": "ISSUES"
 }

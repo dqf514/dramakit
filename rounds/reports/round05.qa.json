@@ -151,6 +151,7 @@
       },
       "story": {
         "mismatched": 0,
+        "off_screen_lines": 0,
         "rows": []
       },
       "frozen": {
@@ -158,29 +159,8 @@
         "rows": []
       },
       "sync": {
-        "off_cut": 6,
+        "off_cut": 2,
         "rows": [
-          {
-            "line": "ln-1a9c0405",
-            "speaker": "传旨宫人",
-            "shot": "sh-444abfb9",
-            "drift": 1.73,
-            "text": "册封沈氏为贵妃。"
-          },
-          {
-            "line": "ln-549c6117",
-            "speaker": "传旨宫人",
-            "shot": "sh-444abfb9",
-            "drift": 4.28,
-            "text": "迁居长乐宫。"
-          },
-          {
-            "line": "ln-9a90c147",
-            "speaker": "沈氏",
-            "shot": "sh-69708c0f",
-            "drift": 1.48,
-            "text": "请太后收回懿旨。"
-          },
           {
             "line": "ln-4f4c4d10",
             "speaker": "沈氏",
@@ -189,18 +169,29 @@
             "text": "死罪便死罪。"
           },
           {
-            "line": "ln-dbcb2231",
-            "speaker": "沈氏",
-            "shot": "sh-18cab6c3",
-            "drift": 3.2,
-            "text": "废太后，立先帝长子。"
-          },
-          {
             "line": "ln-da36c440",
             "speaker": "沈氏",
             "shot": "sh-c7f8621b",
             "drift": 2.16,
             "text": "该坐上位子的，得坐上去。"
+          }
+        ]
+      },
+      "pacing": {
+        "average": 3.85,
+        "long": 3,
+        "rows": [
+          {
+            "shot": "sh-444abfb9",
+            "duration": 6.26
+          },
+          {
+            "shot": "sh-18cab6c3",
+            "duration": 6.52
+          },
+          {
+            "shot": "sh-c7f8621b",
+            "duration": 5.65
           }
         ]
       },
@@ -258,9 +249,15 @@
       "area": "sync",
       "kind": "line_not_on_a_cut",
       "where": "-",
-      "detail": "6 句台词在镜头中途才开始（画面停在上一句的镜头上）：「册封沈氏为贵妃。」迟 1.73s；「迁居长乐宫。」迟 4.28s；「请太后收回懿旨。」迟 1.48s"
+      "detail": "2 句换了说话人但镜头没切（画面停在上一句的镜头上）：「死罪便死罪。」迟 2.66s；「该坐上位子的，得坐上去。」迟 2.16s"
+    },
+    {
+      "area": "pacing",
+      "kind": "slow_shot",
+      "where": "-",
+      "detail": "3 个镜头超过 5.5 秒（短剧要切得快）：sh-444abfb9 6.26s、sh-18cab6c3 6.52s、sh-c7f8621b 5.65s"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }

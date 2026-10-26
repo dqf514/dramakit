@@ -146,7 +146,8 @@
         "onsets": 20
       },
       "story": {
-        "mismatched": 1,
+        "mismatched": 0,
+        "off_screen_lines": 1,
         "rows": [
           {
             "line": "ln-9ee11205",
@@ -162,6 +163,20 @@
       "frozen": {
         "short": 0,
         "rows": []
+      },
+      "sync": {
+        "off_cut": 0,
+        "rows": []
+      },
+      "pacing": {
+        "average": 3.25,
+        "long": 1,
+        "rows": [
+          {
+            "shot": "sh-5898bc99",
+            "duration": 5.65
+          }
+        ]
       },
       "mix": {
         "episode": {
@@ -214,10 +229,10 @@
   ],
   "issues": [
     {
-      "area": "story",
-      "kind": "speaker_off_screen",
+      "area": "pacing",
+      "kind": "slow_shot",
       "where": "-",
-      "detail": "1 句台词说话时镜头里是别人：林一舟→「班长」"
+      "detail": "1 个镜头超过 5.5 秒（短剧要切得快）：sh-5898bc99 5.65s"
     }
   ],
   "issue_count": 1,

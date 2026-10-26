@@ -158,6 +158,7 @@
       },
       "story": {
         "mismatched": 0,
+        "off_screen_lines": 0,
         "rows": []
       },
       "frozen": {
@@ -165,7 +166,7 @@
         "rows": []
       },
       "sync": {
-        "off_cut": 12,
+        "off_cut": 8,
         "rows": [
           {
             "line": "ln-d7973934",
@@ -182,25 +183,11 @@
             "text": "哥，别开玩笑了。"
           },
           {
-            "line": "ln-c9cd5e90",
-            "speaker": "陆明远",
-            "shot": "sh-1ee86a6d",
-            "drift": 2.01,
-            "text": "今天来的都是客人。"
-          },
-          {
             "line": "ln-ce667faa",
             "speaker": "陆沉",
             "shot": "sh-000d329d",
             "drift": 0.53,
             "text": "我来拿我的股权。"
-          },
-          {
-            "line": "ln-91df258f",
-            "speaker": "陆沉",
-            "shot": "sh-000d329d",
-            "drift": 2.36,
-            "text": "爷爷遗嘱写着，百分之二十五。"
           },
           {
             "line": "ln-9a764ccb",
@@ -224,20 +211,6 @@
             "text": "保安！"
           },
           {
-            "line": "ln-e079e0f7",
-            "speaker": "陆沉",
-            "shot": "sh-c02fddd7",
-            "drift": 1.5,
-            "text": "周行长马上就到。"
-          },
-          {
-            "line": "ln-d4dd7d35",
-            "speaker": "陆沉",
-            "shot": "sh-c02fddd7",
-            "drift": 3.12,
-            "text": "周行长，好久不见。"
-          },
-          {
             "line": "ln-9077ae7d",
             "speaker": "周行长",
             "shot": "sh-47e38ac6",
@@ -252,6 +225,11 @@
             "text": "你……"
           }
         ]
+      },
+      "pacing": {
+        "average": 3.08,
+        "long": 0,
+        "rows": []
       },
       "mix": {
         "episode": {
@@ -307,7 +285,7 @@
       "area": "sync",
       "kind": "line_not_on_a_cut",
       "where": "-",
-      "detail": "12 句台词在镜头中途才开始（画面停在上一句的镜头上）：「陆沉。三年前被赶出去。」迟 1.15s；「哥，别开玩笑了。」迟 4.0s；「今天来的都是客人。」迟 2.01s"
+      "detail": "8 句换了说话人但镜头没切（画面停在上一句的镜头上）：「陆沉。三年前被赶出去。」迟 1.15s；「哥，别开玩笑了。」迟 4.0s；「我来拿我的股权。」迟 0.53s"
     }
   ],
   "issue_count": 1,

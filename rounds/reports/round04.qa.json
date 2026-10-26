@@ -150,7 +150,8 @@
         "onsets": 22
       },
       "story": {
-        "mismatched": 1,
+        "mismatched": 0,
+        "off_screen_lines": 1,
         "rows": [
           {
             "line": "ln-d5d60026",
@@ -205,7 +206,7 @@
         ]
       },
       "sync": {
-        "off_cut": 8,
+        "off_cut": 6,
         "rows": [
           {
             "line": "ln-d5d60026",
@@ -229,25 +230,11 @@
             "text": "你妈没死，盒子里是我。"
           },
           {
-            "line": "ln-bc1342d2",
-            "speaker": "神秘女人",
-            "shot": "sh-a43427ff",
-            "drift": 5.76,
-            "text": "你妈用我的名字，签了器官捐赠"
-          },
-          {
             "line": "ln-72bf941d",
             "speaker": "陈放母亲",
             "shot": "sh-81f89f29",
             "drift": 3.83,
             "text": "她替我死了，我活了三年。"
-          },
-          {
-            "line": "ln-f5b269ec",
-            "speaker": "陈放",
-            "shot": "sh-81f89f29",
-            "drift": 7.1,
-            "text": "不……我不信！"
           },
           {
             "line": "ln-05eb0296",
@@ -262,6 +249,24 @@
             "shot": "sh-8d8bb805",
             "drift": 5.21,
             "text": "是我害死了她……"
+          }
+        ]
+      },
+      "pacing": {
+        "average": 4.06,
+        "long": 3,
+        "rows": [
+          {
+            "shot": "sh-a43427ff",
+            "duration": 7.12
+          },
+          {
+            "shot": "sh-81f89f29",
+            "duration": 7.12
+          },
+          {
+            "shot": "sh-8d8bb805",
+            "duration": 7.12
           }
         ]
       },
@@ -316,12 +321,6 @@
   ],
   "issues": [
     {
-      "area": "story",
-      "kind": "speaker_off_screen",
-      "where": "-",
-      "detail": "1 句台词说话时镜头里是别人：陈放→「陈放母亲」"
-    },
-    {
       "area": "picture",
       "kind": "frozen_shots",
       "where": "-",
@@ -331,7 +330,13 @@
       "area": "sync",
       "kind": "line_not_on_a_cut",
       "where": "-",
-      "detail": "8 句台词在镜头中途才开始（画面停在上一句的镜头上）：「我没忘……」迟 1.64s；「这是……你妈？」迟 1.44s；「你妈没死，盒子里是我。」迟 4.0s"
+      "detail": "6 句换了说话人但镜头没切（画面停在上一句的镜头上）：「我没忘……」迟 1.64s；「这是……你妈？」迟 1.44s；「你妈没死，盒子里是我。」迟 4.0s"
+    },
+    {
+      "area": "pacing",
+      "kind": "slow_shot",
+      "where": "-",
+      "detail": "3 个镜头超过 5.5 秒（短剧要切得快）：sh-a43427ff 7.12s、sh-81f89f29 7.12s、sh-8d8bb805 7.12s"
     }
   ],
   "issue_count": 3,

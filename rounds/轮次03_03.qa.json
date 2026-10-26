@@ -135,7 +135,8 @@
         "onsets": 19
       },
       "story": {
-        "mismatched": 1,
+        "mismatched": 0,
+        "off_screen_lines": 1,
         "rows": [
           {
             "line": "ln-0135cadd",
@@ -166,15 +167,8 @@
         ]
       },
       "sync": {
-        "off_cut": 11,
+        "off_cut": 7,
         "rows": [
-          {
-            "line": "ln-fec78873",
-            "speaker": "沈默",
-            "shot": "sh-ed169d73",
-            "drift": 1.08,
-            "text": "手电在门后第三格。"
-          },
           {
             "line": "ln-c626da00",
             "speaker": "程夏",
@@ -190,25 +184,11 @@
             "text": "我给她准备的。"
           },
           {
-            "line": "ln-0135cadd",
-            "speaker": "沈默",
-            "shot": "sh-517ed45d",
-            "drift": 1.79,
-            "text": "她说婚房不能太小。"
-          },
-          {
             "line": "ln-48a4ea57",
             "speaker": "程夏",
             "shot": "sh-de6dd3d9",
             "drift": 0.66,
             "text": "三天前，讣告上说你有嫌疑。"
-          },
-          {
-            "line": "ln-09d848f7",
-            "speaker": "沈默",
-            "shot": "sh-be22f427",
-            "drift": 2.09,
-            "text": "我要你看一个人。"
           },
           {
             "line": "ln-5aaf334d",
@@ -225,13 +205,6 @@
             "text": "她没死。"
           },
           {
-            "line": "ln-1f4259d6",
-            "speaker": "沈默",
-            "shot": "sh-3e875bd6",
-            "drift": 7.63,
-            "text": "她在那间房里等了我三年。"
-          },
-          {
             "line": "ln-8a7b516f",
             "speaker": "程夏",
             "shot": "sh-339fc17e",
@@ -244,6 +217,20 @@
             "shot": "sh-339fc17e",
             "drift": 4.88,
             "text": "三年前那场车祸，驾驶员姓沈。"
+          }
+        ]
+      },
+      "pacing": {
+        "average": 3.48,
+        "long": 2,
+        "rows": [
+          {
+            "shot": "sh-3e875bd6",
+            "duration": 9.02
+          },
+          {
+            "shot": "sh-339fc17e",
+            "duration": 9.02
           }
         ]
       },
@@ -298,12 +285,6 @@
   ],
   "issues": [
     {
-      "area": "story",
-      "kind": "speaker_off_screen",
-      "where": "-",
-      "detail": "1 句台词说话时镜头里是别人：沈默→「程夏」"
-    },
-    {
       "area": "picture",
       "kind": "frozen_shots",
       "where": "-",
@@ -313,7 +294,13 @@
       "area": "sync",
       "kind": "line_not_on_a_cut",
       "where": "-",
-      "detail": "11 句台词在镜头中途才开始（画面停在上一句的镜头上）：「手电在门后第三格。」迟 1.08s；「这是……婚房？」迟 1.36s；「我给她准备的。」迟 1.61s"
+      "detail": "7 句换了说话人但镜头没切（画面停在上一句的镜头上）：「这是……婚房？」迟 1.36s；「我给她准备的。」迟 1.61s；「三天前，讣告上说你有嫌疑。」迟 0.66s"
+    },
+    {
+      "area": "pacing",
+      "kind": "slow_shot",
+      "where": "-",
+      "detail": "2 个镜头超过 5.5 秒（短剧要切得快）：sh-3e875bd6 9.02s、sh-339fc17e 9.02s"
     }
   ],
   "issue_count": 3,
