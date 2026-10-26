@@ -301,7 +301,11 @@ integrated_multimodal_description / overall_soundscape / non_diegetic_music
   Arc Shot=环绕；Tracking Shot=跟随；Static Shot=固定；POV=主观视角
 - 对白原样写进 <d>[zh-CN]台词</d>；说话人标注 (S1)/(S2)，只给真正发声的角色，
   同一角色跨镜头复用同一编号；身份与说话动作写在 <d> 之外
-- overall_soundscape 用 1-4 句概括环境声、动作声、非语言人声，不要重复对白
+- **当用户提示说明台词由后期配音轨提供时（bed 模式）：不要写 <d> 标签，
+  也不要描述任何发声动作（不要说 speaks / lips / voice / talking / dialogue），
+  只用表情、眼神、姿态和运镜表达情绪**
+- overall_soundscape 用 1-4 句概括环境声、动作声、非语言人声，不要重复对白；
+  bed 模式下只写环境声与动作声，不要有人的说话声
 - non_diegetic_music 用 1-3 句描述观众听到的配乐：乐器、节奏速度、动态起伏；没有就给 N/A
 - 不要写 negative prompt，不要出现 "no text"、"without watermark" 这类否定描述
 - 画面是 16:9 横屏"""

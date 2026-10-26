@@ -165,6 +165,88 @@
           }
         ]
       },
+      "sync": {
+        "off_cut": 11,
+        "rows": [
+          {
+            "line": "ln-fec78873",
+            "speaker": "沈默",
+            "shot": "sh-ed169d73",
+            "drift": 1.08,
+            "text": "手电在门后第三格。"
+          },
+          {
+            "line": "ln-c626da00",
+            "speaker": "程夏",
+            "shot": "sh-7ad5f2fa",
+            "drift": 1.36,
+            "text": "这是……婚房？"
+          },
+          {
+            "line": "ln-e938edf2",
+            "speaker": "沈默",
+            "shot": "sh-ce863ea8",
+            "drift": 1.61,
+            "text": "我给她准备的。"
+          },
+          {
+            "line": "ln-0135cadd",
+            "speaker": "沈默",
+            "shot": "sh-517ed45d",
+            "drift": 1.79,
+            "text": "她说婚房不能太小。"
+          },
+          {
+            "line": "ln-48a4ea57",
+            "speaker": "程夏",
+            "shot": "sh-de6dd3d9",
+            "drift": 0.66,
+            "text": "三天前，讣告上说你有嫌疑。"
+          },
+          {
+            "line": "ln-09d848f7",
+            "speaker": "沈默",
+            "shot": "sh-be22f427",
+            "drift": 2.09,
+            "text": "我要你看一个人。"
+          },
+          {
+            "line": "ln-5aaf334d",
+            "speaker": "程夏",
+            "shot": "sh-3e875bd6",
+            "drift": 1.69,
+            "text": "小雨……她已经死了！"
+          },
+          {
+            "line": "ln-939dd757",
+            "speaker": "沈默",
+            "shot": "sh-3e875bd6",
+            "drift": 6.37,
+            "text": "她没死。"
+          },
+          {
+            "line": "ln-1f4259d6",
+            "speaker": "沈默",
+            "shot": "sh-3e875bd6",
+            "drift": 7.63,
+            "text": "她在那间房里等了我三年。"
+          },
+          {
+            "line": "ln-8a7b516f",
+            "speaker": "程夏",
+            "shot": "sh-339fc17e",
+            "drift": 2.9,
+            "text": "谁报的警？"
+          },
+          {
+            "line": "ln-81e61868",
+            "speaker": "沈默",
+            "shot": "sh-339fc17e",
+            "drift": 4.88,
+            "text": "三年前那场车祸，驾驶员姓沈。"
+          }
+        ]
+      },
       "mix": {
         "episode": {
           "i": -17.5,
@@ -207,7 +289,10 @@
         "lanes": [
           "Dialogue",
           "Music"
-        ]
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 34.78
       }
     }
   ],
@@ -223,8 +308,14 @@
       "kind": "frozen_shots",
       "where": "-",
       "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-3e875bd6 短 2.43s；sh-339fc17e 短 2.43s"
+    },
+    {
+      "area": "sync",
+      "kind": "line_not_on_a_cut",
+      "where": "-",
+      "detail": "11 句台词在镜头中途才开始（画面停在上一句的镜头上）：「手电在门后第三格。」迟 1.08s；「这是……婚房？」迟 1.36s；「我给她准备的。」迟 1.61s"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 3,
   "verdict": "ISSUES"
 }

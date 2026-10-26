@@ -230,6 +230,102 @@
         "short": 0,
         "rows": []
       },
+      "sync": {
+        "off_cut": 13,
+        "rows": [
+          {
+            "line": "ln-b1496175",
+            "speaker": "林小满",
+            "shot": "sh-72d51551",
+            "drift": 1.55,
+            "text": "睡不着。"
+          },
+          {
+            "line": "ln-cf37dc4d",
+            "speaker": "神秘男人",
+            "shot": "sh-72d51551",
+            "drift": 2.99,
+            "text": "林小满。"
+          },
+          {
+            "line": "ln-6b94bc11",
+            "speaker": "神秘男人",
+            "shot": "sh-72d51551",
+            "drift": 4.36,
+            "text": "三年前，在建设银行。"
+          },
+          {
+            "line": "ln-86f48b1b",
+            "speaker": "神秘男人",
+            "shot": "sh-c2eb4e0e",
+            "drift": 2.13,
+            "text": "你替我签过担保。"
+          },
+          {
+            "line": "ln-08e20858",
+            "speaker": "林小满",
+            "shot": "sh-c2eb4e0e",
+            "drift": 3.82,
+            "text": "你认错人了！"
+          },
+          {
+            "line": "ln-99983ad0",
+            "speaker": "神秘男人",
+            "shot": "sh-f8746cee",
+            "drift": 1.77,
+            "text": "三年前那份担保。"
+          },
+          {
+            "line": "ln-8859a4bb",
+            "speaker": "神秘男人",
+            "shot": "sh-f8746cee",
+            "drift": 3.82,
+            "text": "现在值两千万。"
+          },
+          {
+            "line": "ln-a9c62e5c",
+            "speaker": "林小满",
+            "shot": "sh-17fdd12f",
+            "drift": 1.31,
+            "text": "那是伪造的……"
+          },
+          {
+            "line": "ln-a21b669c",
+            "speaker": "神秘男人",
+            "shot": "sh-17fdd12f",
+            "drift": 2.93,
+            "text": "伪造不伪造，银行会查。"
+          },
+          {
+            "line": "ln-7e65fdea",
+            "speaker": "林小满",
+            "shot": "sh-6bfa40a3",
+            "drift": 0.92,
+            "text": "两千万……不可能！"
+          },
+          {
+            "line": "ln-cc17d8e1",
+            "speaker": "神秘男人",
+            "shot": "sh-6bfa40a3",
+            "drift": 3.8,
+            "text": "明天上午九点，建行信贷部。"
+          },
+          {
+            "line": "ln-d2031e2b",
+            "speaker": "神秘男人",
+            "shot": "sh-f2e2b1b9",
+            "drift": 1.75,
+            "text": "你不去，我就去你租的地方。"
+          },
+          {
+            "line": "ln-c3d900b0",
+            "speaker": "林小满",
+            "shot": "sh-f2e2b1b9",
+            "drift": 4.48,
+            "text": "你到底想干什么？"
+          }
+        ]
+      },
       "mix": {
         "episode": {
           "i": -17.3,
@@ -272,7 +368,10 @@
         "lanes": [
           "Dialogue",
           "Music"
-        ]
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 45.5
       }
     }
   ],
@@ -282,8 +381,14 @@
       "kind": "speaker_off_screen",
       "where": "-",
       "detail": "7 句台词说话时镜头里是别人：神秘男人→「林小满」；神秘男人→「林小满」；神秘男人→「林小满」"
+    },
+    {
+      "area": "sync",
+      "kind": "line_not_on_a_cut",
+      "where": "-",
+      "detail": "13 句台词在镜头中途才开始（画面停在上一句的镜头上）：「睡不着。」迟 1.55s；「林小满。」迟 2.99s；「三年前，在建设银行。」迟 4.36s"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }

@@ -74,8 +74,10 @@ def _fallback_h3_prompt(ctx: Context, shot: Shot, sc, lines) -> str:
             f"{who}, {shot.action}, {location}, {sc.time_of_day}, "
             f"{shot.shot_type.value} shot with {shot.camera_move} camera movement, "
             f"cinematic lighting, highly detailed")
-    dlg, _ = _numbered_dialogue(lines)
-    if lines:
+    if lines and ctx.cfg.compose.h3_audio != "bed":
+        # the bed mode has no dialogue: H3 must not be asked to speak, or it
+        # talks gibberish over the recorded voice
+        dlg, _ = _numbered_dialogue(lines)
         desc += f". {dlg}"
     return _assemble_h3_prompt(desc,
                                f"Ambient scene sound of {sc.location} at {sc.time_of_day}.",
@@ -208,12 +210,18 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     try:
         if ctx.cfg.compose.h3_audio == "bed":
             # H3 only renders the music/ambience bed; every spoken line comes
-            # from the TTS track, so H3 must not voice anything
+            # from the TTS track, so H3 must not voice anything.
+            # Asking H3 to show someone talking makes it synthesise gibberish
+            # speech that fights the recorded voice - describe the expression
+            # and the movement, never the vocal action.
             dlg_text = "无"
-            note = ("注意：本镜台词由后期配音轨提供，H3 不要生成任何人声。"
-                    "请在描述里用英文写清角色说话的动作与情绪"
-                    "（例如 he speaks with a stern, restrained tone），"
-                    "但不要写出台词内容。")
+            note = ("重要：本镜台词由后期配音轨单独提供，H3 不得生成任何人声。"
+                    "请只用表情、眼神、姿态、镜头运动来表达情绪与张力，"
+                    "**不要描述任何发声动作**：不要出现 speaks / says / lips / "
+                    "voice / talking / dialogue / murmurs 这类词，也不要写"
+                    "「嘴唇开合」「开口说话」之类的描述。"
+                    "overall_soundscape 只写环境声与动作声（脚步、风、车辆、器物），"
+                    "不要有人的说话声、对话或旁白；non_diegetic_music 写配乐。")
         else:
             dlg_text, _ids = _numbered_dialogue(lines)
             note = "台词必须原样用 <d>[zh-CN]...</d> 包住，不要改写。"

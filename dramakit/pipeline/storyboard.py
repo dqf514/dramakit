@@ -100,11 +100,47 @@ def run(ctx: Context) -> dict:
                     line_indices=sorted(idx),
                 ))
             sc.shots = shots or _fallback_shots(sc, dmin, dmax)
+            _repair_line_casts(sc)
         ctx.mark(ep, "storyboard", Status.DONE)
         ctx.save()
         done += 1
         ctx.log.info("storyboard: 第%d集 → %d 镜", ep.index, ep.total_shots)
     return {"episodes_storyboarded": done}
+
+
+def _repair_line_casts(sc) -> int:
+    """Move a line to a shot that actually has the speaker in frame.
+
+    The model sometimes puts a line on the other character's shot. A
+    reaction shot is fine now and then, but when an empty shot with the
+    speaker in it is available, the line belongs there - otherwise the
+    viewer hears one person and sees another.
+    """
+    spoken = [l for l in sc.lines if not is_narration(l)]
+    if not spoken:
+        return 0
+    moved = 0
+    for shot in sc.shots:
+        if not shot.line_indices:
+            continue
+        for n in list(shot.line_indices):
+            if not (1 <= n <= len(spoken)):
+                continue
+            line = spoken[n - 1]
+            if line.speaker in (shot.characters or []):
+                continue
+            # an empty shot with the speaker in it?
+            for other in sc.shots:
+                if other is shot or other.line_indices:
+                    continue
+                if line.speaker in (other.characters or []):
+                    shot.line_indices.remove(n)
+                    other.line_indices.append(n)
+                    moved += 1
+                    break
+    for shot in sc.shots:
+        shot.line_indices.sort()
+    return moved
 
 
 def _fallback_shots(sc, dmin: float, dmax: float) -> list[Shot]:

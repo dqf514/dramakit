@@ -164,6 +164,95 @@
         "short": 0,
         "rows": []
       },
+      "sync": {
+        "off_cut": 12,
+        "rows": [
+          {
+            "line": "ln-d7973934",
+            "speaker": "陆沉",
+            "shot": "sh-878dcd18",
+            "drift": 1.15,
+            "text": "陆沉。三年前被赶出去。"
+          },
+          {
+            "line": "ln-30a2f5a4",
+            "speaker": "陆明远",
+            "shot": "sh-878dcd18",
+            "drift": 4.0,
+            "text": "哥，别开玩笑了。"
+          },
+          {
+            "line": "ln-c9cd5e90",
+            "speaker": "陆明远",
+            "shot": "sh-1ee86a6d",
+            "drift": 2.01,
+            "text": "今天来的都是客人。"
+          },
+          {
+            "line": "ln-ce667faa",
+            "speaker": "陆沉",
+            "shot": "sh-000d329d",
+            "drift": 0.53,
+            "text": "我来拿我的股权。"
+          },
+          {
+            "line": "ln-91df258f",
+            "speaker": "陆沉",
+            "shot": "sh-000d329d",
+            "drift": 2.36,
+            "text": "爷爷遗嘱写着，百分之二十五。"
+          },
+          {
+            "line": "ln-9a764ccb",
+            "speaker": "陆明远",
+            "shot": "sh-2b2d60a8",
+            "drift": 1.27,
+            "text": "遗嘱？十年前就改了。"
+          },
+          {
+            "line": "ln-b80a3727",
+            "speaker": "陆沉",
+            "shot": "sh-0272220c",
+            "drift": 0.6,
+            "text": "改没改，档案里写着。"
+          },
+          {
+            "line": "ln-d493f891",
+            "speaker": "陆明远",
+            "shot": "sh-0272220c",
+            "drift": 2.72,
+            "text": "保安！"
+          },
+          {
+            "line": "ln-e079e0f7",
+            "speaker": "陆沉",
+            "shot": "sh-c02fddd7",
+            "drift": 1.5,
+            "text": "周行长马上就到。"
+          },
+          {
+            "line": "ln-d4dd7d35",
+            "speaker": "陆沉",
+            "shot": "sh-c02fddd7",
+            "drift": 3.12,
+            "text": "周行长，好久不见。"
+          },
+          {
+            "line": "ln-9077ae7d",
+            "speaker": "周行长",
+            "shot": "sh-47e38ac6",
+            "drift": 0.38,
+            "text": "陆总？您怎么在这儿？"
+          },
+          {
+            "line": "ln-7dfe1d02",
+            "speaker": "陆明远",
+            "shot": "sh-b4d5a468",
+            "drift": 0.46,
+            "text": "你……"
+          }
+        ]
+      },
       "mix": {
         "episode": {
           "i": -16.7,
@@ -206,11 +295,21 @@
         "lanes": [
           "Dialogue",
           "Music"
-        ]
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 30.75
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "sync",
+      "kind": "line_not_on_a_cut",
+      "where": "-",
+      "detail": "12 句台词在镜头中途才开始（画面停在上一句的镜头上）：「陆沉。三年前被赶出去。」迟 1.15s；「哥，别开玩笑了。」迟 4.0s；「今天来的都是客人。」迟 2.01s"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
 }

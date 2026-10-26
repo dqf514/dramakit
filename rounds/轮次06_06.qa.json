@@ -225,6 +225,88 @@
           }
         ]
       },
+      "sync": {
+        "off_cut": 11,
+        "rows": [
+          {
+            "line": "ln-276488e0",
+            "speaker": "林知夏",
+            "shot": "sh-e421e712",
+            "drift": 3.64,
+            "text": "战略调整，连代码也一起收？"
+          },
+          {
+            "line": "ln-599e75c3",
+            "speaker": "周总",
+            "shot": "sh-a43a2886",
+            "drift": 1.8,
+            "text": "今天大客户演示，团队缺人。"
+          },
+          {
+            "line": "ln-4269432b",
+            "speaker": "周总",
+            "shot": "sh-a43a2886",
+            "drift": 4.97,
+            "text": "你再撑一个月，项目奖金翻倍。"
+          },
+          {
+            "line": "ln-d61468c6",
+            "speaker": "周总",
+            "shot": "sh-2780d6de",
+            "drift": 2.12,
+            "text": "一个月以后……公司再安排。"
+          },
+          {
+            "line": "ln-56c367f3",
+            "speaker": "林知夏",
+            "shot": "sh-2780d6de",
+            "drift": 4.68,
+            "text": "三年前最难的项目，您交给我。"
+          },
+          {
+            "line": "ln-06b37d5c",
+            "speaker": "林知夏",
+            "shot": "sh-2780d6de",
+            "drift": 9.0,
+            "text": "现在项目要交付，您却让我走？"
+          },
+          {
+            "line": "ln-0b404884",
+            "speaker": "周总",
+            "shot": "sh-2780d6de",
+            "drift": 12.78,
+            "text": "公司愿意给你八十万补偿。"
+          },
+          {
+            "line": "ln-aed9781c",
+            "speaker": "林知夏",
+            "shot": "sh-2780d6de",
+            "drift": 15.52,
+            "text": "八十万，买断我整整三年？"
+          },
+          {
+            "line": "ln-704a3e16",
+            "speaker": "周总",
+            "shot": "sh-4f876cb8",
+            "drift": 3.74,
+            "text": "你手里……是不是还留着什么？"
+          },
+          {
+            "line": "ln-e800b507",
+            "speaker": "林知夏",
+            "shot": "sh-4f876cb8",
+            "drift": 7.27,
+            "text": "客户私有仓库的密码，是我设的"
+          },
+          {
+            "line": "ln-be056f2f",
+            "speaker": "林知夏",
+            "shot": "sh-377b3ce1",
+            "drift": 2.81,
+            "text": "你猜，我到底改没改？"
+          }
+        ]
+      },
       "mix": {
         "episode": {
           "i": -16.2,
@@ -286,8 +368,14 @@
       "kind": "frozen_shots",
       "where": "-",
       "detail": "1 个镜头的素材比槽位短，会出现静止画面：sh-2780d6de 短 5.38s"
+    },
+    {
+      "area": "sync",
+      "kind": "line_not_on_a_cut",
+      "where": "-",
+      "detail": "11 句台词在镜头中途才开始（画面停在上一句的镜头上）：「战略调整，连代码也一起收？」迟 3.64s；「今天大客户演示，团队缺人。」迟 1.8s；「你再撑一个月，项目奖金翻倍。」迟 4.97s"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 3,
   "verdict": "ISSUES"
 }
