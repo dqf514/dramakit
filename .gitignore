@@ -92,3 +92,25 @@ _klein_*.md
 
 chk_auto.py
 chk_frames2.py
+analyze_audio.py
+analyze_audio2.py
+chk_cast.py
+chk_drift.py
+chk_emo.py
+chk_mix.py
+chk_subs.py
+chk_h3.py
+dbg_lanes.py
+list_voices_age.py
+list_voices_cn.py
+probe_hex.py
+probe_llm_conc.py
+probe_voices.py
+sheet.py
+round.py
+qa.py
+retry_failed.py
+reset_voices.py
+test_minimax_tts.py
+test_tts_emotion.py
+pw_prog.py
