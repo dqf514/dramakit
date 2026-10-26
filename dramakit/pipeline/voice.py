@@ -7,6 +7,7 @@ so the timeline and subtitles stay in sync.
 from __future__ import annotations
 
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..models import LineKind, Status, is_narration
@@ -14,6 +15,38 @@ from ..providers.tts import resolve_voice
 from .base import Context
 
 NARRATORS = {"旁白", "解说", ""}
+
+
+def _emotion_key(cfg, emotion: str) -> str:
+    """Find the emotion the map knows for a label the script invented.
+
+    The script writes labels like "冷笑（愤怒）" or "犹豫（心虚）"; only the
+    plain part is in the map. A label that is not in the map at all means the
+    line is read out with no emotion and no modulation - flat, which is the
+    one thing a short drama cannot afford.
+    """
+    emap = cfg.tts.emotion_map or {}
+    fallback = "平静" if "平静" in emap else (next(iter(emap), "") if emap else "")
+    if not emotion:
+        return fallback
+    if emotion in emap:
+        return emotion
+    # the part in brackets carries the real emotion
+    m = re.search(r"[（(]([^）)]+)[）)]", emotion)
+    inner = m.group(1).strip() if m else ""
+    for cand in (inner, re.split(r"[（(]", emotion)[0].strip()):
+        if not cand:
+            continue
+        if cand in emap:
+            return cand
+        for k in emap:
+            if k and k in cand:
+                return k
+    # last resort: a known emotion word anywhere in the label
+    for k in emap:
+        if k and k in emotion:
+            return k
+    return fallback
 
 
 def _apply_emotion(ctx: Context, emotion: str, *, speed: float,
@@ -24,7 +57,7 @@ def _apply_emotion(ctx: Context, emotion: str, *, speed: float,
     Providers with a real emotion parameter get that too; the speed and pitch
     nudge is what makes the line read even without one.
     """
-    mod = (ctx.cfg.tts.emotion_modulation or {}).get(emotion or "", {})
+    mod = (ctx.cfg.tts.emotion_modulation or {}).get(_emotion_key(ctx.cfg, emotion), {})
     if not mod:
         return speed, pitch, rate
     speed = max(0.5, min(2.0, speed * float(mod.get("speed", 1.0))))
@@ -117,36 +150,46 @@ def _any_voice(ctx: Context, gender: str) -> str:
     return voices[0]
 
 
-def _synth_one(ctx: Context, line) -> tuple[str, bool, str]:
+def _synth_one(ctx: Context, line, tries: int = 3) -> tuple[str, bool, str]:
     out = ctx.store.audio_path(line.id)
     if line.status == Status.DONE and line.audio_path and out.exists():
         return line.id, True, "cached"
-    try:
-        is_narr = is_narration(line)
-        # Narration is a screen-only card by default: no voice, no audio track.
-        if is_narr and not ctx.cfg.tts.speak_narration:
-            line.audio_path = ""
-            line.duration = 0.0
-            line.status = Status.SKIPPED
-            return line.id, True, "narration"
-        voice = _voice_for(ctx, line.speaker, is_narr)
-        emotion = ctx.cfg.tts.emotion_map.get(line.emotion, "")
-        pitch, rate = _voice_shaping(ctx, line.speaker)
-        speed, pitch, rate = _apply_emotion(ctx, line.emotion, speed=ctx.cfg.tts.speed,
-                                            pitch=pitch, rate=rate)
-        dur = ctx.providers.tts.synthesize(
-            line.text, voice, str(out),
-            rate=rate or ctx.cfg.tts.rate, volume=ctx.cfg.tts.volume,
-            pitch=pitch or ctx.cfg.tts.pitch,
-            speed=speed, emotion=emotion)
-        line.audio_path = ctx.store.rel(out)
-        line.duration = round(dur, 3)
-        line.status = Status.DONE
-        return line.id, True, ""
-    except Exception as e:  # noqa: BLE001
-        ctx.log.error("voice: 台词 %s 合成失败 %s", line.id, str(e)[:150])
-        line.status = Status.FAILED
-        return line.id, False, str(e)[:150]
+    is_narr = is_narration(line)
+    # Narration is a screen-only card by default: no voice, no audio track.
+    if is_narr and not ctx.cfg.tts.speak_narration:
+        line.audio_path = ""
+        line.duration = 0.0
+        line.status = Status.SKIPPED
+        return line.id, True, "narration"
+    voice = _voice_for(ctx, line.speaker, is_narr)
+    emotion = ctx.cfg.tts.emotion_map.get(_emotion_key(ctx.cfg, line.emotion), "")
+    pitch, rate = _voice_shaping(ctx, line.speaker)
+    speed, pitch, rate = _apply_emotion(ctx, line.emotion, speed=ctx.cfg.tts.speed,
+                                        pitch=pitch, rate=rate)
+    # A single line can fail for a reason that has nothing to do with the line
+    # - a locked file on Windows, a hiccup in the network. That took a whole
+    # episode down once, so every line gets a few attempts.
+    last = ""
+    for attempt in range(1, tries + 1):
+        try:
+            dur = ctx.providers.tts.synthesize(
+                line.text, voice, str(out),
+                rate=rate or ctx.cfg.tts.rate, volume=ctx.cfg.tts.volume,
+                pitch=pitch or ctx.cfg.tts.pitch,
+                speed=speed, emotion=emotion)
+            line.audio_path = ctx.store.rel(out)
+            line.duration = round(dur, 3)
+            line.status = Status.DONE
+            return line.id, True, ""
+        except Exception as e:  # noqa: BLE001
+            last = str(e)[:150]
+            ctx.log.warning("voice: 台词 %s 第 %d 次合成失败 %s",
+                            line.id, attempt, last)
+            if attempt < tries:
+                time.sleep(2.0 * attempt)
+    ctx.log.error("voice: 台词 %s 合成失败 %s", line.id, last)
+    line.status = Status.FAILED
+    return line.id, False, last
 
 
 def run(ctx: Context) -> dict:

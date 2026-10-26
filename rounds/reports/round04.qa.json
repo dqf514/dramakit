@@ -1,0 +1,269 @@
+{
+  "project": "轮次04_04",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "除夕宴上两个母亲",
+      "picture": {
+        "frames": 16,
+        "sharp_median": 22.9,
+        "sharp_min": 12.5,
+        "luma_spread": 16.9,
+        "src_luma_spread": 14.9,
+        "graded_luma_spread": 3.8,
+        "sat_spread": 2.8
+      },
+      "voice": {
+        "lines": 14,
+        "rows": [
+          {
+            "id": "ln-28550f25",
+            "speaker": "陈放",
+            "emotion": "平静",
+            "duration": 2.32,
+            "chars": 8
+          },
+          {
+            "id": "ln-279b6199",
+            "speaker": "陈放母亲",
+            "emotion": "悲伤",
+            "duration": 3.52,
+            "chars": 11
+          },
+          {
+            "id": "ln-d5d60026",
+            "speaker": "陈放",
+            "emotion": "克制",
+            "duration": 1.05,
+            "chars": 5
+          },
+          {
+            "id": "ln-1b20c340",
+            "speaker": "陈放",
+            "emotion": "紧张",
+            "duration": 2.36,
+            "chars": 9
+          },
+          {
+            "id": "ln-85652fed",
+            "speaker": "神秘女人",
+            "emotion": "平静",
+            "duration": 1.4,
+            "chars": 3
+          },
+          {
+            "id": "ln-da29ed6e",
+            "speaker": "陈放",
+            "emotion": "惊讶",
+            "duration": 2.49,
+            "chars": 7
+          },
+          {
+            "id": "ln-edf5a25b",
+            "speaker": "神秘女人",
+            "emotion": "平静",
+            "duration": 3.1,
+            "chars": 11
+          },
+          {
+            "id": "ln-b7281c6a",
+            "speaker": "陈放",
+            "emotion": "震惊",
+            "duration": 2.63,
+            "chars": 9
+          },
+          {
+            "id": "ln-a01467de",
+            "speaker": "神秘女人",
+            "emotion": "悲伤",
+            "duration": 5.72,
+            "chars": 16
+          },
+          {
+            "id": "ln-bc1342d2",
+            "speaker": "神秘女人",
+            "emotion": "悲伤",
+            "duration": 5.12,
+            "chars": 16
+          },
+          {
+            "id": "ln-72bf941d",
+            "speaker": "陈放母亲",
+            "emotion": "哽咽",
+            "duration": 3.23,
+            "chars": 12
+          },
+          {
+            "id": "ln-f5b269ec",
+            "speaker": "陈放",
+            "emotion": "崩溃",
+            "duration": 1.91,
+            "chars": 7
+          },
+          {
+            "id": "ln-05eb0296",
+            "speaker": "陈放母亲",
+            "emotion": "悲伤",
+            "duration": 3.22,
+            "chars": 9
+          },
+          {
+            "id": "ln-27bc5265",
+            "speaker": "陈放",
+            "emotion": "哽咽",
+            "duration": 1.86,
+            "chars": 8
+          }
+        ],
+        "per_emotion": {
+          "平静": 2.27,
+          "悲伤": 4.39,
+          "克制": 1.05,
+          "紧张": 2.36,
+          "惊讶": 2.49,
+          "震惊": 2.63,
+          "哽咽": 2.54,
+          "崩溃": 1.91
+        },
+        "voices": {
+          "陈放": {
+            "pitch": 148.1,
+            "zcr": 923.4,
+            "lines": 7
+          },
+          "陈放母亲": {
+            "pitch": 190.5,
+            "zcr": 1241.6,
+            "lines": 3
+          },
+          "神秘女人": {
+            "pitch": 250.0,
+            "zcr": 1101.4,
+            "lines": 4
+          }
+        }
+      },
+      "completeness": {
+        "duration": 40.63,
+        "timeline": 40.64,
+        "lines": 14,
+        "onsets": 22
+      },
+      "story": {
+        "mismatched": 1,
+        "rows": [
+          {
+            "line": "ln-d5d60026",
+            "speaker": "陈放",
+            "shot": "sh-fdd63dda",
+            "on_screen": [
+              "陈放母亲"
+            ],
+            "text": "我没忘……"
+          }
+        ]
+      },
+      "frozen": {
+        "short": 6,
+        "rows": [
+          {
+            "shot": "sh-9c242a08",
+            "slot": 4.15,
+            "material": 3.04,
+            "frozen": 1.11
+          },
+          {
+            "shot": "sh-fd4d044e",
+            "slot": 2.77,
+            "material": 2.33,
+            "frozen": 0.43
+          },
+          {
+            "shot": "sh-f8cd3c4d",
+            "slot": 2.91,
+            "material": 2.33,
+            "frozen": 0.57
+          },
+          {
+            "shot": "sh-a43427ff",
+            "slot": 7.12,
+            "material": 5.88,
+            "frozen": 1.24
+          },
+          {
+            "shot": "sh-81f89f29",
+            "slot": 7.12,
+            "material": 5.88,
+            "frozen": 1.24
+          },
+          {
+            "shot": "sh-8d8bb805",
+            "slot": 7.12,
+            "material": 5.88,
+            "frozen": 1.24
+          }
+        ]
+      },
+      "mix": {
+        "episode": {
+          "i": -17.8,
+          "lra": 4.3,
+          "pk": -1.3
+        },
+        "voice": {
+          "i": -24.3,
+          "lra": 6.0,
+          "pk": -5.5
+        },
+        "music": {
+          "i": -37.6,
+          "lra": 5.4,
+          "pk": -19.1
+        },
+        "bed": {
+          "i": -24.1,
+          "lra": 5.4,
+          "pk": -5.6
+        },
+        "audibility": {
+          "speech_lufs": -22.9,
+          "bed_peak_lufs": -34.9,
+          "gap_lu": 12.0
+        },
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 29,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "nle": {
+        "spine": 10,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ]
+      }
+    }
+  ],
+  "issues": [
+    {
+      "area": "story",
+      "kind": "speaker_off_screen",
+      "where": "-",
+      "detail": "1 句台词说话时镜头里是别人：陈放→「陈放母亲」"
+    },
+    {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "6 个镜头的素材比槽位短，会出现静止画面：sh-9c242a08 短 1.11s；sh-fd4d044e 短 0.43s；sh-f8cd3c4d 短 0.57s"
+    }
+  ],
+  "issue_count": 2,
+  "verdict": "ISSUES"
+}

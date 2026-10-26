@@ -150,6 +150,8 @@ tts:
   # 角色名 → 音色（不填则按性别回退到上面的默认音色）
   voice_map: {}
   # 情绪 → 提供商的情感参数（MiniMax 用 happy/sad/angry/fearful/disgusted/surprised/neutral）
+  # 剧本里的情绪标签常常带修饰（"冷笑（愤怒）"），voice 阶段会拆出括号里的本体来查这张表，
+  # 所以这里尽量把常见说法都收进来，查不到就等于没有情绪——台词会被平读。
   emotion_map:
     平静: neutral
     愤怒: angry
@@ -163,6 +165,39 @@ tts:
     厌恶: disgusted
     疑惑: surprised
     冷漠: neutral
+    警惕: fearful
+    犹豫: surprised
+    震惊: surprised
+    惊惧: fearful
+    焦急: fearful
+    心虚: fearful
+    失态: surprised
+    压抑: angry
+    咬牙: angry
+    强硬: angry
+    逼问: angry
+    质问: angry
+    冷笑: neutral
+    苦笑: sad
+    轻蔑: disgusted
+    嘲讽: disgusted
+    讽刺: disgusted
+    无奈: sad
+    自责: sad
+    委屈: sad
+    决心: neutral
+    决绝: neutral
+    冷静: neutral
+    克制: neutral
+    公事公办: neutral
+    敷衍: neutral
+    意味深长: neutral
+    暗藏得意: happy
+    诱劝: happy
+    期待: happy
+    温柔: happy
+    感激: happy
+    愧疚: sad
   # 情绪 → 语速/音高微调。短剧要的是戏感：愤怒要顶上去，委屈要弱下来。
   # MiniMax 有真正的 emotion 参数，这张表主要给没有情感能力的 TTS 兜底。
   emotion_modulation:
@@ -175,6 +210,39 @@ tts:
     坚定: {speed: 0.95, pitch: -1}
     恐惧: {speed: 1.05, pitch: 1}
     厌恶: {speed: 0.95, pitch: -1}
+    警惕: {speed: 1.05, pitch: 0}
+    犹豫: {speed: 0.92, pitch: 0}
+    震惊: {speed: 1.10, pitch: 1}
+    惊惧: {speed: 1.15, pitch: 1}
+    焦急: {speed: 1.12, pitch: 1}
+    心虚: {speed: 1.08, pitch: 0}
+    失态: {speed: 1.15, pitch: 1}
+    压抑: {speed: 0.95, pitch: -1}
+    咬牙: {speed: 1.08, pitch: -1}
+    强硬: {speed: 1.00, pitch: -1}
+    逼问: {speed: 1.12, pitch: -1}
+    质问: {speed: 1.12, pitch: -1}
+    冷笑: {speed: 0.90, pitch: -1}
+    苦笑: {speed: 0.88, pitch: -1}
+    轻蔑: {speed: 0.95, pitch: 1}
+    嘲讽: {speed: 0.95, pitch: 1}
+    讽刺: {speed: 0.95, pitch: 1}
+    无奈: {speed: 0.90, pitch: -1}
+    自责: {speed: 0.90, pitch: -1}
+    委屈: {speed: 0.92, pitch: -1}
+    决心: {speed: 0.92, pitch: -1}
+    决绝: {speed: 0.90, pitch: -1}
+    冷静: {speed: 0.93, pitch: 0}
+    克制: {speed: 0.93, pitch: -1}
+    公事公办: {speed: 1.00, pitch: 0}
+    敷衍: {speed: 1.02, pitch: 0}
+    意味深长: {speed: 0.88, pitch: -1}
+    暗藏得意: {speed: 0.95, pitch: 0}
+    诱劝: {speed: 0.98, pitch: 0}
+    期待: {speed: 0.97, pitch: 0}
+    温柔: {speed: 0.94, pitch: 0}
+    感激: {speed: 0.95, pitch: 0}
+    愧疚: {speed: 0.92, pitch: -1}
 
 # --------------------- 画面生成 ComfyUI（你的视频服务器）--------------------
 # 这是短剧画面的来源。ComfyUI 用 "Save (API Format)" 导出工作流，

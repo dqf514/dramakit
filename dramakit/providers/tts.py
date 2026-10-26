@@ -192,14 +192,14 @@ class HTTPTTS(BaseTTS):
             audio_b64 = (data.get("data", {}).get("audio")
                          if isinstance(data.get("data"), dict) else data.get("audio"))
             if audio_b64:
-                Path(out_path).write_bytes(_decode_audio(audio_b64))
+                _write_atomic(out_path, _decode_audio(audio_b64))
             elif data.get("audio_url"):
                 with httpx.Client(timeout=120.0, trust_env=self.cfg.use_proxy) as c2:
-                    Path(out_path).write_bytes(c2.get(data["audio_url"]).content)
+                    _write_atomic(out_path, c2.get(data["audio_url"]).content)
             else:
                 raise RuntimeError(f"Unexpected TTS JSON: {str(data)[:200]}")
         else:
-            Path(out_path).write_bytes(r.content)
+            _write_atomic(out_path, r.content)
         dur = probe_duration(out_path)
         if self.cfg.silence_pad_ms > 0 and dur:
             _pad_silence(out_path, self.cfg.silence_pad_ms / 1000.0)
@@ -236,6 +236,27 @@ def resolve_voice(cfg: TTSConfig, speaker: str, gender: str = "未知",
 def _ffmpeg() -> str:
     import shutil
     return shutil.which("ffmpeg") or "ffmpeg"
+
+
+def _write_atomic(out_path: str | Path, data: bytes) -> None:
+    """Write the audio in one go, through a temporary file.
+
+    A direct write can be interrupted half way (or refused outright when
+    another process has the file open), which leaves a broken clip behind
+    that later looks like a valid file. Writing beside it and renaming is
+    atomic, so the file either is not there or is complete.
+    """
+    p = Path(out_path)
+    tmp = p.with_suffix(p.suffix + ".part")
+    try:
+        tmp.write_bytes(data)
+        tmp.replace(p)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
 
 
 def _write_silence(out_path: str, seconds: float) -> None:

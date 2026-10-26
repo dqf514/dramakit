@@ -22,10 +22,14 @@ def write_markdown(rows) -> Path:
     """A human-readable report of every round."""
     out = ROUNDS / "总报告.md"
     lines = ["# 10 轮短剧全链路迭代报告", "",
-             "每轮：换剧本 → 全流水线 → 自动质检 → 改代码 → 下一轮。", "",
+             "每轮：换剧本 → 全流水线 → 自动质检 → 改代码 → 下一轮。",
+             "",
+             "所有素材都在 `projects/轮次NN_*` 下：角色定妆照、场景参考图、每镜首帧、",
+             "每段视频、逐句配音、字幕文件、成片、FCPXML，可逐一回看。",
+             "",
              "## 汇总", "",
-             "| 轮 | 项目 | 题材 | 结论 | 问题 | 成片响度 | 对白/垫底差 | 锐度中位 | 亮度差 | 字幕条 | 音轨 |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "| 轮 | 项目 | 题材 | 结论 | 问题 | 成片/时间线 | 对白−垫底 | 相对锐度 | 亮度差 | 字幕 | 音轨 |",
+             "|---|---|---|---|---|---|---|---|---|---|---|"]
     for n, rep in rows:
         e = rep["episodes"][0] if rep["episodes"] else {}
         m = e.get("mix") or {}
@@ -33,12 +37,14 @@ def write_markdown(rows) -> Path:
         s = e.get("subtitle") or {}
         nl = e.get("nle") or {}
         au = m.get("audibility") or {}
-        title = (e.get("title") or "")[:18]
+        c = e.get("completeness") or {}
+        title = (e.get("title") or "")[:16]
         lines.append(
-            f"| {n} | {rep['project'][:16]} | {title} | {rep['verdict']} | "
-            f"{rep['issue_count']} | {au.get('speech_lufs', '-')} / {au.get('gap_lu', '-')} LU | "
-            f"{p.get('sharp_median', '-')} | {p.get('luma_spread', '-')} | "
-            f"{s.get('cues', '-')} | {len(nl.get('lanes', []))} |")
+            f"| {n} | {rep['project'][:14]} | {title} | {rep['verdict']} | "
+            f"{rep['issue_count']} | {c.get('duration','-')} / {c.get('timeline','-')}s | "
+            f"{au.get('gap_lu','-')} LU | {p.get('sharp_median','-')} | "
+            f"{p.get('luma_spread','-')} | {s.get('cues','-')} | "
+            f"{len(nl.get('lanes', []))} |")
     lines += ["", "## 逐轮问题与处理", ""]
     for n, rep in rows:
         lines.append(f"### 第 {n} 轮 · {rep['project']} — {rep['verdict']}")
