@@ -267,7 +267,10 @@
         "lanes": [
           "Dialogue",
           "Music"
-        ]
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 69.0
       }
     }
   ],
