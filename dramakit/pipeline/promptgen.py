@@ -151,7 +151,8 @@ def _aspect(ctx: Context) -> tuple[str, str]:
 
 
 def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
-                      flf: bool, location_visual: str) -> None:
+                      flf: bool, location_visual: str,
+                      continuity: str = "") -> None:
     """Fill the still-image prompt for one shot.
 
     FLUX 3 and SDXL want completely different prompts, so the template is
@@ -170,7 +171,8 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     scene_summary=sc.summary or "", time_of_day=sc.time_of_day,
                     style=ad.style_prompt_prefix or ad.style, era=ad.era,
                     color_palette=ad.color_palette, mood=sc.mood, end_frame=flf,
-                    aspect=aspect, composition=composition)
+                    aspect=aspect, composition=composition,
+                    continuity=continuity)
     try:
         data = llm.complete_json(system, user)
         if isinstance(data, list):
@@ -200,7 +202,8 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
 
 
 def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
-                   location_visual: str, lines: list[tuple[str, str]]) -> None:
+                   location_visual: str, lines: list[tuple[str, str]],
+                   continuity: str = "") -> None:
     """Fill the official MiniMax H3 three-field prompt for one shot.
 
     Separate call on purpose: the image prompt and the H3 prompt are different
@@ -234,7 +237,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             scene_summary=sc.summary or "", time_of_day=sc.time_of_day,
             style=ad.style_prompt_prefix or ad.style, era=ad.era,
             color_palette=ad.color_palette, mood=sc.mood,
-            dialogue=dlg_text, dialogue_note=note)
+            dialogue=dlg_text, dialogue_note=note, continuity=continuity)
         h3 = llm.complete_json(T.H3_VIDEO_SYSTEM, h3_user)
         if isinstance(h3, list):
             h3 = h3[0] if h3 else {}
@@ -262,28 +265,35 @@ def run(ctx: Context) -> dict:
         dlg_map = _dialogue_by_shot(ctx, ep)
         jobs = []
         for sc in ep.scenes:
+            prev_action = ""
             for shot in sc.shots:
                 # per shot, not per episode: a cleared or edited prompt has to
                 # come back even when the stage is already marked done
                 need_img = not shot.prompt
                 need_h3 = h3_needed and not shot.video_prompt
                 if not need_img and not need_h3:
+                    prev_action = shot.action or prev_action
                     continue
                 visuals = _char_visuals(ctx, shot)
                 flf = _flf_enabled(ctx, shot)
                 loc = next((l for l in ctx.project.locations
                             if l.name == sc.location), None)
                 location_visual = (loc.visual_prompt or loc.description) if loc else ""
+                # the shot before it decides where the people are standing:
+                # without it the same conversation keeps re-posing itself
+                continuity = prev_action[:180] if prev_action else ""
                 jobs.append((shot, sc, visuals, flf, location_visual,
-                            need_img, need_h3))
+                            need_img, need_h3, continuity))
+                prev_action = shot.action or prev_action
 
         def _one(job):
-            shot, sc, visuals, flf, location_visual, need_img, need_h3 = job
+            shot, sc, visuals, flf, location_visual, need_img, need_h3, cont = job
             if need_img:
-                _gen_image_prompt(ctx, llm, shot, sc, visuals, flf, location_visual)
+                _gen_image_prompt(ctx, llm, shot, sc, visuals, flf, location_visual,
+                                  continuity=cont)
             if need_h3:
                 _gen_h3_prompt(ctx, llm, shot, sc, visuals, location_visual,
-                               dlg_map.get(shot.id, []))
+                               dlg_map.get(shot.id, []), continuity=cont)
 
         if workers > 1 and len(jobs) > 1:
             with ThreadPoolExecutor(max_workers=workers) as ex:

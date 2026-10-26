@@ -269,10 +269,16 @@ FLUX3_IMAGE_USER = """为下面这个{{aspect}}镜头写一段 FLUX 3 完整场�
 本场剧情：{{scene_summary}}
 全剧画风：{{style}}；年代：{{era}}；色调：{{color_palette}}
 镜头情绪：{{mood}}
+{% if continuity %}
+上一镜结束时的状态（**必须接得上**：人物的站位、姿势、朝向、与环境的相对位置要连贯）：{{continuity}}
+{% endif %}
 
 要求：
 - 开头用"Full-color outdoor photograph"这类摄影惯例短语承接全剧画风
 - 人物在画面中的位置、姿态、视线、手上动作要具体可执行
+{% if continuity %}
+- 人物的站位和姿势要接上上一镜：上一镜他站着，这一镜就别突然坐下；反之亦然
+{% endif %}
 - 环境要给出该场景自己的具体物件，不要写成通用素材库
 - 描述里不要提及画幅比例，"TARGET CANVAS" 之类的词也不要出现
 {% if end_frame %}- end_prompt: 同一镜头最后一帧的完整场景描述。只改最终姿态/位置/表情，角色锚点、服装、场景和光线必须与 prompt 完全一致；不要新增角色，不要换装
@@ -323,7 +329,9 @@ H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模�
 镜头情绪：{{mood}}
 本镜台词（speaker 已换成编号；没有台词就写"无"）：
 {{dialogue}}
-
+{% if continuity %}
+上一镜结束时的状态（**必须接得上**：人物的站位、姿势、朝向、与环境的相对位置要连贯）：{{continuity}}
+{% endif %}
 {{dialogue_note}}
 
 要求：
