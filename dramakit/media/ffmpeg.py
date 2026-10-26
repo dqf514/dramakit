@@ -120,15 +120,41 @@ def normalize_video_clip(src: str | Path, out: str | Path, duration: float, *,
 
     A clip shorter than its slot is held on its last frame rather than
     rewound to the start - a rewind in the middle of a cut reads as a glitch.
+    The hold has to be long enough: the timeline can stretch a shot well past
+    the length of the video that was generated for it, and a fixed two second
+    hold left the picture short of the dialogue, which cut the end of the
+    episode off in the mux.
     """
     out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
+    src_dur = probe_duration(src)
+    hold = 0.5
+    if src_dur > 0:
+        hold = max(hold, duration - src_dur + 0.5)
     vf = (f"scale={width}:{height}:force_original_aspect_ratio=increase,"
-          f"crop={width}:{height},fps={fps},format=yuv420p")
+          f"crop={width}:{height},fps={fps},format=yuv420p,"
+          f"tpad=stop_mode=clone:stop_duration={hold:.3f}")
     cmd = [ffmpeg_bin(), "-y", "-i", str(src),
-           "-vf", f"{vf},tpad=stop_mode=clone:stop_duration=2",
+           "-vf", vf,
            "-t", f"{duration:.3f}", "-an",
            "-c:v", "libx264", "-crf", str(crf), "-preset", preset, str(out)]
     _run(cmd, quiet=False)
+    return str(out)
+
+
+def pad_video(src: str | Path, out: str | Path, total_duration: float, *,
+              width: int = 0, height: int = 0, fps: int = 30,
+              crf: int = 20, preset: str = "medium") -> str:
+    """Hold the last frame until the clip is exactly `total_duration` long."""
+    out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
+    cur = probe_duration(src)
+    if cur <= 0:
+        return str(src)
+    if cur >= total_duration - 0.03:
+        return str(src)
+    vf = f"tpad=stop_mode=clone:stop_duration={total_duration - cur + 0.5:.3f}"
+    _run([ffmpeg_bin(), "-y", "-i", str(src), "-vf", vf, "-t", f"{total_duration:.3f}",
+          "-an", "-c:v", "libx264", "-crf", str(crf), "-preset", preset,
+          "-pix_fmt", "yuv420p", str(out)], quiet=False)
     return str(out)
 
 

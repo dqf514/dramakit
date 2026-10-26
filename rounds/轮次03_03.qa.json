@@ -6,12 +6,12 @@
       "title": "死去三年的新娘",
       "picture": {
         "frames": 16,
-        "sharp_median": 18.9,
-        "sharp_min": 14.0,
-        "luma_spread": 13.8,
-        "src_luma_spread": 28.2,
-        "graded_luma_spread": 6.1,
-        "sat_spread": 1.9
+        "sharp_median": 21.4,
+        "sharp_min": 14.2,
+        "luma_spread": 15.5,
+        "src_luma_spread": 28.6,
+        "graded_luma_spread": 6.5,
+        "sat_spread": 1.6
       },
       "voice": {
         "lines": 13,
@@ -114,23 +114,41 @@
           "悲伤": 3.68,
           "愤怒": 2.76,
           "紧张": 1.94
+        },
+        "voices": {
+          "沈默": {
+            "pitch": 93.0,
+            "zcr": 803.4,
+            "lines": 8
+          },
+          "程夏": {
+            "pitch": 235.3,
+            "zcr": 1179.3,
+            "lines": 5
+          }
         }
+      },
+      "completeness": {
+        "duration": 34.78,
+        "timeline": 34.78,
+        "lines": 13,
+        "onsets": 19
       },
       "mix": {
         "episode": {
-          "i": -18.3,
-          "lra": 3.4,
-          "pk": -1.4
+          "i": -17.5,
+          "lra": 3.7,
+          "pk": -1.3
         },
         "voice": {
-          "i": -20.7,
-          "lra": 5.2,
+          "i": -20.4,
+          "lra": 5.0,
           "pk": -0.6
         },
         "music": {
-          "i": -35.1,
+          "i": -34.5,
           "lra": 5.8,
-          "pk": -17.5
+          "pk": -16.9
         },
         "bed": {
           "i": -24.5,
@@ -138,8 +156,8 @@
           "pk": -6.9
         },
         "audibility": {
-          "speech_lufs": -20.2,
-          "bed_peak_lufs": -32.2,
+          "speech_lufs": -19.5,
+          "bed_peak_lufs": -31.5,
           "gap_lu": 12.0
         },
         "black_segments": 0

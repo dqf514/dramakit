@@ -157,7 +157,7 @@ def _export_nle(ctx: Context, ep, tl, shot_clips: list[tuple[str, object]],
     return str(out)
 
 
-def _scene_voice(ctx: Context, tscene, tmp: Path) -> str:
+def _scene_voice(ctx: Context, tscene, tmp: Path, idx: int = 0) -> str:
     parts: list[str] = []
     for i, tl_line in enumerate(tscene.lines):
         l = tl_line.line
@@ -170,14 +170,14 @@ def _scene_voice(ctx: Context, tscene, tmp: Path) -> str:
             if ap.exists():
                 parts.append(str(ap))
                 continue
-        sil = tmp / f"sil_{i:03d}.mp3"
+        sil = tmp / f"sil_{idx:03d}_{i:03d}.mp3"
         parts.append(ff.make_silence(sil, d))
     if not parts:
-        v = tmp / "scene_voice_empty.mp3"
+        v = tmp / f"scene_voice_empty_{idx:03d}.mp3"
         return ff.make_silence(v, tscene.duration)
-    joined = tmp / "scene_voice_raw.mp3"
+    joined = tmp / f"scene_voice_raw_{idx:03d}.mp3"
     ff.concat_audio(parts, joined)
-    padded = tmp / "scene_voice.mp3"
+    padded = tmp / f"scene_voice_{idx:03d}.mp3"
     return ff.pad_audio(joined, padded, tscene.duration)
 
 
@@ -222,7 +222,7 @@ def compose_episode(ctx: Context, ep) -> str:
                                      tscene.duration, fade_in=fd, fade_out=fd,
                                      crf=cc.crf, preset=cc.preset)
         scene_videos.append(sv_path)
-        scene_voices.append(_scene_voice(ctx, tscene, tmp))
+        scene_voices.append(_scene_voice(ctx, tscene, tmp, si))
 
     picture = tmp / "picture.mp4"
     ff.concat_videos(scene_videos, picture)
@@ -310,6 +310,23 @@ def compose_episode(ctx: Context, ep) -> str:
     ff.mix_voice_bgm(voice, music or None, mix,
                      bgm_volume=1.0,
                      duck=ctx.cfg.music.duck_voice, target_lufs=target)
+
+    # The mux takes the shorter of the two tracks, so a picture that came out
+    # a little short would cut the end of the dialogue off. Both tracks are
+    # brought to the timeline length first.
+    pic_dur = ff.probe_duration(picture)
+    mix_dur = ff.probe_duration(mix)
+    if pic_dur and mix_dur and abs(pic_dur - mix_dur) > 0.1:
+        if mix_dur < pic_dur:
+            ctx.log.warning("compose: 第%d集 音轨比画面短 %.2fs，补静音", ep.index,
+                             pic_dur - mix_dur)
+            mix = ff.pad_audio(mix, tmp / "mix_pad.mp3", pic_dur)
+        else:
+            ctx.log.warning("compose: 第%d集 画面比音轨短 %.2fs，补末帧", ep.index,
+                             mix_dur - pic_dur)
+            picture = ff.pad_video(picture, tmp / "picture_pad.mp4", mix_dur,
+                                   width=cc.width, height=cc.height, fps=cc.fps,
+                                   crf=cc.crf, preset=cc.preset)
 
     # --- mux + burn subtitles ---
     ass = ctx.store.abs(ep.ass_path) if ep.ass_path else None

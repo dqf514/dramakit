@@ -33,14 +33,16 @@ def run(ctx: Context) -> dict:
                     speaker="" if narr else l.speaker,
                     text=l.text, kind=l.kind))
         cues.sort(key=lambda c: c.start)
-        # avoid overlaps, but only inside the same slot: narration cards are
+        # Avoid overlaps, but only inside the same slot: narration cards are
         # allowed to sit on screen while dialogue plays (different area).
+        # The readable minimum must never win over the cut - two subtitles on
+        # screen at once is worse than a short one.
         for i in range(len(cues) - 1):
             cur, nxt = cues[i], cues[i + 1]
             if cur.kind != nxt.kind:
                 continue
             if cur.end > nxt.start:
-                cur.end = max(MIN_CUE, nxt.start - 0.02)
+                cur.end = max(cur.start + 0.35, nxt.start - 0.02)
 
         srt = write_srt(cues, ctx.store.subtitle_path(ep, "srt"))
         ep.subtitle_path = ctx.store.rel(srt)

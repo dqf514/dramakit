@@ -11,22 +11,31 @@ from ..models import LineKind, SubtitleCue
 
 
 def _srt_time(t: float) -> str:
+    """HH:MM:SS,mmm.
+
+    The rounding is done on the whole timestamp: rounding the fraction on its
+    own can produce 100 centiseconds, and dropping that carry moves a cue a
+    whole second early.
+    """
     if t < 0:
         t = 0.0
-    ms = int(round((t - int(t)) * 1000))
-    s = int(t) % 60
-    m = (int(t) // 60) % 60
-    h = int(t) // 3600
+    total_ms = int(round(t * 1000))
+    ms = total_ms % 1000
+    s = (total_ms // 1000) % 60
+    m = (total_ms // 60000) % 60
+    h = total_ms // 3600000
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
 def _ass_time(t: float) -> str:
+    """H:MM:SS.cc for the ASS format."""
     if t < 0:
         t = 0.0
-    cs = int(round((t - int(t)) * 100))
-    s = int(t) % 60
-    m = (int(t) // 60) % 60
-    h = int(t) // 3600
+    total_cs = int(round(t * 100))
+    cs = total_cs % 100
+    s = (total_cs // 100) % 60
+    m = (total_cs // 6000) % 60
+    h = total_cs // 360000
     return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
 

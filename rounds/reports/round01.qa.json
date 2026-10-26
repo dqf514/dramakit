@@ -138,7 +138,25 @@
           "惊讶": 2.84,
           "冷峻": 2.67,
           "愤怒": 1.91
+        },
+        "voices": {
+          "神秘男人": {
+            "pitch": 114.3,
+            "zcr": 1153.4,
+            "lines": 10
+          },
+          "林小满": {
+            "pitch": 210.5,
+            "zcr": 969.4,
+            "lines": 6
+          }
         }
+      },
+      "completeness": {
+        "duration": 45.5,
+        "timeline": 45.5,
+        "lines": 15,
+        "onsets": 12
       },
       "mix": {
         "episode": {

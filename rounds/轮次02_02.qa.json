@@ -6,12 +6,12 @@
       "title": "被逐少爷归来夺股",
       "picture": {
         "frames": 16,
-        "sharp_median": 25.9,
-        "sharp_min": 4.9,
-        "luma_spread": 7.3,
+        "sharp_median": 28.7,
+        "sharp_min": 11.8,
+        "luma_spread": 10.6,
         "src_luma_spread": 31.9,
         "graded_luma_spread": 2.9,
-        "sat_spread": 2.7
+        "sat_spread": 4.4
       },
       "voice": {
         "lines": 14,
@@ -126,23 +126,51 @@
           "笃定": 1.56,
           "惊讶": 2.05,
           "紧张": 0.97
+        },
+        "voices": {
+          "陆家管家": {
+            "pitch": 111.1,
+            "zcr": 856.4,
+            "lines": 1
+          },
+          "陆沉": {
+            "pitch": 125.0,
+            "zcr": 767.5,
+            "lines": 7
+          },
+          "陆明远": {
+            "pitch": 200.0,
+            "zcr": 750.0,
+            "lines": 5
+          },
+          "周行长": {
+            "pitch": 0,
+            "zcr": 585.2,
+            "lines": 1
+          }
         }
+      },
+      "completeness": {
+        "duration": 30.75,
+        "timeline": 30.75,
+        "lines": 14,
+        "onsets": 21
       },
       "mix": {
         "episode": {
-          "i": -17.6,
-          "lra": 6.4,
-          "pk": -1.4
+          "i": -16.7,
+          "lra": 4.8,
+          "pk": -1.2
         },
         "voice": {
-          "i": -20.0,
-          "lra": 9.0,
+          "i": -22.0,
+          "lra": 5.6,
           "pk": -0.9
         },
         "music": {
-          "i": -35.1,
+          "i": -36.3,
           "lra": 4.5,
-          "pk": -16.9
+          "pk": -18.2
         },
         "bed": {
           "i": -24.1,
@@ -150,8 +178,8 @@
           "pk": -5.9
         },
         "audibility": {
-          "speech_lufs": -20.0,
-          "bed_peak_lufs": -32.0,
+          "speech_lufs": -21.3,
+          "bed_peak_lufs": -33.2,
           "gap_lu": 12.0
         },
         "black_segments": 0
