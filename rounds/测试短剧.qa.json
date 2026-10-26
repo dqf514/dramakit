@@ -1,0 +1,359 @@
+{
+  "project": "测试短剧",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "林家弃少突然归来",
+      "picture": {
+        "frames": [
+          {
+            "at": 2.9,
+            "sharp": 1390.0,
+            "luma": 82.2,
+            "sat": 6.1
+          },
+          {
+            "at": 8.6,
+            "sharp": 1272.6,
+            "luma": 88.2,
+            "sat": 9.1
+          },
+          {
+            "at": 14.3,
+            "sharp": 3411.5,
+            "luma": 87.2,
+            "sat": 6.6
+          },
+          {
+            "at": 20.0,
+            "sharp": 1345.5,
+            "luma": 89.4,
+            "sat": 7.8
+          },
+          {
+            "at": 25.7,
+            "sharp": 3008.5,
+            "luma": 82.1,
+            "sat": 7.2
+          },
+          {
+            "at": 31.4,
+            "sharp": 1838.1,
+            "luma": 81.5,
+            "sat": 6.9
+          },
+          {
+            "at": 37.1,
+            "sharp": 1708.5,
+            "luma": 90.7,
+            "sat": 6.2
+          },
+          {
+            "at": 42.8,
+            "sharp": 2098.6,
+            "luma": 87.9,
+            "sat": 6.1
+          }
+        ],
+        "sharp_median": 1838.1,
+        "sharp_min": 1272.6,
+        "luma_spread": 9.2,
+        "sat_spread": 3.0
+      },
+      "voice": {
+        "lines": 11,
+        "rows": [
+          {
+            "id": "ln-839013ee",
+            "speaker": "林凡",
+            "emotion": "愤怒",
+            "duration": 1.79,
+            "chars": 8
+          },
+          {
+            "id": "ln-35bf191e",
+            "speaker": "苏晚",
+            "emotion": "惊讶",
+            "duration": 2.13,
+            "chars": 8
+          },
+          {
+            "id": "ln-2112b79f",
+            "speaker": "苏晚",
+            "emotion": "悲伤",
+            "duration": 5.42,
+            "chars": 18
+          },
+          {
+            "id": "ln-129e1710",
+            "speaker": "林凡",
+            "emotion": "平静",
+            "duration": 1.72,
+            "chars": 8
+          },
+          {
+            "id": "ln-e9f6ae91",
+            "speaker": "林凡",
+            "emotion": "得意",
+            "duration": 1.94,
+            "chars": 7
+          },
+          {
+            "id": "ln-d3813c9c",
+            "speaker": "赵叔",
+            "emotion": "紧张",
+            "duration": 3.8,
+            "chars": 16
+          },
+          {
+            "id": "ln-49df5a5b",
+            "speaker": "林凡",
+            "emotion": "惊讶",
+            "duration": 1.54,
+            "chars": 6
+          },
+          {
+            "id": "ln-e093eb28",
+            "speaker": "林凡",
+            "emotion": "愤怒",
+            "duration": 2.59,
+            "chars": 15
+          },
+          {
+            "id": "ln-0b7a0b6d",
+            "speaker": "苏晚",
+            "emotion": "惊讶",
+            "duration": 2.52,
+            "chars": 12
+          },
+          {
+            "id": "ln-918629b6",
+            "speaker": "林凡",
+            "emotion": "平静",
+            "duration": 3.1,
+            "chars": 14
+          },
+          {
+            "id": "ln-e589aa77",
+            "speaker": "林凡",
+            "emotion": "坚定",
+            "duration": 1.42,
+            "chars": 5
+          }
+        ],
+        "per_emotion": {
+          "愤怒": 2.19,
+          "惊讶": 2.06,
+          "悲伤": 5.42,
+          "平静": 2.41,
+          "得意": 1.94,
+          "紧张": 3.8,
+          "坚定": 1.42
+        }
+      },
+      "mix": {
+        "episode": {
+          "i": -17.9,
+          "lra": 8.7,
+          "pk": -1.3
+        },
+        "voice": {
+          "i": -23.4,
+          "lra": 13.2,
+          "pk": -3.0
+        },
+        "music": {
+          "i": -30.8,
+          "lra": 5.5,
+          "pk": -13.9
+        },
+        "bed": {
+          "i": -23.9,
+          "lra": 5.5,
+          "pk": -6.9
+        },
+        "music_below_voice_lu": -7.4,
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 28,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "nle": {
+        "spine": 12,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ]
+      }
+    },
+    {
+      "index": 2,
+      "title": "遗嘱在手，风暴将至",
+      "picture": {
+        "frames": [
+          {
+            "at": 3.0,
+            "sharp": 1166.7,
+            "luma": 45.4,
+            "sat": 5.9
+          },
+          {
+            "at": 8.9,
+            "sharp": 3459.9,
+            "luma": 46.4,
+            "sat": 5.8
+          },
+          {
+            "at": 14.9,
+            "sharp": 1324.3,
+            "luma": 41.4,
+            "sat": 4.7
+          },
+          {
+            "at": 20.8,
+            "sharp": 1604.9,
+            "luma": 72.9,
+            "sat": 7.9
+          },
+          {
+            "at": 26.8,
+            "sharp": 3371.1,
+            "luma": 49.8,
+            "sat": 5.8
+          },
+          {
+            "at": 32.7,
+            "sharp": 2144.3,
+            "luma": 63.0,
+            "sat": 6.4
+          },
+          {
+            "at": 38.7,
+            "sharp": 843.9,
+            "luma": 62.5,
+            "sat": 6.3
+          },
+          {
+            "at": 44.6,
+            "sharp": 1440.9,
+            "luma": 64.3,
+            "sat": 6.4
+          }
+        ],
+        "sharp_median": 1604.9,
+        "sharp_min": 843.9,
+        "luma_spread": 31.5,
+        "sat_spread": 3.2
+      },
+      "voice": {
+        "lines": 6,
+        "rows": [
+          {
+            "id": "ln-51c804dc",
+            "speaker": "林建国",
+            "emotion": "得意",
+            "duration": 4.56,
+            "chars": 20
+          },
+          {
+            "id": "ln-24a89fa8",
+            "speaker": "林老爷子",
+            "emotion": "悲伤",
+            "duration": 6.52,
+            "chars": 12
+          },
+          {
+            "id": "ln-7068aad0",
+            "speaker": "林老爷子",
+            "emotion": "悲伤",
+            "duration": 5.52,
+            "chars": 14
+          },
+          {
+            "id": "ln-5cb34510",
+            "speaker": "林建国",
+            "emotion": "愤怒",
+            "duration": 4.08,
+            "chars": 21
+          },
+          {
+            "id": "ln-469cedb1",
+            "speaker": "林凡",
+            "emotion": "平静",
+            "duration": 1.4,
+            "chars": 4
+          },
+          {
+            "id": "ln-6d39ed37",
+            "speaker": "林凡",
+            "emotion": "得意",
+            "duration": 4.86,
+            "chars": 24
+          }
+        ],
+        "per_emotion": {
+          "得意": 4.71,
+          "悲伤": 6.02,
+          "愤怒": 4.08,
+          "平静": 1.4
+        }
+      },
+      "mix": {
+        "episode": {
+          "i": -16.4,
+          "lra": 11.3,
+          "pk": -1.1
+        },
+        "voice": {
+          "i": -18.7,
+          "lra": 16.6,
+          "pk": -3.4
+        },
+        "music": {
+          "i": -31.3,
+          "lra": 4.8,
+          "pk": -15.1
+        },
+        "bed": {
+          "i": -24.4,
+          "lra": 4.8,
+          "pk": -8.1
+        },
+        "music_below_voice_lu": -12.6,
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 19,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "nle": {
+        "spine": 11,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ]
+      }
+    }
+  ],
+  "issues": [
+    {
+      "area": "picture",
+      "kind": "tonal_spread",
+      "where": "-",
+      "detail": "成片内亮度差 32（41.4~72.9）"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
+}

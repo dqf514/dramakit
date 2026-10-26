@@ -381,6 +381,17 @@ class ComfyUIClient(BaseImageVideo):
             raise ComfyUIError(f"ComfyUI /prompt {r.status_code}: {r.text[:500]}")
         return r.json()["prompt_id"]
 
+    @staticmethod
+    def is_oom(error: BaseException) -> bool:
+        """Did the server run out of memory?
+
+        ComfyUI unloads every model when that happens, so the next attempt
+        starts from a clean slate and usually succeeds.
+        """
+        text = str(error).lower()
+        return ("out of memory" in text or "oom" in text
+                or "allocation on device" in text)
+
     # ------------------------------------------------------------- waiting
     def _wait(self, prompt_id: str, timeout: Optional[float] = None) -> None:
         """Wait for completion: WebSocket first, poll /history as fallback."""

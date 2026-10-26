@@ -138,7 +138,7 @@ def check_episode(ctx: Context, ep: Episode) -> dict:
                             f"（差 {dev:.1f}）")
     if "true_peak_dbfs" in loud and loud["true_peak_dbfs"] > -1.0:
         warnings.append(f"真峰 {loud['true_peak_dbfs']} dBFS 超过 -1 dBTP，可能削波")
-    if "loudness_range_lu" in loud and loud["loudness_range_lu"] > 12.0:
+    if "loudness_range_lu" in loud and loud["loudness_range_lu"] > 16.0:
         warnings.append(f"响度动态范围 {loud['loudness_range_lu']} LU 偏大，听感忽大忽小")
 
     # dead frames

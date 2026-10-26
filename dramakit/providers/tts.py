@@ -92,6 +92,22 @@ class EdgeTTS(BaseTTS):
 
 # --------------------------------------------------------------------------- #
 # OpenAI-compatible / CosyVoice / custom HTTP
+def _decode_audio(payload: str) -> bytes:
+    """Decode the audio a TTS server returned.
+
+    MiniMax hands back hex, most others base64. Hex is tried first when the
+    string looks like hex and decodes cleanly.
+    """
+    import base64
+    text = payload.strip()
+    if len(text) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in text):
+        try:
+            return bytes.fromhex(text)
+        except ValueError:
+            pass
+    return base64.b64decode(text)
+
+
 # --------------------------------------------------------------------------- #
 class HTTPTTS(BaseTTS):
     """Covers cosyvoice, openai, minimax and custom via a normalized request."""
@@ -113,14 +129,18 @@ class HTTPTTS(BaseTTS):
 
     def _payload(self, text: str, voice: str, speed: float, emotion: str) -> dict:
         if self.provider == "minimax":
+            vs = {"voice_id": voice, "speed": speed, "vol": 1.0, "pitch": 0}
+            if emotion:
+                # MiniMax takes the emotion as a token, not as part of the text
+                vs["emotion"] = emotion
             return {
-                "model": self.cfg.model or "speech-02",
+                "model": self.cfg.model or "speech-2.8-hd",
                 "text": text,
                 "stream": False,
-                "voice_setting": {
-                    "voice_id": voice, "speed": speed, "vol": 1.0, "pitch": 0,
-                },
-                "audio_setting": {"sample_rate": 32000, "format": "mp3"},
+                "language_boost": "Chinese",
+                "voice_setting": vs,
+                "audio_setting": {"sample_rate": 32000, "bitrate": 128000,
+                                  "format": "mp3", "channel": 1},
             }
         if self.provider == "openai":
             return {"model": self.cfg.model or "tts-1", "input": text,
@@ -128,6 +148,29 @@ class HTTPTTS(BaseTTS):
         # cosyvoice / custom (common local-server shape)
         return {"text": text, "voice": voice, "speaker": voice,
                 "speed": speed, "format": "mp3", "emotion": emotion}
+
+    def list_voices(self) -> list[str]:
+        """The voice catalogue this provider can actually use."""
+        if self.provider != "minimax":
+            return []
+        try:
+            with httpx.Client(timeout=60.0, trust_env=self.cfg.use_proxy) as client:
+                r = client.post(f"{self.base_url}/v1/get_voice",
+                                json={"voice_type": "all"}, headers=self.headers)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:  # noqa: BLE001
+            log.warning("minimax 音色表读取失败: %s", str(e)[:120])
+            return []
+        out = []
+        for v in data.get("system_voice") or []:
+            vid = str(v.get("voice_id") or "").strip()
+            if not vid:
+                continue
+            if "Chinese" in vid or vid.startswith(("male-", "female-")) or \
+                    vid.startswith(("presenter_", "audiobook_")):
+                out.append(vid)
+        return out
 
     def synthesize(self, text: str, voice: str, out_path: str, *, rate: str = "+0%",
                    volume: str = "+0%", pitch: str = "+0Hz", speed: float = 1.0,
@@ -149,8 +192,7 @@ class HTTPTTS(BaseTTS):
             audio_b64 = (data.get("data", {}).get("audio")
                          if isinstance(data.get("data"), dict) else data.get("audio"))
             if audio_b64:
-                import base64
-                Path(out_path).write_bytes(base64.b64decode(audio_b64))
+                Path(out_path).write_bytes(_decode_audio(audio_b64))
             elif data.get("audio_url"):
                 with httpx.Client(timeout=120.0, trust_env=self.cfg.use_proxy) as c2:
                     Path(out_path).write_bytes(c2.get(data["audio_url"]).content)
@@ -184,6 +226,10 @@ def resolve_voice(cfg: TTSConfig, speaker: str, gender: str = "未知",
         if gender in ("女", "female"):
             return cfg.edge_female_voice
         return cfg.edge_default_voice
+    if is_narrator or speaker in ("旁白", "解说"):
+        narrator = cfg.narrator_voice
+        if narrator:
+            return narrator
     return cfg.voice_map.get(speaker, cfg.model or "default")
 
 

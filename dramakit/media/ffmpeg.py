@@ -324,28 +324,47 @@ def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path,
                   bgm_volume: float = 0.22, duck: bool = True,
                   target_lufs: Optional[float] = None) -> str:
     """Mix dialogue with background music (optional sidechain ducking) and
-    optional EBU loudness normalization."""
+    optional EBU loudness normalization.
+
+    The loudness is applied in two passes: the mix is measured first and then
+    corrected with a linear gain, so the result actually lands on the target
+    instead of near it.
+    """
     out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
     has_bgm = bool(bgm and Path(bgm).exists())
-    af_tail = f",loudnorm=I={target_lufs}:TP=-1.5:LRA=11" if target_lufs else ""
     if not has_bgm:
         _run([ffmpeg_bin(), "-y", "-i", str(voice),
-              "-af", f"aresample=44100{af_tail}",
-              "-c:a", "libmp3lame", "-q:a", "3", str(out)], quiet=False)
+              "-af", "aresample=44100", "-c:a", "libmp3lame", "-q:a", "3", str(out)],
+             quiet=False)
         return str(out)
     if duck:
         fc = (f"[0:a]asplit=2[v][sc];"
               f"[1:a]volume={bgm_volume}[b];"
               f"[b][sc]sidechaincompress=threshold=0.05:ratio=9:attack=15:release=280[bg];"
               f"[v][bg]amix=inputs=2:duration=first:dropout_transition=0,"
-              f"aresample=44100{af_tail}[a]")
+              f"aresample=44100[a]")
     else:
         fc = (f"[1:a]volume={bgm_volume}[b];"
               f"[0:a][b]amix=inputs=2:duration=first:dropout_transition=0,"
-              f"aresample=44100{af_tail}[a]")
+              f"aresample=44100[a]")
+    raw = out.with_suffix(".raw.mp3")
     _run([ffmpeg_bin(), "-y", "-i", str(voice), "-i", str(bgm),
           "-filter_complex", fc, "-map", "[a]",
+          "-c:a", "libmp3lame", "-q:a", "3", str(raw)], quiet=False)
+    if not target_lufs:
+        raw.replace(out)
+        return str(out)
+    m = measure_loudness(raw)
+    af = f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11"
+    if m.get("input_i"):
+        af += (f":measured_I={m['input_i']}:measured_TP={m['input_tp']}"
+               f":measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}")
+        if m.get("target_offset"):
+            af += f":offset={m['target_offset']}"
+        af += ":linear=true"
+    _run([ffmpeg_bin(), "-y", "-i", str(raw), "-af", af,
           "-c:a", "libmp3lame", "-q:a", "3", str(out)], quiet=False)
+    raw.unlink(missing_ok=True)
     return str(out)
 
 

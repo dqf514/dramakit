@@ -47,10 +47,16 @@ def run(ctx: Context) -> dict:
             lines_text = "\n".join(
                 f"- {l.speaker}({l.emotion}): {l.text}" for l in sc.lines) or "（无台词，纯画面）"
             prefer = "多用运动镜头增强节奏" if cfg.prefer_dynamic else "以固定镜头为主"
+            # a short drama only holds attention if it cuts fast: the episode
+            # gets a shot budget and every scene a share of what is left
+            left = max(cfg.min_shots_per_scene,
+                       cfg.max_shots_per_episode - sum(len(s.shots) for s in ep.scenes))
+            max_shots = max(cfg.min_shots_per_scene,
+                            min(cfg.max_shots_per_scene, left))
             user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
                             time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
                             lines_text=lines_text, min_shots=cfg.min_shots_per_scene,
-                            max_shots=cfg.max_shots_per_scene, prefer_dynamic=prefer,
+                            max_shots=max_shots, prefer_dynamic=prefer,
                             dur_min=dmin, dur_max=dmax, narration_seconds=narration_sec,
                             character_names=char_names)
             try:

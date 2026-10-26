@@ -198,6 +198,8 @@ class TTSConfig(BaseModel):
     use_proxy: bool = False                           # 直连(False)；本地 CosyVoice 必须 False
     # character name -> voice id; unresolved characters fall back by gender
     voice_map: dict[str, str] = Field(default_factory=dict)
+    # 旁白专用音色（非 edge 时用）
+    narrator_voice: str = ""
     # 旁白/解说是否朗读。False = 只做屏幕文字（独有样式），不进入配音轨
     speak_narration: bool = False
     # --- 音色池筛选 ---
@@ -209,8 +211,30 @@ class TTSConfig(BaseModel):
     voice_exclude: list[str] = Field(default_factory=list)
     # 音色 → 备注（喂给配音导演 LLM，说明年龄/气质）
     voice_notes: dict[str, str] = Field(default_factory=dict)
-    # emotion -> per-provider style/InstructSSML hint (optional)
-    emotion_map: dict[str, str] = Field(default_factory=dict)
+    # 情绪 -> provider 的情感参数。默认给的是 MiniMax 的英文枚举
+    # （happy/sad/angry/fearful/disgusted/surprised/neutral）。
+    # edge-tts 没有情感参数，会退回到上面的 emotion_modulation 做语速/音高微调。
+    emotion_map: dict[str, str] = Field(default_factory=lambda: {
+        "平静": "neutral", "愤怒": "angry", "悲伤": "sad",
+        "惊讶": "surprised", "喜悦": "happy", "紧张": "fearful",
+        "得意": "happy", "坚定": "neutral", "恐惧": "fearful",
+        "厌恶": "disgusted", "疑惑": "surprised", "冷漠": "neutral",
+    })
+    # 情绪 -> 语速/音高微调。短剧要的是"戏感"：愤怒要顶上去，委屈要弱下来。
+    # MiniMax 有真正的 emotion 参数，这张表是给没有情感能力的 TTS（edge）用的兜底。
+    emotion_modulation: dict[str, dict] = Field(default_factory=lambda: {
+        "愤怒": {"speed": 1.12, "pitch": -1},
+        "悲伤": {"speed": 0.90, "pitch": -1},
+        "惊讶": {"speed": 1.08, "pitch": 1},
+        "喜悦": {"speed": 1.06, "pitch": 1},
+        "紧张": {"speed": 1.10, "pitch": 0},
+        "得意": {"speed": 0.98, "pitch": 0},
+        "坚定": {"speed": 0.95, "pitch": -1},
+        "恐惧": {"speed": 1.05, "pitch": 1},
+        "厌恶": {"speed": 0.95, "pitch": -1},
+    })
+    # 情绪映射的默认值（中文情绪 -> MiniMax 的英文枚举）。
+    # 留空则用这张内置表；provider 不支持情感时忽略即可。
     silence_pad_ms: int = 120                         # tail silence per line
 
 
@@ -372,6 +396,8 @@ class StoryboardConfig(BaseModel):
     shots_per_scene: Literal["auto"] = "auto"
     min_shots_per_scene: int = 2
     max_shots_per_scene: int = 8
+    # 一集最多几个镜头：短剧靠快切留人，镜头太多每段时长就被摊薄了
+    max_shots_per_episode: int = 10
     shot_duration_range: list[float] = Field(default_factory=lambda: [2.0, 5.0])
     prefer_dynamic: bool = True                       # 多用推拉摇移
     include_insert_shots: bool = True                 # 空镜/特写插入

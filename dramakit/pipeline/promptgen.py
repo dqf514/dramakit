@@ -5,6 +5,8 @@ across shots. Falls back to a deterministic template if the LLM call fails.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 from ..models import Shot, Status
 from ..prompts import templates as T
 from .base import Context, build_timeline
@@ -245,8 +247,12 @@ def run(ctx: Context) -> dict:
     llm = ctx.providers.llm_for("promptgen")
     h3_needed = _h3_needed(ctx)
     count = 0
+    # the two prompts of a shot are independent, and so are different shots:
+    # the LLM round trips are the slowest part of this stage
+    workers = max(1, int(ctx.cfg.llm.concurrency or 1))
     for ep in ctx.target_episodes():
         dlg_map = _dialogue_by_shot(ctx, ep)
+        jobs = []
         for sc in ep.scenes:
             for shot in sc.shots:
                 # per shot, not per episode: a cleared or edited prompt has to
@@ -260,12 +266,24 @@ def run(ctx: Context) -> dict:
                 loc = next((l for l in ctx.project.locations
                             if l.name == sc.location), None)
                 location_visual = (loc.visual_prompt or loc.description) if loc else ""
-                if need_img:
-                    _gen_image_prompt(ctx, llm, shot, sc, visuals, flf, location_visual)
-                if need_h3:
-                    _gen_h3_prompt(ctx, llm, shot, sc, visuals, location_visual,
-                                   dlg_map.get(shot.id, []))
-                count += 1
+                jobs.append((shot, sc, visuals, flf, location_visual,
+                            need_img, need_h3))
+
+        def _one(job):
+            shot, sc, visuals, flf, location_visual, need_img, need_h3 = job
+            if need_img:
+                _gen_image_prompt(ctx, llm, shot, sc, visuals, flf, location_visual)
+            if need_h3:
+                _gen_h3_prompt(ctx, llm, shot, sc, visuals, location_visual,
+                               dlg_map.get(shot.id, []))
+
+        if workers > 1 and len(jobs) > 1:
+            with ThreadPoolExecutor(max_workers=workers) as ex:
+                list(ex.map(_one, jobs))
+        else:
+            for job in jobs:
+                _one(job)
+        count += len(jobs)
         ctx.mark(ep, "promptgen", Status.DONE)
         ctx.save()
     ctx.log.info("promptgen: 生成 %d 个镜头提示词", count)

@@ -34,8 +34,15 @@ def run(ctx: Context) -> dict:
             ctx.log.warning("script: 第%d集无原文，跳过", ep.index)
             ctx.mark(ep, "script", Status.SKIPPED)
             continue
+        # how much the episode may say: Chinese speech runs about 4.5 chars a
+        # second, and a short drama loses people if it lingers
+        seconds = float(ep.duration_target or cfg.segment.episode_duration)
+        budget_chars = int(seconds * 4.5)
+        budget_lines = max(4, int(seconds / 4.5))
         user = T.render(T.SCRIPT_USER, genre=genre, min_scenes=2, max_scenes=8,
-                        character_names=char_names, text=block[:12000])
+                        character_names=char_names, text=block[:12000],
+                        budget_seconds=int(seconds), budget_chars=budget_chars,
+                        budget_lines=budget_lines)
         try:
             data = llm.complete_json(T.SCRIPT_SYSTEM, user)
         except Exception as e:  # noqa: BLE001

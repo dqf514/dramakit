@@ -69,11 +69,12 @@ def _check_episode(ctx: Context, ep: Episode, h3: bool) -> tuple[list[str], list
             if is_narration(line):
                 continue
             if not line.audio_path:
-                warnings.append(f"台词 {line.id}({line.speaker}) 没有配音")
+                # a spoken line with no audio is a broken episode, not a note
+                errors.append(f"台词 {line.id}({line.speaker}) 没有配音")
                 continue
             ap = ctx.store.abs(line.audio_path)
             if not ap.exists():
-                warnings.append(f"台词 {line.id}({line.speaker}) 音频文件缺失")
+                errors.append(f"台词 {line.id}({line.speaker}) 音频文件缺失")
     if ep.subtitle_path:
         sp = ctx.store.abs(ep.subtitle_path)
         if not sp.exists():

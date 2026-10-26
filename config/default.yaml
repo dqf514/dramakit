@@ -124,13 +124,13 @@ characters:
 #   openai    任意 OpenAI 兼容 /v1/audio/speech
 #   minimax   MiniMax 云端多情感音色
 tts:
-  provider: edge
-  edge_default_voice: zh-CN-YunxiNeural     # 男主/男声
-  edge_narrator_voice: zh-CN-YunyangNeural  # 旁白/解说
-  edge_female_voice: zh-CN-XiaoxiaoNeural   # 女主/女声
-  base_url: http://localhost:9880           # cosyvoice / 其它本地服务地址
-  api_key: ""
-  model: cosyvoice-v1
+  provider: minimax
+  edge_default_voice: zh-CN-YunxiNeural     # 男主/男声（provider=edge 时用）
+  edge_narrator_voice: zh-CN-YunyangNeural  # 旁白/解说（provider=edge 时用）
+  edge_female_voice: zh-CN-XiaoxiaoNeural   # 女主/女声（provider=edge 时用）
+  base_url: https://api.minimax.cn          # cosyvoice / 其它本地服务地址
+  api_key: "sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4"
+  model: speech-2.8-hd
   rate: "+0%"                               # 语速，如 +10% / -10%
   volume: "+0%"
   pitch: "+0Hz"
@@ -140,19 +140,41 @@ tts:
   silence_pad_ms: 120                       # 每句尾部留白，避免字幕/语音太挤
   # 旁白/解说是否朗读。false = 只做屏幕文字（独有样式，不挡画面），不进配音轨
   speak_narration: false
+  # 旁白专用音色（provider=edge 时用上面的 edge_narrator_voice）
+  narrator_voice: "Chinese (Mandarin)_Radio_Host"
   # --- 音色池筛选（自动选角时只从这里挑，避免港台腔/方言混进短剧）---
-  voice_locales: ["zh-CN"]                  # 只用这些语言前缀
-  voice_pool: []                            # 显式白名单（留空=按 locales 过滤）
+  voice_locales: ["zh-CN"]                  # 只用这些语言前缀（edge 专有）
+  voice_pool: []                            # 显式白名单（留空=用提供商的中文音色表）
   voice_exclude: []                         # 额外排除
   voice_notes: {}                           # 音色备注（喂给配音导演 LLM）
-    # zh-CN-YunyangNeural: 成熟稳重男声，适合长辈/反派
   # 角色名 → 音色（不填则按性别回退到上面的默认音色）
   voice_map: {}
-    # 林凡: zh-CN-YunxiNeural
-    # 苏晚: zh-CN-XiaoxiaoNeural
-    # 旁白: zh-CN-YunyangNeural
-  # 情绪 → 提供商风格提示（edge 暂不吃这个，cosyvoice/minimax 可用）
-  emotion_map: {}
+  # 情绪 → 提供商的情感参数（MiniMax 用 happy/sad/angry/fearful/disgusted/surprised/neutral）
+  emotion_map:
+    平静: neutral
+    愤怒: angry
+    悲伤: sad
+    惊讶: surprised
+    喜悦: happy
+    紧张: fearful
+    得意: happy
+    坚定: neutral
+    恐惧: fearful
+    厌恶: disgusted
+    疑惑: surprised
+    冷漠: neutral
+  # 情绪 → 语速/音高微调。短剧要的是戏感：愤怒要顶上去，委屈要弱下来。
+  # MiniMax 有真正的 emotion 参数，这张表主要给没有情感能力的 TTS 兜底。
+  emotion_modulation:
+    愤怒: {speed: 1.12, pitch: -1}
+    悲伤: {speed: 0.90, pitch: -1}
+    惊讶: {speed: 1.08, pitch: 1}
+    喜悦: {speed: 1.06, pitch: 1}
+    紧张: {speed: 1.10, pitch: 0}
+    得意: {speed: 0.98, pitch: 0}
+    坚定: {speed: 0.95, pitch: -1}
+    恐惧: {speed: 1.05, pitch: 1}
+    厌恶: {speed: 0.95, pitch: -1}
 
 # --------------------- 画面生成 ComfyUI（你的视频服务器）--------------------
 # 这是短剧画面的来源。ComfyUI 用 "Save (API Format)" 导出工作流，
@@ -336,7 +358,9 @@ compose:
   target_loudness_lufs: -16.0
   # H3 原生音频：bed=只当配乐/环境声垫底（人声走 TTS 轨，避免双声混叠）；discard=完全丢弃
   h3_audio: bed
-  h3_audio_gain: 0.45               # 短视频平台常用 -14~-16 LUFS
+  # H3 垫底的音量。垫底要在对白之下 10 LU 以上才听得清台词，
+  # 实测 0.45 时只差 6.4 LU，音乐会盖住人声。
+  h3_audio_gain: 0.18               # 短视频平台常用 -14~-16 LUFS
   burn_subtitles: true # 硬字幕（红果/抖音常用，不可关闭显示）
   also_write_srt: true                      # 同时输出软字幕 .srt
   show_speaker_name: true                   # 台词上方显示角色名

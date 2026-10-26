@@ -15,6 +15,7 @@ or a card. `regen_shot()` is the single-shot entry used by the web console.
 from __future__ import annotations
 
 import hashlib
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..config import Config
@@ -182,6 +183,28 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
         return shot.id, False, msg
 
 
+def _render(ctx: Context, what: str, shot_id: str, fn, tries: int = 3):
+    """Render, and retry when the card ran out of memory.
+
+    ComfyUI drops every model when it hits an OOM, so the next attempt starts
+    fresh and normally goes through. Without the retry a single spike took the
+    whole episode down with it.
+    """
+    last: Optional[Exception] = None
+    for attempt in range(tries):
+        try:
+            return fn()
+        except Exception as e:  # noqa: BLE001
+            last = e
+            from ..providers.comfyui import ComfyUIClient
+            if not ComfyUIClient.is_oom(e):
+                raise
+            ctx.log.warning("visual: 镜 %s %s 显存不足，第%d 次重试",
+                            shot_id, what, attempt + 2)
+            time.sleep(15 + attempt * 10)
+    raise last  # type: ignore[misc]
+
+
 def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
     """Render only the still (and the flf end frame)."""
     vis = ctx.providers.visual
@@ -194,10 +217,10 @@ def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
     try:
         if not img_out.exists():
             refs = _fit_refs(ctx, _ref_images(ctx, shot, sc), shot)
-            vis.generate_image(
+            _render(ctx, "出图", shot.id, lambda: vis.generate_image(
                 prompt=shot.prompt, negative=shot.negative_prompt,
                 width=c.width, height=c.height, seed=seed, steps=c.steps, cfg=c.cfg,
-                out_path=str(img_out), extra=_extra(ctx), ref_images=refs)
+                out_path=str(img_out), extra=_extra(ctx), ref_images=refs))
             meta["refs"] = len(refs)
         shot.image_path = ctx.store.rel(img_out)
         if flf_enabled(ctx, shot) and not end_out.exists():
@@ -254,22 +277,22 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
         last = str(end_out) if use_flf else ""
         vprompt = shot.video_prompt or shot.prompt
         try:
-            vis.generate_video(
+            _render(ctx, "出视频", shot.id, lambda: vis.generate_video(
                 prompt=vprompt, negative=shot.negative_prompt,
                 image_path=str(img_out) if img_out.exists() else "",
                 frames=frames, fps=c.fps, seed=seed, out_path=str(vid_out),
-                extra=_extra(ctx), last_image_path=last)
+                extra=_extra(ctx), last_image_path=last))
         except Exception as e:  # noqa: BLE001
             if not last:
                 raise
             ctx.log.warning("visual: 镜 %s 首尾帧失败(%s)，退回单图 i2v",
                             shot.id, str(e)[:120])
             use_flf = False
-            vis.generate_video(
+            _render(ctx, "出视频", shot.id, lambda: vis.generate_video(
                 prompt=vprompt, negative=shot.negative_prompt,
                 image_path=str(img_out) if img_out.exists() else "",
                 frames=frames, fps=c.fps, seed=seed, out_path=str(vid_out),
-                extra=_extra(ctx))
+                extra=_extra(ctx)))
         shot.video_path = ctx.store.rel(vid_out)
         meta["flf"] = use_flf
         shot.gen_meta = meta

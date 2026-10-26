@@ -38,6 +38,7 @@
 |------|----------|----------|----------|
 | LLM 剧本/分镜 | DeepSeek / 通义千问 / Kimi / OpenAI | Ollama / LM Studio / vLLM | Ollama |
 | 配音 TTS | MiniMax / OpenAI-TTS | CosyVoice（可克隆音色） | **Edge-TTS** |
+| 配音 TTS（情绪） | **MiniMax T2A v2**（happy/sad/angry/…） | CosyVoice | Edge-TTS（无情感，靠语速音高近似） |
 | 画面/视频 | 任意 REST 出图服务 | **ComfyUI**（FLUX 3 出图 + MiniMax H3 出视频） | ComfyUI |
 | 配乐 BGM | Suno API | MusicGen | 本地曲库 |
 | 合成 | — | ffmpeg | ffmpeg |
@@ -508,6 +509,8 @@ TTS / 音乐同理实现 `BaseTTS` / `BaseMusic`，在 `providers/__init__.py` �
   有硬伤就阻断该集合成并给出原因，不让 ffmpeg 白跑一遍。
 - **旁白不上麦**：旁白只出屏幕文字（顶部独立样式、半透明底板，不压对白区），不进配音轨。
 - **声音随定妆设计**：角色音色 + 专属音高/语速在定妆阶段一起定，音色池只取纯普通话。
+  台词的情绪标注（愤怒/悲伤/惊讶…）会一路传到 TTS：MiniMax 用真正的情感参数，
+  没有情感能力的 TTS 则用语速/音高近似 —— 短剧要的是情绪张力，不是平读。
 - **H3 官方提示词**：出视频用 MiniMax H3 官方三字段格式
   （`integrated_multimodal_description` / `overall_soundscape` / `non_diegetic_music`），
   并把 H3 原生音频（配乐+环境声）压在人声下当垫底，省掉外部曲库。

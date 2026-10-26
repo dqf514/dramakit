@@ -206,6 +206,19 @@ def _fallback_voice(c: Character, voices: list[str]) -> str:
         return ""
     female = ("女", "female")
     male = ("男", "male")
+    # MiniMax ids say the gender up front; edge ids need the name list
+    if c.gender in female:
+        pref = [v for v in voices if v.startswith("female-")]
+        if not pref:
+            pref = [v for v in voices if "female" in v.lower()]
+        if pref:
+            return pref[0]
+    elif c.gender in male:
+        pref = [v for v in voices if v.startswith("male-")]
+        if not pref:
+            pref = [v for v in voices if "male" in v.lower()]
+        if pref:
+            return pref[0]
     prefs = []
     if c.gender in female:
         prefs = ["Xiaoxiao", "Xiaoyi", "Xiaochen", "Xiaohan", "Xiaomeng",
@@ -227,6 +240,44 @@ VOICE_NOTES: dict[str, str] = {
     "zh-CN-YunyangNeural": "成年男声，成熟稳重有分量，适合长辈/反派/老板",
     "zh-CN-XiaoxiaoNeural": "青年女声，温柔标准，适合女主",
     "zh-CN-XiaoyiNeural": "少女女声，甜美活泼，适合少女/甜宠",
+    # --- MiniMax 系统音色（支持情感参数，短剧首选）---
+    "male-qn-qingse": "青年男声，清澈干净，适合男主/少年/学生",
+    "male-qn-jingying": "青年男声，精英干练，适合豪门少爷/职场精英",
+    "male-qn-badao": "青年男声，霸道强势，适合反派/霸总",
+    "male-qn-daxuesheng": "青年男声，阳光学生气，适合学生/弟弟",
+    "female-shaonv": "少女女声，清甜有活力，适合女主/妹妹",
+    "female-yujie": "女声，御姐成熟，适合大女主/女强人",
+    "female-chengshu": "女声，温柔成熟，适合母亲/知性女性",
+    "female-tianmei": "女声，甜美柔和，适合甜宠/女主",
+    "Chinese (Mandarin)_Gentleman": "男声，温润儒雅，适合男主/gentleman",
+    "Chinese (Mandarin)_Lyrical_Voice": "男声，抒情有磁性，适合深情男主",
+    "Chinese (Mandarin)_Sincere_Adult": "男声，真诚沉稳，适合认真角色",
+    "Chinese (Mandarin)_Unrestrained_Young_Man": "男声，不羁洒脱，适合反叛角色",
+    "Chinese (Mandarin)_Stubborn_Friend": "男声，嘴硬倔强，适合损友/硬汉",
+    "Chinese (Mandarin)_Male_Announcer": "男声，播报腔，适合旁白/解说",
+    "Chinese (Mandarin)_News_Anchor": "女声，新闻播报，适合旁白/解说",
+    "Chinese (Mandarin)_Reliable_Executive": "男声，沉稳高管，适合上位者",
+    "Chinese (Mandarin)_Humorous_Elder": "男声，长者带笑意，适合慈祥长辈",
+    "Chinese (Mandarin)_Kind-hearted_Elder": "女声，慈祥长者，适合奶奶",
+    "Chinese (Mandarin)_Gentle_Senior": "女声，温柔学姐/长者",
+    "Chinese (Mandarin)_Warm_Bestie": "女声，温暖闺蜜，适合女主/姐妹",
+    "Chinese (Mandarin)_Wise_Women": "女声，阅历感，适合姐姐/长辈",
+    "Chinese (Mandarin)_Sweet_Lady": "女声，甜美清亮，适合甜美女主",
+    "Chinese (Mandarin)_Mature_Woman": "女声，傲娇御姐，适合强势女性",
+    "Chinese (Mandarin)_Warm_Girl": "少女女声，温暖治愈，适合女主",
+    "Chinese (Mandarin)_Crisp_Girl": "少女女声，清脆爽朗，适合活泼角色",
+    "Chinese (Mandarin)_Soft_Girl": "少女女声，柔软温顺，适合柔弱角色",
+    "Chinese (Mandarin)_Pure-hearted_Boy": "少年男声，清澈邻家，适合少年",
+    "Chinese (Mandarin)_Straightforward_Boy": "少年男声，率真，适合弟弟",
+    "Chinese (Mandarin)_Radio_Host": "男声，电台主播，适合旁白",
+    "presenter_male": "男声，播音主持，适合旁白/解说",
+    "presenter_female": "女声，播音主持，适合旁白/解说",
+    "audiobook_male_1": "男声，有声书主播，适合旁白/叙述",
+    "audiobook_female_1": "女声，有声书主播，适合旁白/叙述",
+    "badao_shaoye": "男声，霸道少爷，适合豪门男主/反派",
+    "lengdan_xiongzhang": "男声，冷淡学长，适合高冷角色",
+    "junlang_nanyou": "男声，俊朗，适合男主",
+    "danya_xuejie": "女声，淡雅学姐，适合知性女性",
 }
 
 # 内置兜底音色池：provider 音色表拉取失败时用（edge-tts 偶尔被网络抖动打空）
@@ -248,10 +299,12 @@ def _curated_voices(ctx: Context, voices: list[str]) -> tuple[list[str], str]:
     if cfg.voice_pool:
         allowed = set(cfg.voice_pool)
         pool = [v for v in pool if v in allowed]
-    else:
+    elif cfg.provider == "edge":
         locs = cfg.voice_locales or ["zh-CN"]
         pool = [v for v in pool
                 if any(v.startswith(f"{loc}-") and len(v.split("-")) == 3 for loc in locs)]
+    # other providers already hand back a curated list (MiniMax returns the
+    # Chinese system voices), so there is nothing to filter by locale
     notes = {**VOICE_NOTES, **(cfg.voice_notes or {})}
     listed = "\n".join(f"- {v}" + (f"   # {notes[v]}" if v in notes else "")
                        for v in pool)
@@ -293,13 +346,27 @@ def cast_voices(ctx: Context, chars: list[Character]) -> int:
             data = {"characters": data}
         by_name = {str(x.get("name", "")).strip(): x
                    for x in (data.get("characters") or []) if isinstance(x, dict)}
+        taken: set[str] = set()
         for c in pending:
             got = by_name.get(c.name, {})
             picked = str(got.get("voice_id", "")).strip()
-            if picked in voices:
+            # two characters sharing one voice read as the same person
+            if picked in voices and picked not in taken:
                 c.voice_id = picked
                 c.voice_pitch = str(got.get("pitch", "")).strip()
                 c.voice_rate = str(got.get("rate", "")).strip()
+                taken.add(picked)
+        # the LLM happily gives two characters the same voice; hand the
+        # leftovers a different one from the pool
+        free = [v for v in voices if v not in taken]
+        for c in pending:
+            if c.voice_id:
+                continue
+            if not free:
+                break
+            c.voice_id = free.pop(0)
+            c.voice_pitch = c.voice_pitch or ""
+            c.voice_rate = c.voice_rate or ""
     except Exception as e:  # noqa: BLE001
         ctx.log.warning("character: 自动选角 LLM 失败(%s)，按性别兜底", str(e)[:120])
     made = 0
