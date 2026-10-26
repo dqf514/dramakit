@@ -89,3 +89,6 @@ dump_sys.py
 verify_safetensors.py
 _klein_*.json
 _klein_*.md
+
+chk_auto.py
+chk_frames2.py
