@@ -134,6 +134,37 @@
         "lines": 13,
         "onsets": 19
       },
+      "story": {
+        "mismatched": 1,
+        "rows": [
+          {
+            "line": "ln-0135cadd",
+            "speaker": "沈默",
+            "shot": "sh-517ed45d",
+            "on_screen": [
+              "程夏"
+            ],
+            "text": "她说婚房不能太小。"
+          }
+        ]
+      },
+      "frozen": {
+        "short": 2,
+        "rows": [
+          {
+            "shot": "sh-3e875bd6",
+            "slot": 9.02,
+            "material": 6.58,
+            "frozen": 2.43
+          },
+          {
+            "shot": "sh-339fc17e",
+            "slot": 9.02,
+            "material": 6.58,
+            "frozen": 2.43
+          }
+        ]
+      },
       "mix": {
         "episode": {
           "i": -17.5,
@@ -180,7 +211,20 @@
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "story",
+      "kind": "speaker_off_screen",
+      "where": "-",
+      "detail": "1 句台词说话时镜头里是别人：沈默→「程夏」"
+    },
+    {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-3e875bd6 短 2.43s；sh-339fc17e 短 2.43s"
+    }
+  ],
+  "issue_count": 2,
+  "verdict": "ISSUES"
 }

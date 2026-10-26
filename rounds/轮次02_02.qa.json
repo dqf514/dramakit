@@ -160,6 +160,10 @@
         "mismatched": 0,
         "rows": []
       },
+      "frozen": {
+        "short": 0,
+        "rows": []
+      },
       "mix": {
         "episode": {
           "i": -16.7,
