@@ -315,6 +315,12 @@ class ComfyUIConfig(BaseModel):
     scheduler: str = "karras"
     checkpoint: str = "sd_xl_base_1.0.safetensors"
     frames: int = 32                                  # video frames per shot
+    # 视频时长怎么定：
+    #   auto  - 按每个镜头在时间线上实际占多长来生成（对齐 H3 的 17k+5 网格）
+    #   fixed - 所有镜头都用上面的固定帧数
+    # auto 让长镜头有足够内容，不用循环播放；短镜头也不会白白多生成。
+    frame_mode: Literal["auto", "fixed"] = "auto"
+    max_video_seconds: float = 15.0                   # 单镜头最长多少秒（H3 训练范围到 362 帧）
     fps: int = 16
     seed_mode: Literal["random", "fixed", "character"] = "character"
     fixed_seed: int = 12345

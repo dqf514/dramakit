@@ -382,19 +382,29 @@ class ComfyUIClient(BaseImageVideo):
         return r.json()["prompt_id"]
 
     # ------------------------------------------------------------- waiting
-    def _wait(self, prompt_id: str) -> None:
+    def _wait(self, prompt_id: str, timeout: Optional[float] = None) -> None:
         """Wait for completion: WebSocket first, poll /history as fallback."""
+        limit = timeout or self.cfg.timeout
         if self.cfg.use_websocket:
             try:
-                asyncio.run(self._wait_ws(prompt_id))
+                asyncio.run(self._wait_ws(prompt_id, limit))
                 return
             except Exception as e:  # noqa: BLE001
                 if not self.cfg.ws_fallback_to_poll:
                     raise
                 log.warning("WebSocket 进度监听失败(%s)，回退到轮询 /history", str(e)[:120])
-        self._wait_poll(prompt_id)
+        self._wait_poll(prompt_id, limit)
 
-    async def _wait_ws(self, prompt_id: str) -> None:
+    def _video_timeout(self, frames: int) -> float:
+        """Long videos need more than the default timeout.
+
+        H3 at 960x544 costs roughly two seconds a frame plus the model load,
+        so a fifteen-second shot takes several times longer than a five-second
+        one.
+        """
+        return self.cfg.timeout + max(0, frames) * 3.0
+
+    async def _wait_ws(self, prompt_id: str, timeout: Optional[float] = None) -> None:
         import websockets
         ws_base = self.base.replace("http://", "ws://").replace("https://", "wss://")
         ws_url = f"{ws_base}/ws?clientId={urllib.parse.quote(self.client_id)}"
@@ -407,7 +417,7 @@ class ComfyUIClient(BaseImageVideo):
             cm = websockets.connect(ws_url, extra_headers=headers, **connect_kw)
         async with cm as ws:
             while True:
-                msg = await asyncio.wait_for(ws.recv(), timeout=self.cfg.timeout)
+                msg = await asyncio.wait_for(ws.recv(), timeout=timeout or self.cfg.timeout)
                 if isinstance(msg, bytes):
                     continue  # preview image
                 data = json.loads(msg)
@@ -425,9 +435,10 @@ class ComfyUIClient(BaseImageVideo):
                     if d.get("prompt_id") == prompt_id:
                         raise ComfyUIError(f"ComfyUI 执行被中断: {d}")
 
-    def _wait_poll(self, prompt_id: str) -> None:
+    def _wait_poll(self, prompt_id: str, timeout: Optional[float] = None) -> None:
         """Poll /history until the prompt shows up with outputs (proxy-safe)."""
-        deadline = time.time() + self.cfg.timeout
+        limit = timeout or self.cfg.timeout
+        deadline = time.time() + limit
         while time.time() < deadline:
             try:
                 r = self._get(f"/history/{prompt_id}", retry=False,
@@ -445,7 +456,7 @@ class ComfyUIClient(BaseImageVideo):
             except Exception as e:  # noqa: BLE001
                 log.debug("poll error: %s", e)
             time.sleep(self.cfg.poll_interval)
-        raise TimeoutError(f"ComfyUI prompt {prompt_id} 超时（{self.cfg.timeout}s）")
+        raise TimeoutError(f"ComfyUI prompt {prompt_id} 超时（{limit}s）")
 
     def _history(self, prompt_id: str) -> dict:
         r = self._get(f"/history/{prompt_id}", timeout=self.cfg.request_timeout)
@@ -601,7 +612,7 @@ class ComfyUIClient(BaseImageVideo):
 
         pid = self._queue(graph)
         log.info("ComfyUI i2v 已提交 pid=%s seed=%s @ %s", pid, real_seed, self.base)
-        self._wait(pid)
+        self._wait(pid, timeout=self._video_timeout(frames or self.cfg.frames))
         item = self._collect_output(pid, ("gifs", "videos", "images"))
         if not item:
             raise ComfyUIError(f"没有视频输出 pid={pid}")

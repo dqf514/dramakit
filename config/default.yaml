@@ -259,10 +259,13 @@ comfyui:
   sampler: euler
   scheduler: simple
   checkpoint: flux3-image-klein-int8-convrot.safetensors
-  # 出视频分辨率（H3 原生 16:9 = 1344x768，32 的倍数）
-  video_width: 1344
-  video_height: 768
-  frames: 124                               # 每镜头视频帧数（H3 17k+5 网格，124≈5s@24fps）
+  # 出视频分辨率（H3 标准 16:9 = 960x544，32 的倍数）
+  video_width: 960
+  video_height: 544
+  frames: 124                               # frame_mode=fixed 时所有镜头都用这个帧数
+  # 视频时长：auto = 按每个镜头在时间线上实际占多长生成（对齐 H3 的 17k+5 网格）
+  frame_mode: auto
+  max_video_seconds: 15.0                   # 单镜头最长多少秒（H3 训练范围到 362 帧）
   fps: 24
   seed_mode: character # random | fixed | character（按角色固定种子保一致性）
   fixed_seed: 12345
@@ -316,8 +319,8 @@ storyboard:
 
 # --------------------------- 合成 compose -----------------------------------
 compose:
-  width: 1280
-  height: 720                               # 横屏 16:9 · 720p
+  width: 960
+  height: 544                               # 横屏 16:9 · H3 标准原生分辨率（不放大）
   fps: 30
   video_bitrate: 6M
   audio_bitrate: 192k

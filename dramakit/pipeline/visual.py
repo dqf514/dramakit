@@ -21,7 +21,7 @@ from ..config import Config
 from ..media import ffmpeg as ff
 from ..models import Shot, Status
 from ..project import ProjectStore
-from .base import Context
+from .base import Context, build_timeline
 
 
 def _stable_seed(token: str) -> int:
@@ -219,7 +219,24 @@ def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
         return shot.id, False, msg
 
 
-def _gen_video(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
+def _shot_frames(ctx: Context, shot: Shot, duration: float) -> int:
+    """Frame count for one shot.
+
+    H3 only takes lengths on its 17k+5 grid (124 = ~5s at 24fps, up to 362 =
+    ~15s). A shot gets the length it actually needs on the timeline, so a long
+    beat is not played back as a loop and a short one is not padded.
+    """
+    c = ctx.cfg.comfyui
+    if c.frame_mode != "auto" or duration <= 0:
+        return c.frames
+    fps = c.fps or 24
+    longest = max(5, int(c.max_video_seconds * fps))
+    target = int(round(duration * fps))
+    k = max(1, round((target - 5) / 17))
+    return max(5, min(17 * k + 5, longest))
+
+
+def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str, bool, str]:
     """Render only the video for one shot."""
     vis = ctx.providers.visual
     c = ctx.cfg.comfyui
@@ -227,8 +244,9 @@ def _gen_video(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
     end_out = ctx.store.end_image_path(shot.id)
     vid_out = ctx.store.video_path(shot.id)
     seed = _seed_for(ctx, shot)
+    frames = _shot_frames(ctx, shot, duration)
     meta: dict = dict(shot.gen_meta or {})
-    meta.update({"seed": seed, "mode": c.mode})
+    meta.update({"seed": seed, "mode": c.mode, "frames": frames})
     try:
         use_flf = flf_enabled(ctx, shot) and end_out.exists()
         last = str(end_out) if use_flf else ""
@@ -237,7 +255,7 @@ def _gen_video(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
             vis.generate_video(
                 prompt=vprompt, negative=shot.negative_prompt,
                 image_path=str(img_out) if img_out.exists() else "",
-                frames=c.frames, fps=c.fps, seed=seed, out_path=str(vid_out),
+                frames=frames, fps=c.fps, seed=seed, out_path=str(vid_out),
                 extra=_extra(ctx), last_image_path=last)
         except Exception as e:  # noqa: BLE001
             if not last:
@@ -248,7 +266,7 @@ def _gen_video(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
             vis.generate_video(
                 prompt=vprompt, negative=shot.negative_prompt,
                 image_path=str(img_out) if img_out.exists() else "",
-                frames=c.frames, fps=c.fps, seed=seed, out_path=str(vid_out),
+                frames=frames, fps=c.fps, seed=seed, out_path=str(vid_out),
                 extra=_extra(ctx))
         shot.video_path = ctx.store.rel(vid_out)
         meta["flf"] = use_flf
@@ -299,6 +317,12 @@ def run(ctx: Context) -> dict:
 
     do_image = c.mode in ("image", "image_then_video")
     do_video = c.mode in ("video", "image_then_video")
+    # how long each shot actually sits on the timeline - the video is rendered
+    # to that length instead of a fixed one
+    durations: dict[str, float] = {}
+    for ep in ctx.target_episodes():
+        for ts in build_timeline(ep).shots:
+            durations[ts.shot.id] = ts.duration
     jobs = []
     for ep in ctx.target_episodes():
         if ctx.stage_done(ep, "visual"):
@@ -324,7 +348,9 @@ def run(ctx: Context) -> dict:
         nonlocal ok_count
         done = 0
         with ThreadPoolExecutor(max_workers=max(1, c.concurrency)) as ex:
-            futs = [ex.submit(fn, ctx, sc, shot) for (_ep, sc, shot) in jobs]
+            futs = [ex.submit(fn, ctx, sc, shot, durations.get(shot.id, 0.0))
+                    if fn is _gen_video else ex.submit(fn, ctx, sc, shot)
+                    for (_ep, sc, shot) in jobs]
             for i, fut in enumerate(as_completed(futs), 1):
                 _sid, ok, _msg = fut.result()
                 ok_count += int(ok)
