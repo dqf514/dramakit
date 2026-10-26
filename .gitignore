@@ -61,6 +61,12 @@ test_charref.py
 test_fitref.py
 test_refshot.py
 test_grade_audio.py
+test_h3long.py
+test_h3max.py
+chk_dur.py
+chk_frames.py
+chk_vid.py
+reset_videos.py
 accept.py
 regen_refs.py
 reset_compose.py
