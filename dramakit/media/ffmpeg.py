@@ -116,12 +116,17 @@ def normalize_video_clip(src: str | Path, out: str | Path, duration: float, *,
                          width: int, height: int, fps: int,
                          crf: int = 20, preset: str = "medium") -> str:
     """Existing video (e.g. ComfyUI i2v) -> cover-crop to WxH, retimed to
-    `duration` by loop/trim, audio stripped (we add our own mix later)."""
+    `duration` by loop/trim, audio stripped (we add our own mix later).
+
+    A clip shorter than its slot is held on its last frame rather than
+    rewound to the start - a rewind in the middle of a cut reads as a glitch.
+    """
     out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
     vf = (f"scale={width}:{height}:force_original_aspect_ratio=increase,"
           f"crop={width}:{height},fps={fps},format=yuv420p")
-    cmd = [ffmpeg_bin(), "-y", "-stream_loop", "-1", "-i", str(src),
-           "-t", f"{duration:.3f}", "-vf", vf, "-an",
+    cmd = [ffmpeg_bin(), "-y", "-i", str(src),
+           "-vf", f"{vf},tpad=stop_mode=clone:stop_duration=2",
+           "-t", f"{duration:.3f}", "-an",
            "-c:v", "libx264", "-crf", str(crf), "-preset", preset, str(out)]
     _run(cmd, quiet=False)
     return str(out)

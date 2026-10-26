@@ -232,7 +232,9 @@ def _shot_frames(ctx: Context, shot: Shot, duration: float) -> int:
     fps = c.fps or 24
     longest = max(5, int(c.max_video_seconds * fps))
     target = int(round(duration * fps))
-    k = max(1, round((target - 5) / 17))
+    # round up: a clip shorter than its slot would have to be looped, and the
+    # rewind at the end of the shot is visible
+    k = max(1, -(-(target - 5) // 17))
     return max(5, min(17 * k + 5, longest))
 
 
