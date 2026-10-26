@@ -15,8 +15,11 @@ from .base import Context
 log = logging.getLogger("dramakit.runner")
 
 # canonical order
+# The voice comes before the picture: the shot lengths are derived from the
+# dialogue, so the video has to be shot to the timing of the finished lines
+# rather than to an estimate of them.
 ORDER = ["ingest", "analyze", "character", "segment", "script", "storyboard",
-         "promptgen", "visual", "voice", "subtitle", "music", "precheck",
+         "promptgen", "voice", "visual", "subtitle", "music", "precheck",
          "compose", "qc"]
 
 

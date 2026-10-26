@@ -67,15 +67,20 @@ def _line_duration(line: Line) -> float:
     return estimate_reading_seconds(line.text)
 
 
-def _shot_line_map(shots, n_lines: int) -> dict[str, list[int]] | None:
+def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
+                   line_durs: list[float] | None = None) -> dict[str, list[int]] | None:
     """Which lines each shot carries, and who gets the leftovers.
 
     The storyboard says which lines a shot covers. When it does, the shot
     lasts exactly as long as those lines, so the cut lands on a line boundary
     and the camera is on the person who is talking.
+
+    A shot cannot hold more than the longest video the model can make, so a
+    shot that claims too much has to give the tail of it back.
     """
     if not shots or n_lines <= 0:
         return None
+    durs = line_durs or []
     claimed: dict[str, list[int]] = {}
     used: set[int] = set()
     for sh in shots:
@@ -84,6 +89,19 @@ def _shot_line_map(shots, n_lines: int) -> dict[str, list[int]] | None:
             if 1 <= n <= n_lines and n not in used:
                 idxs.append(n)
                 used.add(n)
+        if idxs and max_shot > 0 and durs:
+            # give back the tail that does not fit into one clip
+            total = 0.0
+            keep = []
+            for n in idxs:
+                d = durs[n - 1] if n - 1 < len(durs) else 0.0
+                if keep and total + d > max_shot:
+                    break
+                total += d
+                keep.append(n)
+            for n in idxs[len(keep):]:
+                used.discard(n)
+            idxs = keep
         if idxs:
             claimed[sh.id] = idxs
     if not claimed:
@@ -107,7 +125,8 @@ def _shot_line_map(shots, n_lines: int) -> dict[str, list[int]] | None:
     return claimed
 
 
-def build_timeline(ep: Episode, min_shot: float = 1.0) -> Timeline:
+def build_timeline(ep: Episode, min_shot: float = 1.0,
+                   max_shot: float = 0.0) -> Timeline:
     timed_scenes: list[TimedScene] = []
     cursor = 0.0
     for sc in ep.scenes:
@@ -121,7 +140,8 @@ def build_timeline(ep: Episode, min_shot: float = 1.0) -> Timeline:
         # 2) how long each shot lasts. When the storyboard says which lines a
         #    shot carries, the shot is exactly as long as those lines - the cut
         #    lands on the dialogue instead of drifting through it.
-        line_map = _shot_line_map(sc.shots, len(raw_lines))
+        line_map = _shot_line_map(sc.shots, len(raw_lines), max_shot=max_shot,
+                                   line_durs=[d for d, _ in raw_lines])
         shot_durs: list[float] = []
         for sh in sc.shots:
             d = max(sh.duration, min_shot)

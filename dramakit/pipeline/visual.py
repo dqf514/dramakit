@@ -346,7 +346,8 @@ def run(ctx: Context) -> dict:
     # to that length instead of a fixed one
     durations: dict[str, float] = {}
     for ep in ctx.target_episodes():
-        for ts in build_timeline(ep).shots:
+        for ts in build_timeline(
+                ep, max_shot=ctx.cfg.comfyui.max_video_seconds).shots:
             durations[ts.shot.id] = ts.duration
     jobs = []
     for ep in ctx.target_episodes():
