@@ -35,8 +35,10 @@ def run(ctx: Context) -> dict:
             ctx.mark(ep, "script", Status.SKIPPED)
             continue
         # how much the episode may say: Chinese speech runs about 4.5 chars a
-        # second, and a short drama loses people if it lingers
+        # second, and a short drama loses people if it lingers. A short drama
+        # episode is a minute, so the source length does not get to decide.
         seconds = float(ep.duration_target or cfg.segment.episode_duration)
+        seconds = min(seconds, cfg.segment.max_episode_seconds or seconds)
         budget_chars = int(seconds * 4.5)
         budget_lines = max(4, int(seconds / 4.5))
         user = T.render(T.SCRIPT_USER, genre=genre, min_scenes=2, max_scenes=8,

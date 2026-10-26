@@ -382,6 +382,9 @@ class SegmentConfig(BaseModel):
     episode_duration: float = 90.0                    # seconds, for fixed_duration/auto
     min_episode_duration: float = 45.0
     max_episode_duration: float = 180.0
+    # a short drama episode is a minute: the script is written to this budget
+    # however long the source text would take to read
+    max_episode_seconds: float = 60.0
     respect_chapters: bool = True                     # align cuts to 章节 when possible
     hook_style: str = "强悬念反转"                     # 每集结尾钩子风格
     max_chars_per_episode: int = 0                    # 0 = let LLM decide by duration

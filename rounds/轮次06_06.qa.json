@@ -273,12 +273,18 @@
   ],
   "issues": [
     {
+      "area": "completeness",
+      "kind": "too_long",
+      "where": "-",
+      "detail": "成片 69s，超过一集短剧的长度上限 60s"
+    },
+    {
       "area": "picture",
       "kind": "frozen_shots",
       "where": "-",
       "detail": "1 个镜头的素材比槽位短，会出现静止画面：sh-2780d6de 短 5.38s"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }
