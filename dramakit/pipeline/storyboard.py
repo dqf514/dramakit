@@ -40,6 +40,21 @@ def run(ctx: Context) -> dict:
         if not ep.scenes:
             ctx.log.warning("storyboard: 第%d集无剧本，跳过（先跑 script）", ep.index)
             continue
+        # every scene gets the shots its own lines need - two lines per shot
+        # is the rhythm a short drama runs at
+        needs = []
+        for sc in ep.scenes:
+            spoken = sum(1 for l in sc.lines if not is_narration(l))
+            needs.append(max(cfg.min_shots_per_scene, -(-spoken // 2)))
+        total_need = sum(needs)
+        budget = max(cfg.max_shots_per_episode, total_need)
+        for sc, need in zip(ep.scenes, needs):
+            if sc.shots:
+                continue
+            share = max(cfg.min_shots_per_scene,
+                        -(-need * budget // max(total_need, 1)))
+            sc._shot_budget = share        # type: ignore[attr-defined]
+
         for sc in ep.scenes:
             if sc.shots:
                 continue
@@ -58,8 +73,10 @@ def run(ctx: Context) -> dict:
             # gets a shot budget and every scene a share of what is left
             left = max(cfg.min_shots_per_scene,
                        cfg.max_shots_per_episode - sum(len(s.shots) for s in ep.scenes))
+            want = getattr(sc, "_shot_budget", 0)
             max_shots = max(cfg.min_shots_per_scene,
-                            min(cfg.max_shots_per_scene, left))
+                            min(cfg.max_shots_per_scene, left, want) if want
+                            else min(cfg.max_shots_per_scene, left))
             user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
                             time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
                             lines_text=lines_text, min_shots=cfg.min_shots_per_scene,

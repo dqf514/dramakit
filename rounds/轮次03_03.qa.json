@@ -7,11 +7,11 @@
       "picture": {
         "frames": 16,
         "sharp_median": 18.1,
-        "sharp_min": 10.3,
-        "luma_spread": 15.1,
-        "src_luma_spread": 28.5,
-        "graded_luma_spread": 5.8,
-        "sat_spread": 1.1
+        "sharp_min": 10.8,
+        "luma_spread": 14.5,
+        "src_luma_spread": 25.9,
+        "graded_luma_spread": 5.0,
+        "sat_spread": 2.6
       },
       "voice": {
         "lines": 13,
@@ -140,33 +140,8 @@
         "rows": []
       },
       "frozen": {
-        "short": 4,
-        "rows": [
-          {
-            "shot": "sh-de6dd3d9",
-            "slot": 3.06,
-            "material": 2.33,
-            "frozen": 0.73
-          },
-          {
-            "shot": "sh-846ad022",
-            "slot": 3.67,
-            "material": 2.33,
-            "frozen": 1.34
-          },
-          {
-            "shot": "sh-3e875bd6",
-            "slot": 8.35,
-            "material": 6.58,
-            "frozen": 1.77
-          },
-          {
-            "shot": "sh-339fc17e",
-            "slot": 9.68,
-            "material": 6.58,
-            "frozen": 3.1
-          }
-        ]
+        "short": 0,
+        "rows": []
       },
       "sync": {
         "off_cut": 0,
@@ -190,9 +165,9 @@
       },
       "mix": {
         "episode": {
-          "i": -17.9,
+          "i": -17.8,
           "lra": 4.9,
-          "pk": -2.0
+          "pk": -1.8
         },
         "voice": {
           "i": -20.4,
@@ -200,14 +175,14 @@
           "pk": -0.6
         },
         "music": {
-          "i": -34.4,
-          "lra": 5.4,
-          "pk": -16.7
+          "i": -34.5,
+          "lra": 6.6,
+          "pk": -16.4
         },
         "bed": {
-          "i": -24.7,
-          "lra": 5.4,
-          "pk": -6.9
+          "i": -24.3,
+          "lra": 6.6,
+          "pk": -6.3
         },
         "audibility": {
           "speech_lufs": -19.5,
@@ -239,18 +214,12 @@
   ],
   "issues": [
     {
-      "area": "picture",
-      "kind": "frozen_shots",
-      "where": "-",
-      "detail": "4 个镜头的素材比槽位短，会出现静止画面：sh-de6dd3d9 短 0.73s；sh-846ad022 短 1.34s；sh-3e875bd6 短 1.77s"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
       "detail": "2 个镜头太长（短剧要切得快）：sh-3e875bd6 8.35s（3 句）、sh-339fc17e 9.68s（3 句）"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }
