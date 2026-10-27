@@ -28,6 +28,21 @@ def _clamp(v, lo: float, hi: float, default: float) -> float:
         return default
 
 
+
+def _ref_rhythm_args(profile: dict) -> dict:
+    """The numbers of a reference film's rhythm, for the storyboard."""
+    if not profile or not profile.get("shots"):
+        return {"ref_rhythm": False}
+    return {
+        "ref_rhythm": True,
+        "ref_avg": profile.get("avg_shot", 3.0),
+        "ref_median": profile.get("median_shot", 3.0),
+        "ref_max": profile.get("max_shot", 5.0),
+        "ref_open": profile.get("opening_shot", 2.0),
+        "ref_cpm": profile.get("cuts_per_min", 24),
+    }
+
+
 def run(ctx: Context) -> dict:
     cfg = ctx.cfg.storyboard
     llm = ctx.providers.llm_for("storyboard")
@@ -82,7 +97,8 @@ def run(ctx: Context) -> dict:
                             lines_text=lines_text, min_shots=cfg.min_shots_per_scene,
                             max_shots=max_shots, prefer_dynamic=prefer,
                             dur_min=dmin, dur_max=dmax, narration_seconds=narration_sec,
-                            character_names=char_names)
+                            character_names=char_names,
+                            **_ref_rhythm_args(cfg.ref_rhythm))
             try:
                 data = llm.complete_json(T.STORYBOARD_SYSTEM, user)
             except Exception as e:  # noqa: BLE001

@@ -206,6 +206,11 @@ STORYBOARD_USER = """为下面这场戏设计分镜（竖屏手机观看）。
   所以单镜控制在 3~5 秒。台词多的地方要拆成多个镜头，镜头短、节奏快，
   是短剧留人的关键。连续两个超过 5 秒的镜头会让观众划走。
 - 镜头时长之和应≈本场台词总时长({{narration_seconds}}秒)
+{% if ref_rhythm %}
+- **参考片的剪辑节奏（照着这个速度切）**：平均 {{ref_avg}} 秒一刀，中位 {{ref_median}} 秒，
+  最长不超过 {{ref_max}} 秒，开场第一个镜头 {{ref_open}} 秒，每分钟约 {{ref_cpm}} 刀。
+  本集的镜头要切得和它一样密。
+{% endif %}
 
 输出JSON：
 {"shots":[{"shot_type":"近景","camera_move":"推","duration":3.0,"action":"","characters":[],"lines":[1,2]}]}"""

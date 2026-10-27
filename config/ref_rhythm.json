@@ -1,0 +1,24 @@
+{
+  "source": "ep_001.mp4",
+  "duration": 33.87,
+  "shots": 8,
+  "avg_shot": 4.23,
+  "median_shot": 4.1,
+  "min_shot": 2.44,
+  "max_shot": 7.56,
+  "p25_shot": 3.5,
+  "p75_shot": 4.8,
+  "opening_shot": 4.1,
+  "cuts_first_3s": 0,
+  "cuts_per_min": 12.4,
+  "shot_lengths": [
+    4.1,
+    2.67,
+    7.56,
+    2.44,
+    4.1,
+    3.5,
+    4.8,
+    4.7
+  ]
+}

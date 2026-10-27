@@ -366,6 +366,48 @@ def comfy_test(config: Optional[str] = typer.Option(None, "--config", "-c"),
             raise typer.Exit(1)
 
 
+@app.command(name="ref-rhythm")
+def ref_rhythm_cmd(
+    video: str = typer.Argument(..., help="参考片视频文件"),
+    out: Optional[str] = typer.Option(None, "--out", "-o", help="写出 JSON 的路径"),
+    apply: bool = typer.Option(False, "--apply", help="写成流水线默认的节奏参考"),
+):
+    """拉片：分析参考片的剪辑节奏（多快切、开场多久进第一句）。
+
+    爆款短剧最该学的是别人的节奏。分析出来的数字会写进分镜提示词，
+    让分镜按它的速度切。
+    """
+    from .ref_rhythm import analyse
+    path = Path(video)
+    if not path.exists():
+        console.print(f"[red]找不到文件：{path}[/red]")
+        raise typer.Exit(1)
+    p = analyse(path)
+    console.print(f"[bold]{p['source']}[/bold]  {p.get('duration', 0):.1f}s  "
+                  f"{p.get('shots', 0)} 个镜头")
+    if p.get("shots"):
+        console.print(f"  平均 {p['avg_shot']}s  中位 {p['median_shot']}s  "
+                      f"最短 {p['min_shot']}s  最长 {p['max_shot']}s")
+        console.print(f"  开场第一个镜头 {p['opening_shot']}s  "
+                      f"前 3 秒切了 {p['cuts_first_3s']} 次  "
+                      f"每分钟 {p['cuts_per_min']} 刀")
+    target = Path(out) if out else Path("config/ref_rhythm.json")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    import json as _json
+    target.write_text(_json.dumps(p, ensure_ascii=False, indent=2), encoding="utf-8")
+    console.print(f"[green]已写出 {target}[/green]")
+    if apply and p.get("shots"):
+        cfg_path = Path("config/default.yaml")
+        text = cfg_path.read_text(encoding="utf-8")
+        block = (f"  ref_rhythm: {_json.dumps(p, ensure_ascii=False)}\n")
+        import re as _re
+        text = _re.sub(r"  ref_rhythm: .*?\n", block, text)
+        if "ref_rhythm:" not in text:
+            text = text.replace("storyboard:\n", "storyboard:\n" + block)
+        cfg_path.write_text(text, encoding="utf-8")
+        console.print(f"[green]已写入 {cfg_path}[/green]")
+
+
 @app.command(name="nodes")
 def nodes_cmd(
     action: str = typer.Argument("list", help="list | check | sync"),

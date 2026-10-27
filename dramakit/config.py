@@ -405,6 +405,8 @@ class StoryboardConfig(BaseModel):
     prefer_dynamic: bool = True                       # 多用推拉摇移
     include_insert_shots: bool = True                 # 空镜/特写插入
     language: Literal["zh", "en", "bilingual"] = "bilingual"  # prompt language
+    # 拉片结果：参考片的剪辑节奏，分镜按它的速度切
+    ref_rhythm: dict = Field(default_factory=dict)
 
 
 # --------------------------------------------------------------------------- #
