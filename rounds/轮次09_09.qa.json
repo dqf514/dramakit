@@ -195,6 +195,10 @@
         ],
         "max_rows": 1
       },
+      "subtitle_place": {
+        "margin_v": 111,
+        "height": 544
+      },
       "nle": {
         "spine": 8,
         "lanes": [
