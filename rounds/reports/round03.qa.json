@@ -6,12 +6,12 @@
       "title": "死去三年的新娘",
       "picture": {
         "frames": 16,
-        "sharp_median": 21.4,
-        "sharp_min": 14.2,
-        "luma_spread": 15.5,
-        "src_luma_spread": 28.6,
-        "graded_luma_spread": 6.5,
-        "sat_spread": 1.6
+        "sharp_median": 18.1,
+        "sharp_min": 10.8,
+        "luma_spread": 14.5,
+        "src_luma_spread": 25.9,
+        "graded_luma_spread": 5.0,
+        "sat_spread": 2.6
       },
       "voice": {
         "lines": 13,
@@ -129,83 +129,60 @@
         }
       },
       "completeness": {
-        "duration": 34.78,
-        "timeline": 34.78,
+        "duration": 36.77,
+        "timeline": 36.78,
         "lines": 13,
-        "onsets": 19
+        "onsets": 20
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
-        "rows": [
-          {
-            "line": "ln-0135cadd",
-            "speaker": "沈默",
-            "shot": "sh-517ed45d",
-            "on_screen": [
-              "程夏"
-            ],
-            "text": "她说婚房不能太小。"
-          }
-        ]
+        "off_screen_lines": 0,
+        "rows": []
       },
       "frozen": {
-        "short": 2,
-        "rows": [
-          {
-            "shot": "sh-3e875bd6",
-            "slot": 9.02,
-            "material": 6.58,
-            "frozen": 2.43
-          },
-          {
-            "shot": "sh-339fc17e",
-            "slot": 9.02,
-            "material": 6.58,
-            "frozen": 2.43
-          }
-        ]
+        "short": 0,
+        "rows": []
       },
       "sync": {
         "off_cut": 0,
         "rows": []
       },
       "pacing": {
-        "average": 3.48,
+        "average": 3.68,
         "long": 2,
         "rows": [
           {
             "shot": "sh-3e875bd6",
-            "duration": 9.02,
-            "lines": 4
+            "duration": 8.35,
+            "lines": 3
           },
           {
             "shot": "sh-339fc17e",
-            "duration": 9.02,
-            "lines": 2
+            "duration": 9.68,
+            "lines": 3
           }
         ]
       },
       "mix": {
         "episode": {
-          "i": -17.5,
-          "lra": 3.7,
-          "pk": -1.3
+          "i": -17.8,
+          "lra": 4.9,
+          "pk": -1.8
         },
         "voice": {
           "i": -20.4,
-          "lra": 5.0,
+          "lra": 5.2,
           "pk": -0.6
         },
         "music": {
           "i": -34.5,
-          "lra": 5.8,
-          "pk": -16.9
+          "lra": 6.6,
+          "pk": -16.4
         },
         "bed": {
-          "i": -24.5,
-          "lra": 5.8,
-          "pk": -6.9
+          "i": -24.3,
+          "lra": 6.6,
+          "pk": -6.3
         },
         "audibility": {
           "speech_lufs": -19.5,
@@ -231,24 +208,18 @@
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 34.78
+        "spine_length": 36.78
       }
     }
   ],
   "issues": [
     {
-      "area": "picture",
-      "kind": "frozen_shots",
-      "where": "-",
-      "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-3e875bd6 短 2.43s；sh-339fc17e 短 2.43s"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "2 个镜头太长（短剧要切得快）：sh-3e875bd6 9.02s（4 句）、sh-339fc17e 9.02s（2 句）"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-3e875bd6 8.35s（3 句）、sh-339fc17e 9.68s（3 句）"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }

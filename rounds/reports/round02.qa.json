@@ -152,25 +152,48 @@
       },
       "completeness": {
         "duration": 30.75,
-        "timeline": 30.75,
+        "timeline": 30.22,
         "lines": 14,
         "onsets": 21
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-e079e0f7",
+            "speaker": "陆沉",
+            "shot": "sh-2b2d60a8",
+            "on_screen": [
+              "陆明远"
+            ],
+            "text": "周行长马上就到。"
+          }
+        ]
       },
       "frozen": {
-        "short": 0,
-        "rows": []
+        "short": 2,
+        "rows": [
+          {
+            "shot": "sh-1ee86a6d",
+            "slot": 5.22,
+            "material": 3.75,
+            "frozen": 1.47
+          },
+          {
+            "shot": "sh-0272220c",
+            "slot": 6.34,
+            "material": 3.75,
+            "frozen": 2.59
+          }
+        ]
       },
       "sync": {
         "off_cut": 0,
         "rows": []
       },
       "pacing": {
-        "average": 3.08,
+        "average": 3.02,
         "long": 0,
         "rows": []
       },
@@ -223,7 +246,74 @@
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "completeness",
+      "kind": "duration_mismatch",
+      "where": "-",
+      "detail": "成片 30.75s，时间线 30.22s，差了 +0.53s（有内容被截断）"
+    },
+    {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-1ee86a6d 短 1.47s；sh-0272220c 短 2.59s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d7973934",
+      "detail": "这句没有对应的字幕：陆沉。三年前被赶出去。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-30a2f5a4",
+      "detail": "这句没有对应的字幕：哥，别开玩笑了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-c9cd5e90",
+      "detail": "这句没有对应的字幕：今天来的都是客人。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-ce667faa",
+      "detail": "这句没有对应的字幕：我来拿我的股权。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-e079e0f7",
+      "detail": "这句没有对应的字幕：周行长马上就到。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-9a764ccb",
+      "detail": "这句没有对应的字幕：遗嘱？十年前就改了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-b80a3727",
+      "detail": "这句没有对应的字幕：改没改，档案里写着。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d493f891",
+      "detail": "这句没有对应的字幕：保安！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-7dfe1d02",
+      "detail": "这句没有对应的字幕：你……"
+    }
+  ],
+  "issue_count": 11,
+  "verdict": "ISSUES"
 }

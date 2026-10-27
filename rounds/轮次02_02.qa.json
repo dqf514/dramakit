@@ -6,12 +6,12 @@
       "title": "被逐少爷归来夺股",
       "picture": {
         "frames": 16,
-        "sharp_median": 28.7,
-        "sharp_min": 11.8,
-        "luma_spread": 10.6,
-        "src_luma_spread": 31.9,
-        "graded_luma_spread": 2.9,
-        "sat_spread": 4.4
+        "sharp_median": 31.4,
+        "sharp_min": 10.1,
+        "luma_spread": 7.3,
+        "src_luma_spread": 33.7,
+        "graded_luma_spread": 6.4,
+        "sat_spread": 6.5
       },
       "voice": {
         "lines": 14,
@@ -151,53 +151,76 @@
         }
       },
       "completeness": {
-        "duration": 30.75,
-        "timeline": 30.75,
+        "duration": 30.22,
+        "timeline": 30.22,
         "lines": 14,
-        "onsets": 21
+        "onsets": 18
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-e079e0f7",
+            "speaker": "陆沉",
+            "shot": "sh-2b2d60a8",
+            "on_screen": [
+              "陆明远"
+            ],
+            "text": "周行长马上就到。"
+          }
+        ]
       },
       "frozen": {
-        "short": 0,
-        "rows": []
+        "short": 2,
+        "rows": [
+          {
+            "shot": "sh-1ee86a6d",
+            "slot": 5.22,
+            "material": 3.75,
+            "frozen": 1.47
+          },
+          {
+            "shot": "sh-0272220c",
+            "slot": 6.34,
+            "material": 3.75,
+            "frozen": 2.59
+          }
+        ]
       },
       "sync": {
         "off_cut": 0,
         "rows": []
       },
       "pacing": {
-        "average": 3.08,
+        "average": 3.02,
         "long": 0,
         "rows": []
       },
       "mix": {
         "episode": {
-          "i": -16.7,
-          "lra": 4.8,
-          "pk": -1.2
+          "i": -17.0,
+          "lra": 3.6,
+          "pk": -1.9
         },
         "voice": {
           "i": -22.0,
-          "lra": 5.6,
+          "lra": 5.0,
           "pk": -0.9
         },
         "music": {
           "i": -36.3,
-          "lra": 4.5,
-          "pk": -18.2
+          "lra": 8.4,
+          "pk": -20.0
         },
         "bed": {
-          "i": -24.1,
-          "lra": 4.5,
-          "pk": -5.9
+          "i": -24.3,
+          "lra": 8.4,
+          "pk": -7.8
         },
         "audibility": {
-          "speech_lufs": -21.3,
-          "bed_peak_lufs": -33.2,
+          "speech_lufs": -21.2,
+          "bed_peak_lufs": -33.3,
           "gap_lu": 12.0
         },
         "black_segments": 0
@@ -219,11 +242,18 @@
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 30.75
+        "spine_length": 30.22
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-1ee86a6d 短 1.47s；sh-0272220c 短 2.59s"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
 }

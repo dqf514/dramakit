@@ -6,12 +6,12 @@
       "title": "除夕宴上两个母亲",
       "picture": {
         "frames": 16,
-        "sharp_median": 22.9,
-        "sharp_min": 12.5,
-        "luma_spread": 16.9,
-        "src_luma_spread": 14.9,
-        "graded_luma_spread": 3.8,
-        "sat_spread": 2.8
+        "sharp_median": 24.3,
+        "sharp_min": 11.5,
+        "luma_spread": 7.5,
+        "src_luma_spread": 13.8,
+        "graded_luma_spread": 1.4,
+        "sat_spread": 2.3
       },
       "voice": {
         "lines": 14,
@@ -144,124 +144,59 @@
         }
       },
       "completeness": {
-        "duration": 40.63,
-        "timeline": 40.64,
+        "duration": 42.94,
+        "timeline": 42.94,
         "lines": 14,
-        "onsets": 22
+        "onsets": 25
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
-        "rows": [
-          {
-            "line": "ln-d5d60026",
-            "speaker": "陈放",
-            "shot": "sh-fdd63dda",
-            "on_screen": [
-              "陈放母亲"
-            ],
-            "text": "我没忘……"
-          }
-        ]
+        "off_screen_lines": 0,
+        "rows": []
       },
       "frozen": {
-        "short": 6,
-        "rows": [
-          {
-            "shot": "sh-9c242a08",
-            "slot": 4.15,
-            "material": 3.04,
-            "frozen": 1.11
-          },
-          {
-            "shot": "sh-fd4d044e",
-            "slot": 2.77,
-            "material": 2.33,
-            "frozen": 0.43
-          },
-          {
-            "shot": "sh-f8cd3c4d",
-            "slot": 2.91,
-            "material": 2.33,
-            "frozen": 0.57
-          },
-          {
-            "shot": "sh-a43427ff",
-            "slot": 7.12,
-            "material": 5.88,
-            "frozen": 1.24
-          },
-          {
-            "shot": "sh-81f89f29",
-            "slot": 7.12,
-            "material": 5.88,
-            "frozen": 1.24
-          },
-          {
-            "shot": "sh-8d8bb805",
-            "slot": 7.12,
-            "material": 5.88,
-            "frozen": 1.24
-          }
-        ]
+        "short": 0,
+        "rows": []
       },
       "sync": {
-        "off_cut": 1,
-        "rows": [
-          {
-            "line": "ln-d5d60026",
-            "speaker": "陈放",
-            "shot": "sh-fdd63dda",
-            "drift": 1.64,
-            "text": "我没忘……"
-          }
-        ]
+        "off_cut": 0,
+        "rows": []
       },
       "pacing": {
-        "average": 4.06,
-        "long": 3,
+        "average": 4.29,
+        "long": 1,
         "rows": [
           {
             "shot": "sh-a43427ff",
-            "duration": 7.12,
-            "lines": 2
-          },
-          {
-            "shot": "sh-81f89f29",
-            "duration": 7.12,
-            "lines": 2
-          },
-          {
-            "shot": "sh-8d8bb805",
-            "duration": 7.12,
+            "duration": 10.94,
             "lines": 2
           }
         ]
       },
       "mix": {
         "episode": {
-          "i": -17.8,
-          "lra": 4.3,
-          "pk": -1.3
+          "i": -16.8,
+          "lra": 7.3,
+          "pk": -2.0
         },
         "voice": {
-          "i": -24.3,
-          "lra": 6.0,
+          "i": -25.0,
+          "lra": 10.9,
           "pk": -5.5
         },
         "music": {
-          "i": -37.6,
-          "lra": 5.4,
-          "pk": -19.1
+          "i": -39.2,
+          "lra": 5.0,
+          "pk": -18.6
         },
         "bed": {
-          "i": -24.1,
-          "lra": 5.4,
-          "pk": -5.6
+          "i": -23.8,
+          "lra": 5.0,
+          "pk": -3.2
         },
         "audibility": {
-          "speech_lufs": -22.9,
-          "bed_peak_lufs": -34.9,
+          "speech_lufs": -23.6,
+          "bed_peak_lufs": -35.6,
           "gap_lu": 12.0
         },
         "black_segments": 0
@@ -283,30 +218,18 @@
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 40.64
+        "spine_length": 42.94
       }
     }
   ],
   "issues": [
     {
-      "area": "picture",
-      "kind": "frozen_shots",
-      "where": "-",
-      "detail": "6 个镜头的素材比槽位短，会出现静止画面：sh-9c242a08 短 1.11s；sh-fd4d044e 短 0.43s；sh-f8cd3c4d 短 0.57s"
-    },
-    {
-      "area": "sync",
-      "kind": "line_not_on_a_cut",
-      "where": "-",
-      "detail": "1 句换了说话人但镜头里没有他（画面停在上一句的镜头上）：「我没忘……」迟 1.64s"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "3 个镜头太长（短剧要切得快）：sh-a43427ff 7.12s（2 句）、sh-81f89f29 7.12s（2 句）、sh-8d8bb805 7.12s（2 句）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-a43427ff 10.94s（2 句）"
     }
   ],
-  "issue_count": 3,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }

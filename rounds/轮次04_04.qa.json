@@ -6,12 +6,12 @@
       "title": "除夕宴上两个母亲",
       "picture": {
         "frames": 16,
-        "sharp_median": 20.9,
-        "sharp_min": 12.9,
-        "luma_spread": 9.8,
-        "src_luma_spread": 20.7,
-        "graded_luma_spread": 3.4,
-        "sat_spread": 2.2
+        "sharp_median": 24.3,
+        "sharp_min": 11.5,
+        "luma_spread": 7.5,
+        "src_luma_spread": 13.8,
+        "graded_luma_spread": 1.4,
+        "sat_spread": 2.3
       },
       "voice": {
         "lines": 14,
@@ -147,7 +147,7 @@
         "duration": 42.94,
         "timeline": 42.94,
         "lines": 14,
-        "onsets": 26
+        "onsets": 25
       },
       "story": {
         "mismatched": 0,
@@ -155,39 +155,8 @@
         "rows": []
       },
       "frozen": {
-        "short": 5,
-        "rows": [
-          {
-            "shot": "sh-82587295",
-            "slot": 3.56,
-            "material": 2.33,
-            "frozen": 1.23
-          },
-          {
-            "shot": "sh-d764968b",
-            "slot": 3.53,
-            "material": 3.04,
-            "frozen": 0.49
-          },
-          {
-            "shot": "sh-fd4d044e",
-            "slot": 3.17,
-            "material": 2.33,
-            "frozen": 0.83
-          },
-          {
-            "shot": "sh-f8cd3c4d",
-            "slot": 5.22,
-            "material": 2.33,
-            "frozen": 2.89
-          },
-          {
-            "shot": "sh-a43427ff",
-            "slot": 10.94,
-            "material": 5.88,
-            "frozen": 5.07
-          }
-        ]
+        "short": 0,
+        "rows": []
       },
       "sync": {
         "off_cut": 0,
@@ -207,7 +176,7 @@
       "mix": {
         "episode": {
           "i": -16.8,
-          "lra": 7.5,
+          "lra": 7.3,
           "pk": -2.0
         },
         "voice": {
@@ -216,14 +185,14 @@
           "pk": -5.5
         },
         "music": {
-          "i": -38.5,
-          "lra": 11.8,
-          "pk": -20.1
+          "i": -39.2,
+          "lra": 5.0,
+          "pk": -18.6
         },
         "bed": {
-          "i": -24.2,
-          "lra": 11.8,
-          "pk": -5.8
+          "i": -23.8,
+          "lra": 5.0,
+          "pk": -3.2
         },
         "audibility": {
           "speech_lufs": -23.6,
@@ -255,18 +224,12 @@
   ],
   "issues": [
     {
-      "area": "picture",
-      "kind": "frozen_shots",
-      "where": "-",
-      "detail": "5 个镜头的素材比槽位短，会出现静止画面：sh-82587295 短 1.23s；sh-d764968b 短 0.49s；sh-fd4d044e 短 0.83s"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
       "detail": "1 个镜头太长（短剧要切得快）：sh-a43427ff 10.94s（2 句）"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }

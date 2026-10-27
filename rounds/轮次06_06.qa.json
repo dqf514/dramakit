@@ -8,10 +8,10 @@
         "frames": 16,
         "sharp_median": 15.4,
         "sharp_min": 12.0,
-        "luma_spread": 10.7,
-        "src_luma_spread": 19.8,
-        "graded_luma_spread": 4.0,
-        "sat_spread": 2.8
+        "luma_spread": 11.4,
+        "src_luma_spread": 22.2,
+        "graded_luma_spread": 5.4,
+        "sat_spread": 3.1
       },
       "voice": {
         "lines": 21,
@@ -208,27 +208,45 @@
         "duration": 69.0,
         "timeline": 69.0,
         "lines": 21,
-        "onsets": 42
+        "onsets": 40
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-aed9781c",
+            "speaker": "林知夏",
+            "shot": "sh-a43a2886",
+            "on_screen": [
+              "周总"
+            ],
+            "text": "八十万，买断我整整三年？"
+          }
+        ]
       },
       "frozen": {
         "short": 1,
         "rows": [
           {
-            "shot": "sh-2780d6de",
-            "slot": 19.04,
-            "material": 13.67,
-            "frozen": 5.38
+            "shot": "sh-a43a2886",
+            "slot": 14.15,
+            "material": 8.0,
+            "frozen": 6.15
           }
         ]
       },
       "sync": {
-        "off_cut": 0,
-        "rows": []
+        "off_cut": 1,
+        "rows": [
+          {
+            "line": "ln-aed9781c",
+            "speaker": "林知夏",
+            "shot": "sh-a43a2886",
+            "drift": 10.62,
+            "text": "八十万，买断我整整三年？"
+          }
+        ]
       },
       "pacing": {
         "average": 5.75,
@@ -236,13 +254,13 @@
         "rows": [
           {
             "shot": "sh-a43a2886",
-            "duration": 7.88,
-            "lines": 3
+            "duration": 14.15,
+            "lines": 5
           },
           {
             "shot": "sh-2780d6de",
-            "duration": 19.04,
-            "lines": 6
+            "duration": 12.78,
+            "lines": 4
           },
           {
             "shot": "sh-4f876cb8",
@@ -254,22 +272,22 @@
       "mix": {
         "episode": {
           "i": -16.4,
-          "lra": 3.3,
-          "pk": -1.8
+          "lra": 3.6,
+          "pk": -2.0
         },
         "voice": {
           "i": -23.2,
-          "lra": 3.9,
+          "lra": 4.2,
           "pk": -4.6
         },
         "music": {
           "i": -37.0,
-          "lra": 10.8,
-          "pk": -17.1
+          "lra": 7.9,
+          "pk": -17.2
         },
         "bed": {
-          "i": -24.0,
-          "lra": 10.8,
+          "i": -23.9,
+          "lra": 7.9,
           "pk": -4.2
         },
         "audibility": {
@@ -311,13 +329,19 @@
       "area": "picture",
       "kind": "frozen_shots",
       "where": "-",
-      "detail": "1 个镜头的素材比槽位短，会出现静止画面：sh-2780d6de 短 5.38s"
+      "detail": "1 个镜头的素材比槽位短，会出现静止画面：sh-a43a2886 短 6.15s"
+    },
+    {
+      "area": "sync",
+      "kind": "line_not_on_a_cut",
+      "where": "-",
+      "detail": "1 句换了说话人但镜头里没有他（画面停在上一句的镜头上）：「八十万，买断我整整三年？」迟 10.62s"
     },
     {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "3 个镜头太长（短剧要切得快）：sh-a43a2886 7.88s（3 句）、sh-2780d6de 19.04s（6 句）、sh-4f876cb8 11.59s（3 句）"
+      "detail": "3 个镜头太长（短剧要切得快）：sh-a43a2886 14.15s（5 句）、sh-2780d6de 12.78s（4 句）、sh-4f876cb8 11.59s（3 句）"
     },
     {
       "area": "pacing",
@@ -326,6 +350,6 @@
       "detail": "平均镜头 5.7s，偏慢（短剧通常 2~3 秒一刀）"
     }
   ],
-  "issue_count": 4,
+  "issue_count": 5,
   "verdict": "ISSUES"
 }

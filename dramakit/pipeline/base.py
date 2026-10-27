@@ -110,15 +110,28 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
     if missing:
         # hand each leftover to the shot that sits closest to it in the list -
         # a shot with no lines of its own (an establishing shot) takes it
-        # first, so the opening line is not dragged into a later close-up
+        # first, so the opening line is not dragged into a later close-up.
+        # The length limit still applies: a shot that cannot take the line
+        # within it is not considered.
         n_shots = len(shots)
+
+        def length_of(sid: str) -> float:
+            return sum(durs[n - 1] for n in claimed.get(sid, []) if n - 1 < len(durs))
+
         for n in missing:
+            d = durs[n - 1] if n - 1 < len(durs) else 0.0
             want = (n - 0.5) / n_lines * n_shots
-            empty = [sh for sh in shots if not claimed.get(sh.id)]
+            fits = [sh for sh in shots
+                    if not (max_shot > 0 and length_of(sh.id) + d > max_shot)]
+            empty = [sh for sh in fits if not claimed.get(sh.id)]
             if empty:
                 best = min(empty, key=lambda sh: abs(sh.index - want))
+            elif fits:
+                best = min(fits, key=lambda sh: abs(sh.index - want))
             else:
-                best = min(shots, key=lambda sh: abs(min(claimed.get(sh.id) or [n]) - n))
+                # nothing can take it within the limit: the shot with the
+                # shortest dialogue is the least bad home for it
+                best = min(shots, key=lambda sh: length_of(sh.id))
             claimed.setdefault(best.id, []).append(n)
         for sid in claimed:
             claimed[sid].sort()
@@ -126,22 +139,29 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
 
 
 def _assign_by_cast(shots, line_durs: list[float],
-                    speakers: list[str]) -> dict[str, list[int]] | None:
+                    speakers: list[str],
+                    max_shot: float = 0.0) -> dict[str, list[int]] | None:
     """Work out which lines each shot carries when the storyboard did not say.
 
     The lines go to the shot that has the speaker in frame, which keeps the
     cut on the dialogue and the picture on the person who is talking. No
-    shot gets more than two lines, or one shot ends up carrying the whole
-    conversation.
+    shot gets more than two lines or more dialogue than the model can make
+    in one clip, or one shot ends up carrying the whole conversation.
     """
     if not shots or not speakers:
         return None
     n = len(speakers)
     claimed: dict[str, list[int]] = {}
+
+    def length_of(sid: str) -> float:
+        return sum(line_durs[i - 1] for i in claimed.get(sid, []))
+
     used: set[int] = set()
     for k, sp in enumerate(speakers):
+        d = line_durs[k] if k < len(line_durs) else 0.0
         cands = [sh for sh in shots
-                 if sp in (sh.characters or []) and len(claimed.get(sh.id, [])) < 2]
+                 if sp in (sh.characters or []) and len(claimed.get(sh.id, [])) < 2
+                 and not (max_shot > 0 and length_of(sh.id) + d > max_shot)]
         if not cands:
             continue
         want = (k + 0.5) / n * len(shots)
@@ -152,7 +172,10 @@ def _assign_by_cast(shots, line_durs: list[float],
     for k in range(n):
         if k in used:
             continue
-        free = [sh for sh in shots if len(claimed.get(sh.id, [])) < 2]
+        d = line_durs[k] if k < len(line_durs) else 0.0
+        free = [sh for sh in shots
+                if len(claimed.get(sh.id, [])) < 2
+                and not (max_shot > 0 and length_of(sh.id) + d > max_shot)]
         best = (min(free, key=lambda sh: len(claimed.get(sh.id, []))) if free
                 else min(shots, key=lambda sh: len(claimed.get(sh.id, []))))
         claimed.setdefault(best.id, []).append(k + 1)
@@ -182,7 +205,8 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
         if line_map is None and sc.shots:
             # the storyboard did not say: work it out from who is in frame
             line_map = _assign_by_cast(sc.shots, [d for d, _ in raw_lines],
-                                       [l.speaker for _, l in raw_lines])
+                                       [l.speaker for _, l in raw_lines],
+                                       max_shot=max_shot)
         shot_durs: list[float] = []
         for sh in sc.shots:
             d = max(sh.duration, min_shot)
