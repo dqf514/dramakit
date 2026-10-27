@@ -6,12 +6,12 @@
       "title": "等来恩人只剩三月",
       "picture": {
         "frames": 16,
-        "sharp_median": 18.1,
-        "sharp_min": 12.9,
-        "luma_spread": 6.2,
-        "src_luma_spread": 16.9,
-        "graded_luma_spread": 3.9,
-        "sat_spread": 1.4
+        "sharp_median": 16.4,
+        "sharp_min": 10.3,
+        "luma_spread": 12.7,
+        "src_luma_spread": 18.9,
+        "graded_luma_spread": 4.8,
+        "sat_spread": 1.8
       },
       "voice": {
         "lines": 12,
@@ -128,35 +128,20 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
-        "duration": 33.87,
-        "timeline": 33.9,
+        "duration": 35.37,
+        "timeline": 35.4,
         "lines": 12,
-        "onsets": 28
+        "onsets": 16
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 2,
-        "rows": [
-          {
-            "line": "ln-5661af4b",
-            "speaker": "陈默",
-            "shot": "sh-3a36f72a",
-            "on_screen": [
-              "病号女孩"
-            ],
-            "text": "这单……你订的？"
-          },
-          {
-            "line": "ln-c3166249",
-            "speaker": "病号女孩",
-            "shot": "sh-a4fd9e8a",
-            "on_screen": [
-              "陈默"
-            ],
-            "text": "医生说，我还有三个月。"
-          }
-        ]
+        "off_screen_lines": 0,
+        "rows": []
       },
       "frozen": {
         "short": 0,
@@ -167,30 +152,52 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.39,
-        "long": 0,
-        "rows": []
+        "average": 2.95,
+        "long": 1,
+        "rows": [
+          {
+            "shot": "sh-90430686",
+            "duration": 5.5,
+            "lines": 1
+          }
+        ]
+      },
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 11,
+        "avg_shot": 3.22,
+        "median_shot": 2.77,
+        "max_shot": 7.94,
+        "opening_shot": 2.43,
+        "cuts_per_min": 17.0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "最后一单，放这儿。"
       },
       "mix": {
         "episode": {
           "i": -16.4,
-          "lra": 8.5,
-          "pk": -2.1
+          "lra": 7.7,
+          "pk": -1.9
         },
         "voice": {
           "i": -24.9,
-          "lra": 10.1,
-          "pk": -8.5
+          "lra": 10.5,
+          "pk": -8.6
         },
         "music": {
-          "i": -38.6,
-          "lra": 7.0,
-          "pk": -24.8
+          "i": -38.7,
+          "lra": 5.4,
+          "pk": -23.1
         },
         "bed": {
-          "i": -26.3,
-          "lra": 7.0,
-          "pk": -12.5
+          "i": -25.2,
+          "lra": 5.4,
+          "pk": -9.6
         },
         "audibility": {
           "speech_lufs": -23.8,
@@ -200,7 +207,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 25,
+        "cues": 13,
         "styles": [
           "Default",
           "Speaker",
@@ -209,22 +216,29 @@
         "max_rows": 1
       },
       "subtitle_place": {
-        "margin_v": 111,
+        "margin_v": 30,
         "height": 544
       },
       "nle": {
-        "spine": 10,
+        "spine": 12,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 33.9
+        "spine_length": 35.4
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "pacing",
+      "kind": "slow_shot",
+      "where": "-",
+      "detail": "1 个镜头太长（短剧要切得快）：sh-90430686 5.5s（1 句）"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
 }

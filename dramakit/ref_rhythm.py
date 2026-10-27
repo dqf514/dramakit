@@ -84,6 +84,7 @@ def analyse(path: Path) -> dict:
         "opening_shot": round(first, 2),
         "cuts_first_3s": early,
         "cuts_per_min": round(len(cuts) / max(dur / 60.0, 1e-6), 1),
+        "cut_times": cuts[:120],
         "shot_lengths": lengths[:120],
     }
     return profile

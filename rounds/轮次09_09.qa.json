@@ -168,12 +168,16 @@
         "opens": 0
       },
       "rhythm": {
-        "shots": 11,
-        "avg_shot": 3.09,
-        "median_shot": 2.87,
-        "max_shot": 5.6,
+        "shots": 10,
+        "avg_shot": 3.41,
+        "median_shot": 3.63,
+        "max_shot": 5.76,
         "opening_shot": 2.2,
-        "cuts_per_min": 19.3
+        "cuts_per_min": 15.8
+      },
+      "visible_cuts": {
+        "cuts": 9,
+        "invisible": 0
       },
       "hook": {
         "first_line_at": 0.0,
