@@ -363,11 +363,13 @@ H3_SCORE_USER = """为下面这个场景生成一段**纯配乐镜头**的 H3 �
 场景：{{location}} / {{time_of_day}}
 场景设定：{{location_visual}}
 本场情绪：{{mood}}
+本场剧情：{{scene_summary}}
+关键动作（这些动作的声音要出现在配乐镜头里）：{{scene_actions}}
 全剧画风：{{style}}
 
-这个镜头里**没有任何人、没有角色、没有对白**，只有环境与配乐：
+这个镜头里**没有任何人、没有角色、没有对白**，只有环境声、动作声与配乐：
 - integrated_multimodal_description 以 [Shot 1] 开头：写这个空镜头的画面（环境、天气、光线、镜头缓慢移动），明确写明 no people, no characters, no voices
-- overall_soundscape：只写环境声（雨、风、街道、车、机器、室内空气），**不要有任何人的声音**
+- overall_soundscape：写环境声（雨、风、街道、车辆、机器、室内空气）**以及本场关键动作的声音**（门响、电话铃、脚步、器物碰撞等，最多三个），**不要有任何人的说话声**
 - non_diegetic_music：写这一场该有的配乐（乐器、速度、情绪走向）
 
 输出JSON：

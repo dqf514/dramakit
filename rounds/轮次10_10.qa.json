@@ -6,9 +6,9 @@
       "title": "等来恩人只剩三月",
       "picture": {
         "frames": 16,
-        "sharp_median": 18.1,
-        "sharp_min": 12.9,
-        "luma_spread": 6.2,
+        "sharp_median": 18.0,
+        "sharp_min": 12.6,
+        "luma_spread": 6.4,
         "src_luma_spread": 16.9,
         "graded_luma_spread": 3.9,
         "sat_spread": 1.4
@@ -128,6 +128,10 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
         "duration": 33.87,
         "timeline": 33.9,
@@ -200,7 +204,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 25,
+        "cues": 13,
         "styles": [
           "Default",
           "Speaker",
@@ -209,7 +213,7 @@
         "max_rows": 1
       },
       "subtitle_place": {
-        "margin_v": 111,
+        "margin_v": 30,
         "height": 544
       },
       "nle": {

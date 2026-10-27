@@ -329,9 +329,15 @@ def compose_episode(ctx: Context, ep) -> str:
     if ass and not ass.exists():
         ass = None
     final = ctx.store.episode_video_path(ep)
+    # The AIGC label: since 2026 an AI drama has to say so on the picture,
+    # and the filing number belongs on it as well.
+    mark = (cc.ai_declaration or "").strip()
+    if mark and cc.filing_number:
+        mark = f"{mark}  {cc.filing_number}"
     ff.mux(picture, mix, final, video_bitrate=cc.video_bitrate, audio_bitrate=cc.audio_bitrate,
            codec=cc.codec, crf=cc.crf, preset=cc.preset, pixel_format=cc.pixel_format,
-           fps=cc.fps, ass_file=str(ass) if (cc.burn_subtitles and ass) else None)
+           fps=cc.fps, ass_file=str(ass) if (cc.burn_subtitles and ass) else None,
+           watermark=mark, watermark_size=max(14, cc.height // 30))
 
     # --- cover ---
     if cc.generate_cover:

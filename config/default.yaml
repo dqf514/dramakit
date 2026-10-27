@@ -432,6 +432,9 @@ compose:
   burn_subtitles: true # 硬字幕（红果/抖音常用，不可关闭显示）
   also_write_srt: true                      # 同时输出软字幕 .srt
   show_speaker_name: false                  # 台词上方不显示角色名（画面上更干净）
+  # 2026 年起 AIGC 微短剧必须在画面上标注 AI 生成，备案号一起带上
+  ai_declaration: "本片画面与声音由AI生成"
+  filing_number: ""                        # 备案号（上线前填）
   subtitle_style:
     font: Microsoft YaHei
     font_size: 16                           # 内部按分辨率放大

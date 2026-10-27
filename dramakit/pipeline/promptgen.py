@@ -260,10 +260,21 @@ def _gen_score_prompt(ctx: Context, llm, sc) -> None:
     ad = ctx.project.art_direction
     loc = next((l for l in ctx.project.locations if l.name == sc.location), None)
     location_visual = (loc.visual_prompt or loc.description) if loc else ""
+    # the sounds of what happens in the scene: a short drama lives on its
+    # sound - the door, the phone, the rain - not only on the music
+    actions = []
+    for shot in sc.shots:
+        a = (shot.action or "").strip()
+        if a and a not in actions:
+            actions.append(a[:60])
+        if len(actions) >= 3:
+            break
     user = T.render(T.H3_SCORE_USER, location=sc.location or "场景",
                     time_of_day=sc.time_of_day,
                     location_visual=location_visual or "（按剧情合理生成）",
-                    mood=sc.mood, style=ad.style_prompt_prefix or ad.style)
+                    mood=sc.mood, scene_summary=sc.summary or "",
+                    scene_actions="；".join(actions) or "（无特别动作）",
+                    style=ad.style_prompt_prefix or ad.style)
     try:
         data = llm.complete_json(T.H3_SCORE_SYSTEM, user)
         if isinstance(data, list):

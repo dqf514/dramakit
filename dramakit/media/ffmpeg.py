@@ -513,16 +513,34 @@ def normalize_loudness(src: str | Path, out: str | Path, target_lufs: float = -2
 # --------------------------------------------------------------------------- #
 # final mux / subtitles
 # --------------------------------------------------------------------------- #
+def _cjk_font() -> str:
+    """A font file that can draw Chinese, for the AIGC label.
+
+    ffmpeg's drawtext resolves fonts through fontconfig, which does not know
+    the Windows font names, so the file has to be named explicitly.
+    """
+    import os
+    for name in ("msyh.ttc", "simhei.ttf", "simsun.ttc", "msyhl.ttc"):
+        p = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / name
+        if p.exists():
+            return str(p).replace("\\", "/").replace(":", "\\:")
+    return ""
+
+
 def mux(video: str | Path, audio: str | Path, out: str | Path, *,
         video_bitrate: str = "6M", audio_bitrate: str = "192k",
         codec: str = "libx264", crf: int = 20, preset: str = "medium",
         pixel_format: str = "yuv420p", fps: Optional[int] = None,
-        ass_file: Optional[str | Path] = None) -> str:
+        ass_file: Optional[str | Path] = None,
+        watermark: str = "", watermark_size: int = 18) -> str:
     """Mux picture + audio into the final mp4; optionally burn ASS subtitles.
 
     When burning, we chdir into the ASS file's directory and reference it by a
     bare filename to avoid Windows path-escaping issues in the filtergraph.
     Because of that chdir, all other paths are resolved to absolute first.
+
+    The watermark is the AIGC label: since 2026 an AI drama has to say that
+    it was made by AI, and the filing number goes on the picture too.
     """
     out = Path(out).resolve(); out.parent.mkdir(parents=True, exist_ok=True)
     video = Path(video).resolve()
@@ -533,6 +551,13 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
         ass_path = Path(ass_file).resolve()
         cwd = ass_path.parent
         vf.append(f"subtitles={ass_path.name}")
+    if watermark:
+        text = watermark.replace("\\", "\\\\").replace(":", "\\:").replace("'", "")
+        font = _cjk_font()
+        vf.append(
+            f"drawtext=fontfile='{font}':text='{text}':fontcolor=white@0.6:"
+            f"fontsize={watermark_size}"
+            f":x=24:y=20:box=1:boxcolor=black@0.35:boxborderw=6")
     if fps:
         vf.append(f"fps={fps}")
     cmd = [ffmpeg_bin(), "-y", "-i", str(video), "-i", str(audio),

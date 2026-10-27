@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 20.8,
-        "sharp_min": 11.9,
-        "luma_spread": 14.7,
+        "sharp_median": 21.7,
+        "sharp_min": 12.3,
+        "luma_spread": 15.7,
         "src_luma_spread": 23.4,
         "graded_luma_spread": 3.6,
-        "sat_spread": 1.7
+        "sat_spread": 1.9
       },
       "voice": {
         "lines": 12,
@@ -124,6 +124,10 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
         "duration": 30.23,
         "timeline": 30.28,
@@ -187,7 +191,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 25,
+        "cues": 13,
         "styles": [
           "Default",
           "Speaker",
@@ -196,7 +200,7 @@
         "max_rows": 1
       },
       "subtitle_place": {
-        "margin_v": 111,
+        "margin_v": 30,
         "height": 544
       },
       "nle": {
