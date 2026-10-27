@@ -6,12 +6,12 @@
       "title": "八十万买断三年",
       "picture": {
         "frames": 16,
-        "sharp_median": 15.4,
-        "sharp_min": 12.0,
-        "luma_spread": 11.4,
-        "src_luma_spread": 22.2,
-        "graded_luma_spread": 5.4,
-        "sat_spread": 3.1
+        "sharp_median": 17.9,
+        "sharp_min": 10.7,
+        "luma_spread": 16.9,
+        "src_luma_spread": 29.4,
+        "graded_luma_spread": 5.6,
+        "sat_spread": 2.2
       },
       "voice": {
         "lines": 21,
@@ -205,90 +205,84 @@
         }
       },
       "completeness": {
-        "duration": 69.0,
-        "timeline": 69.0,
+        "duration": 67.0,
+        "timeline": 67.0,
         "lines": 21,
-        "onsets": 40
+        "onsets": 36
       },
       "story": {
         "mismatched": 0,
         "off_screen_lines": 1,
         "rows": [
           {
-            "line": "ln-aed9781c",
+            "line": "ln-cb12e6e7",
             "speaker": "林知夏",
-            "shot": "sh-a43a2886",
+            "shot": "sh-7d75d887",
             "on_screen": [
               "周总"
             ],
-            "text": "八十万，买断我整整三年？"
+            "text": "那一个月以后呢？"
           }
         ]
       },
       "frozen": {
-        "short": 1,
+        "short": 3,
         "rows": [
           {
-            "shot": "sh-a43a2886",
-            "slot": 14.15,
-            "material": 8.0,
-            "frozen": 6.15
+            "shot": "sh-d84d7c77",
+            "slot": 3.92,
+            "material": 2.33,
+            "frozen": 1.59
+          },
+          {
+            "shot": "sh-f4ba0354",
+            "slot": 7.31,
+            "material": 3.75,
+            "frozen": 3.56
+          },
+          {
+            "shot": "sh-703f9b48",
+            "slot": 5.9,
+            "material": 2.33,
+            "frozen": 3.57
           }
         ]
       },
       "sync": {
-        "off_cut": 1,
-        "rows": [
-          {
-            "line": "ln-aed9781c",
-            "speaker": "林知夏",
-            "shot": "sh-a43a2886",
-            "drift": 10.62,
-            "text": "八十万，买断我整整三年？"
-          }
-        ]
+        "off_cut": 0,
+        "rows": []
       },
       "pacing": {
-        "average": 5.75,
-        "long": 3,
+        "average": 3.94,
+        "long": 1,
         "rows": [
           {
-            "shot": "sh-a43a2886",
-            "duration": 14.15,
-            "lines": 5
-          },
-          {
-            "shot": "sh-2780d6de",
-            "duration": 12.78,
-            "lines": 4
-          },
-          {
-            "shot": "sh-4f876cb8",
-            "duration": 11.59,
-            "lines": 3
+            "shot": "sh-f4ba0354",
+            "duration": 7.31,
+            "lines": 2
           }
         ]
       },
       "mix": {
         "episode": {
           "i": -16.4,
-          "lra": 3.6,
-          "pk": -2.0
+          "lra": 3.0,
+          "pk": -1.7
         },
         "voice": {
           "i": -23.2,
-          "lra": 4.2,
+          "lra": 3.7,
           "pk": -4.6
         },
         "music": {
-          "i": -37.0,
-          "lra": 7.9,
-          "pk": -17.2
+          "i": -36.5,
+          "lra": 6.4,
+          "pk": -15.8
         },
         "bed": {
-          "i": -23.9,
-          "lra": 7.9,
-          "pk": -4.2
+          "i": -24.6,
+          "lra": 6.4,
+          "pk": -3.9
         },
         "audibility": {
           "speech_lufs": -21.9,
@@ -307,14 +301,14 @@
         "max_rows": 1
       },
       "nle": {
-        "spine": 12,
+        "spine": 17,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 69.0
+        "spine_length": 67.0
       }
     }
   ],
@@ -323,33 +317,51 @@
       "area": "completeness",
       "kind": "too_long",
       "where": "-",
-      "detail": "成片 69s，超过一集短剧的长度上限 60s"
+      "detail": "成片 67s，超过一集短剧的长度上限 60s"
     },
     {
       "area": "picture",
       "kind": "frozen_shots",
       "where": "-",
-      "detail": "1 个镜头的素材比槽位短，会出现静止画面：sh-a43a2886 短 6.15s"
-    },
-    {
-      "area": "sync",
-      "kind": "line_not_on_a_cut",
-      "where": "-",
-      "detail": "1 句换了说话人但镜头里没有他（画面停在上一句的镜头上）：「八十万，买断我整整三年？」迟 10.62s"
+      "detail": "3 个镜头的素材比槽位短，会出现静止画面：sh-d84d7c77 短 1.59s；sh-f4ba0354 短 3.56s；sh-703f9b48 短 3.57s"
     },
     {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "3 个镜头太长（短剧要切得快）：sh-a43a2886 14.15s（5 句）、sh-2780d6de 12.78s（4 句）、sh-4f876cb8 11.59s（3 句）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-f4ba0354 7.31s（2 句）"
     },
     {
-      "area": "pacing",
-      "kind": "slow_average",
-      "where": "-",
-      "detail": "平均镜头 5.7s，偏慢（短剧通常 2~3 秒一刀）"
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-87a8913f",
+      "detail": "字幕只显示到 2.13s，配音却要 3.85s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-c63aafac",
+      "detail": "这句没有对应的字幕：公司决定不再续签。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-06b37d5c",
+      "detail": "字幕只显示到 2.56s，配音却要 3.78s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d61468c6",
+      "detail": "这句没有对应的字幕：一个月以后……公司再安排。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-56c367f3",
+      "detail": "这句没有对应的字幕：三年前最难的项目，您交给我。"
     }
   ],
-  "issue_count": 5,
+  "issue_count": 8,
   "verdict": "ISSUES"
 }

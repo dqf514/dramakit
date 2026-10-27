@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 22.4,
-        "sharp_min": 13.6,
-        "luma_spread": 14.8,
-        "src_luma_spread": 25.6,
-        "graded_luma_spread": 3.2,
-        "sat_spread": 2.0
+        "sharp_median": 20.8,
+        "sharp_min": 12.0,
+        "luma_spread": 14.7,
+        "src_luma_spread": 23.4,
+        "graded_luma_spread": 3.0,
+        "sat_spread": 1.9
       },
       "voice": {
         "lines": 12,
@@ -125,15 +125,25 @@
         }
       },
       "completeness": {
-        "duration": 33.07,
-        "timeline": 33.08,
+        "duration": 30.23,
+        "timeline": 30.28,
         "lines": 12,
-        "onsets": 21
+        "onsets": 19
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-159ecee6",
+            "speaker": "顾承舟",
+            "shot": "sh-315212bf",
+            "on_screen": [
+              "苏念"
+            ],
+            "text": "你守了我七个月……"
+          }
+        ]
       },
       "frozen": {
         "short": 0,
@@ -144,35 +154,35 @@
         "rows": []
       },
       "pacing": {
-        "average": 4.13,
+        "average": 3.78,
         "long": 0,
         "rows": []
       },
       "mix": {
         "episode": {
-          "i": -16.8,
-          "lra": 3.8,
-          "pk": -2.0
+          "i": -17.0,
+          "lra": 3.3,
+          "pk": -1.5
         },
         "voice": {
           "i": -23.1,
-          "lra": 3.3,
+          "lra": 3.2,
           "pk": -4.5
         },
         "music": {
-          "i": -36.9,
-          "lra": 5.7,
-          "pk": -22.6
+          "i": -37.3,
+          "lra": 4.2,
+          "pk": -26.2
         },
         "bed": {
-          "i": -24.0,
-          "lra": 5.7,
-          "pk": -9.6
+          "i": -11.3,
+          "lra": 4.2,
+          "pk": -0.3
         },
         "audibility": {
           "speech_lufs": -22.0,
-          "bed_peak_lufs": -34.0,
-          "gap_lu": 12.0
+          "bed_peak_lufs": -33.7,
+          "gap_lu": 11.7
         },
         "black_segments": 0
       },
@@ -193,7 +203,7 @@
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 33.08
+        "spine_length": 30.28
       }
     }
   ],
