@@ -137,3 +137,15 @@ dbg_reports.py
 dbg_emotion.py
 chk_levels.py
 probe_storyboard_lines.py
+dbg_cont.py
+dbg_cuts.py
+dbg_drift.py
+dbg_fcpxml.py
+dbg_h3prompt.py
+dbg_repair.py
+dbg_sheet.py
+dbg_story.py
+dbg_syncq.py
+patch_promptgen.py
+probe_h3_novoice.py
+test_nle_real.py
