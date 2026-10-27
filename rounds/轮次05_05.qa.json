@@ -159,41 +159,13 @@
         "rows": []
       },
       "sync": {
-        "off_cut": 2,
-        "rows": [
-          {
-            "line": "ln-4f4c4d10",
-            "speaker": "沈氏",
-            "shot": "sh-21e750c9",
-            "drift": 2.66,
-            "text": "死罪便死罪。"
-          },
-          {
-            "line": "ln-da36c440",
-            "speaker": "沈氏",
-            "shot": "sh-c7f8621b",
-            "drift": 2.16,
-            "text": "该坐上位子的，得坐上去。"
-          }
-        ]
+        "off_cut": 0,
+        "rows": []
       },
       "pacing": {
         "average": 3.85,
-        "long": 3,
-        "rows": [
-          {
-            "shot": "sh-444abfb9",
-            "duration": 6.26
-          },
-          {
-            "shot": "sh-18cab6c3",
-            "duration": 6.52
-          },
-          {
-            "shot": "sh-c7f8621b",
-            "duration": 5.65
-          }
-        ]
+        "long": 0,
+        "rows": []
       },
       "mix": {
         "episode": {
@@ -244,20 +216,7 @@
       }
     }
   ],
-  "issues": [
-    {
-      "area": "sync",
-      "kind": "line_not_on_a_cut",
-      "where": "-",
-      "detail": "2 句换了说话人但镜头没切（画面停在上一句的镜头上）：「死罪便死罪。」迟 2.66s；「该坐上位子的，得坐上去。」迟 2.16s"
-    },
-    {
-      "area": "pacing",
-      "kind": "slow_shot",
-      "where": "-",
-      "detail": "3 个镜头超过 5.5 秒（短剧要切得快）：sh-444abfb9 6.26s、sh-18cab6c3 6.52s、sh-c7f8621b 5.65s"
-    }
-  ],
-  "issue_count": 2,
-  "verdict": "ISSUES"
+  "issues": [],
+  "issue_count": 0,
+  "verdict": "PASS"
 }

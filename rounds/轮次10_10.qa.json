@@ -1,0 +1,217 @@
+{
+  "project": "轮次10_10",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "等来恩人只剩三月",
+      "picture": {
+        "frames": 16,
+        "sharp_median": 16.8,
+        "sharp_min": 12.6,
+        "luma_spread": 11.6,
+        "src_luma_spread": 14.3,
+        "graded_luma_spread": 2.4,
+        "sat_spread": 3.3
+      },
+      "voice": {
+        "lines": 12,
+        "rows": [
+          {
+            "id": "ln-8a1dbc65",
+            "speaker": "陈默",
+            "emotion": "平静",
+            "duration": 2.04,
+            "chars": 9
+          },
+          {
+            "id": "ln-c7e0b43c",
+            "speaker": "病号女孩",
+            "emotion": "欣喜",
+            "duration": 2.63,
+            "chars": 11
+          },
+          {
+            "id": "ln-5661af4b",
+            "speaker": "陈默",
+            "emotion": "惊讶",
+            "duration": 2.41,
+            "chars": 8
+          },
+          {
+            "id": "ln-2a331608",
+            "speaker": "病号女孩",
+            "emotion": "悲伤（微笑）",
+            "duration": 5.09,
+            "chars": 16
+          },
+          {
+            "id": "ln-a15e9602",
+            "speaker": "陈默",
+            "emotion": "惊讶（迟疑）",
+            "duration": 2.41,
+            "chars": 9
+          },
+          {
+            "id": "ln-a22089aa",
+            "speaker": "病号女孩",
+            "emotion": "悲伤（期待）",
+            "duration": 1.65,
+            "chars": 6
+          },
+          {
+            "id": "ln-607eeb6d",
+            "speaker": "病号女孩",
+            "emotion": "平静（认真）",
+            "duration": 2.37,
+            "chars": 8
+          },
+          {
+            "id": "ln-6e8e22e2",
+            "speaker": "病号女孩",
+            "emotion": "悲伤（恳切）",
+            "duration": 3.43,
+            "chars": 11
+          },
+          {
+            "id": "ln-c3166249",
+            "speaker": "病号女孩",
+            "emotion": "悲伤（哽咽）",
+            "duration": 3.38,
+            "chars": 11
+          },
+          {
+            "id": "ln-487915a2",
+            "speaker": "陈默",
+            "emotion": "紧张（颤抖）",
+            "duration": 1.32,
+            "chars": 5
+          },
+          {
+            "id": "ln-8d06bfa6",
+            "speaker": "陈默",
+            "emotion": "坚定",
+            "duration": 1.91,
+            "chars": 6
+          },
+          {
+            "id": "ln-d11e4163",
+            "speaker": "陈默",
+            "emotion": "坚定（哽咽）",
+            "duration": 2.72,
+            "chars": 11
+          }
+        ],
+        "per_emotion": {
+          "平静": 2.04,
+          "欣喜": 2.63,
+          "惊讶": 2.41,
+          "悲伤（微笑）": 5.09,
+          "惊讶（迟疑）": 2.41,
+          "悲伤（期待）": 1.65,
+          "平静（认真）": 2.37,
+          "悲伤（恳切）": 3.43,
+          "悲伤（哽咽）": 3.38,
+          "紧张（颤抖）": 1.32,
+          "坚定": 1.91,
+          "坚定（哽咽）": 2.72
+        },
+        "voices": {
+          "陈默": {
+            "pitch": 160.0,
+            "zcr": 965.4,
+            "lines": 6
+          },
+          "病号女孩": {
+            "pitch": 266.7,
+            "zcr": 969.8,
+            "lines": 6
+          }
+        }
+      },
+      "completeness": {
+        "duration": 33.83,
+        "timeline": 33.9,
+        "lines": 12,
+        "onsets": 20
+      },
+      "story": {
+        "mismatched": 0,
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-5661af4b",
+            "speaker": "陈默",
+            "shot": "sh-3a36f72a",
+            "on_screen": [
+              "病号女孩"
+            ],
+            "text": "这单……你订的？"
+          }
+        ]
+      },
+      "frozen": {
+        "short": 0,
+        "rows": []
+      },
+      "sync": {
+        "off_cut": 0,
+        "rows": []
+      },
+      "pacing": {
+        "average": 3.39,
+        "long": 0,
+        "rows": []
+      },
+      "mix": {
+        "episode": {
+          "i": -16.4,
+          "lra": 7.8,
+          "pk": -2.0
+        },
+        "voice": {
+          "i": -24.9,
+          "lra": 10.1,
+          "pk": -8.5
+        },
+        "music": {
+          "i": -38.5,
+          "lra": 10.9,
+          "pk": -19.2
+        },
+        "bed": {
+          "i": -24.2,
+          "lra": 10.9,
+          "pk": -5.0
+        },
+        "audibility": {
+          "speech_lufs": -23.8,
+          "bed_peak_lufs": -35.8,
+          "gap_lu": 12.0
+        },
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 25,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "nle": {
+        "spine": 10,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 33.9
+      }
+    }
+  ],
+  "issues": [],
+  "issue_count": 0,
+  "verdict": "PASS"
+}

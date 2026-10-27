@@ -232,15 +232,8 @@
         "rows": []
       },
       "sync": {
-        "off_cut": 8,
+        "off_cut": 5,
         "rows": [
-          {
-            "line": "ln-b1496175",
-            "speaker": "林小满",
-            "shot": "sh-72d51551",
-            "drift": 1.55,
-            "text": "睡不着。"
-          },
           {
             "line": "ln-cf37dc4d",
             "speaker": "神秘男人",
@@ -261,20 +254,6 @@
             "shot": "sh-17fdd12f",
             "drift": 1.31,
             "text": "那是伪造的……"
-          },
-          {
-            "line": "ln-a21b669c",
-            "speaker": "神秘男人",
-            "shot": "sh-17fdd12f",
-            "drift": 2.93,
-            "text": "伪造不伪造，银行会查。"
-          },
-          {
-            "line": "ln-7e65fdea",
-            "speaker": "林小满",
-            "shot": "sh-6bfa40a3",
-            "drift": 0.92,
-            "text": "两千万……不可能！"
           },
           {
             "line": "ln-cc17d8e1",
@@ -357,15 +336,9 @@
       "area": "sync",
       "kind": "line_not_on_a_cut",
       "where": "-",
-      "detail": "8 句换了说话人但镜头没切（画面停在上一句的镜头上）：「睡不着。」迟 1.55s；「林小满。」迟 2.99s；「你认错人了！」迟 3.82s"
-    },
-    {
-      "area": "pacing",
-      "kind": "slow_average",
-      "where": "-",
-      "detail": "平均镜头 4.5s，偏慢（短剧通常 2~3 秒一刀）"
+      "detail": "5 句换了说话人但镜头里没有他（画面停在上一句的镜头上）：「林小满。」迟 2.99s；「你认错人了！」迟 3.82s；「那是伪造的……」迟 1.31s"
     }
   ],
-  "issue_count": 3,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }

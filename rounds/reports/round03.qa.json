@@ -167,58 +167,8 @@
         ]
       },
       "sync": {
-        "off_cut": 7,
-        "rows": [
-          {
-            "line": "ln-c626da00",
-            "speaker": "程夏",
-            "shot": "sh-7ad5f2fa",
-            "drift": 1.36,
-            "text": "这是……婚房？"
-          },
-          {
-            "line": "ln-e938edf2",
-            "speaker": "沈默",
-            "shot": "sh-ce863ea8",
-            "drift": 1.61,
-            "text": "我给她准备的。"
-          },
-          {
-            "line": "ln-48a4ea57",
-            "speaker": "程夏",
-            "shot": "sh-de6dd3d9",
-            "drift": 0.66,
-            "text": "三天前，讣告上说你有嫌疑。"
-          },
-          {
-            "line": "ln-5aaf334d",
-            "speaker": "程夏",
-            "shot": "sh-3e875bd6",
-            "drift": 1.69,
-            "text": "小雨……她已经死了！"
-          },
-          {
-            "line": "ln-939dd757",
-            "speaker": "沈默",
-            "shot": "sh-3e875bd6",
-            "drift": 6.37,
-            "text": "她没死。"
-          },
-          {
-            "line": "ln-8a7b516f",
-            "speaker": "程夏",
-            "shot": "sh-339fc17e",
-            "drift": 2.9,
-            "text": "谁报的警？"
-          },
-          {
-            "line": "ln-81e61868",
-            "speaker": "沈默",
-            "shot": "sh-339fc17e",
-            "drift": 4.88,
-            "text": "三年前那场车祸，驾驶员姓沈。"
-          }
-        ]
+        "off_cut": 0,
+        "rows": []
       },
       "pacing": {
         "average": 3.48,
@@ -226,11 +176,13 @@
         "rows": [
           {
             "shot": "sh-3e875bd6",
-            "duration": 9.02
+            "duration": 9.02,
+            "lines": 4
           },
           {
             "shot": "sh-339fc17e",
-            "duration": 9.02
+            "duration": 9.02,
+            "lines": 2
           }
         ]
       },
@@ -291,18 +243,12 @@
       "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-3e875bd6 短 2.43s；sh-339fc17e 短 2.43s"
     },
     {
-      "area": "sync",
-      "kind": "line_not_on_a_cut",
-      "where": "-",
-      "detail": "7 句换了说话人但镜头没切（画面停在上一句的镜头上）：「这是……婚房？」迟 1.36s；「我给她准备的。」迟 1.61s；「三天前，讣告上说你有嫌疑。」迟 0.66s"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "2 个镜头超过 5.5 秒（短剧要切得快）：sh-3e875bd6 9.02s、sh-339fc17e 9.02s"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-3e875bd6 9.02s（4 句）、sh-339fc17e 9.02s（2 句）"
     }
   ],
-  "issue_count": 3,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }

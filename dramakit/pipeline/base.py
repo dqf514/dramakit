@@ -125,6 +125,43 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
     return claimed
 
 
+def _assign_by_cast(shots, line_durs: list[float],
+                    speakers: list[str]) -> dict[str, list[int]] | None:
+    """Work out which lines each shot carries when the storyboard did not say.
+
+    The lines go to the shot that has the speaker in frame, which keeps the
+    cut on the dialogue and the picture on the person who is talking. No
+    shot gets more than two lines, or one shot ends up carrying the whole
+    conversation.
+    """
+    if not shots or not speakers:
+        return None
+    n = len(speakers)
+    claimed: dict[str, list[int]] = {}
+    used: set[int] = set()
+    for k, sp in enumerate(speakers):
+        cands = [sh for sh in shots
+                 if sp in (sh.characters or []) and len(claimed.get(sh.id, [])) < 2]
+        if not cands:
+            continue
+        want = (k + 0.5) / n * len(shots)
+        best = min(cands, key=lambda sh: abs(sh.index - want))
+        claimed.setdefault(best.id, []).append(k + 1)
+        used.add(k)
+    # nobody took a line: put it in the shot with the fewest lines
+    for k in range(n):
+        if k in used:
+            continue
+        free = [sh for sh in shots if len(claimed.get(sh.id, [])) < 2]
+        best = (min(free, key=lambda sh: len(claimed.get(sh.id, []))) if free
+                else min(shots, key=lambda sh: len(claimed.get(sh.id, []))))
+        claimed.setdefault(best.id, []).append(k + 1)
+        used.add(k)
+    for sid in claimed:
+        claimed[sid].sort()
+    return claimed
+
+
 def build_timeline(ep: Episode, min_shot: float = 1.0,
                    max_shot: float = 0.0) -> Timeline:
     timed_scenes: list[TimedScene] = []
@@ -142,6 +179,10 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
         #    lands on the dialogue instead of drifting through it.
         line_map = _shot_line_map(sc.shots, len(raw_lines), max_shot=max_shot,
                                    line_durs=[d for d, _ in raw_lines])
+        if line_map is None and sc.shots:
+            # the storyboard did not say: work it out from who is in frame
+            line_map = _assign_by_cast(sc.shots, [d for d, _ in raw_lines],
+                                       [l.speaker for _, l in raw_lines])
         shot_durs: list[float] = []
         for sh in sc.shots:
             d = max(sh.duration, min_shot)

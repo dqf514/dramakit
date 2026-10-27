@@ -227,86 +227,35 @@
         ]
       },
       "sync": {
-        "off_cut": 7,
-        "rows": [
-          {
-            "line": "ln-d61468c6",
-            "speaker": "周总",
-            "shot": "sh-2780d6de",
-            "drift": 2.12,
-            "text": "一个月以后……公司再安排。"
-          },
-          {
-            "line": "ln-56c367f3",
-            "speaker": "林知夏",
-            "shot": "sh-2780d6de",
-            "drift": 4.68,
-            "text": "三年前最难的项目，您交给我。"
-          },
-          {
-            "line": "ln-0b404884",
-            "speaker": "周总",
-            "shot": "sh-2780d6de",
-            "drift": 12.78,
-            "text": "公司愿意给你八十万补偿。"
-          },
-          {
-            "line": "ln-aed9781c",
-            "speaker": "林知夏",
-            "shot": "sh-2780d6de",
-            "drift": 15.52,
-            "text": "八十万，买断我整整三年？"
-          },
-          {
-            "line": "ln-704a3e16",
-            "speaker": "周总",
-            "shot": "sh-4f876cb8",
-            "drift": 3.74,
-            "text": "你手里……是不是还留着什么？"
-          },
-          {
-            "line": "ln-e800b507",
-            "speaker": "林知夏",
-            "shot": "sh-4f876cb8",
-            "drift": 7.27,
-            "text": "客户私有仓库的密码，是我设的"
-          },
-          {
-            "line": "ln-be056f2f",
-            "speaker": "林知夏",
-            "shot": "sh-377b3ce1",
-            "drift": 2.81,
-            "text": "你猜，我到底改没改？"
-          }
-        ]
+        "off_cut": 0,
+        "rows": []
       },
       "pacing": {
         "average": 5.75,
-        "long": 4,
+        "long": 3,
         "rows": [
           {
             "shot": "sh-a43a2886",
-            "duration": 7.88
+            "duration": 7.88,
+            "lines": 3
           },
           {
             "shot": "sh-2780d6de",
-            "duration": 19.04
+            "duration": 19.04,
+            "lines": 6
           },
           {
             "shot": "sh-4f876cb8",
-            "duration": 11.59
-          },
-          {
-            "shot": "sh-377b3ce1",
-            "duration": 5.65
+            "duration": 11.59,
+            "lines": 3
           }
         ]
       },
       "mix": {
         "episode": {
-          "i": -16.2,
-          "lra": 3.5,
-          "pk": -1.2
+          "i": -16.4,
+          "lra": 3.3,
+          "pk": -1.8
         },
         "voice": {
           "i": -23.2,
@@ -365,16 +314,10 @@
       "detail": "1 个镜头的素材比槽位短，会出现静止画面：sh-2780d6de 短 5.38s"
     },
     {
-      "area": "sync",
-      "kind": "line_not_on_a_cut",
-      "where": "-",
-      "detail": "7 句换了说话人但镜头没切（画面停在上一句的镜头上）：「一个月以后……公司再安排。」迟 2.12s；「三年前最难的项目，您交给我。」迟 4.68s；「公司愿意给你八十万补偿。」迟 12.78s"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "4 个镜头超过 5.5 秒（短剧要切得快）：sh-a43a2886 7.88s、sh-2780d6de 19.04s、sh-4f876cb8 11.59s"
+      "detail": "3 个镜头太长（短剧要切得快）：sh-a43a2886 7.88s（3 句）、sh-2780d6de 19.04s（6 句）、sh-4f876cb8 11.59s（3 句）"
     },
     {
       "area": "pacing",
@@ -383,6 +326,6 @@
       "detail": "平均镜头 5.7s，偏慢（短剧通常 2~3 秒一刀）"
     }
   ],
-  "issue_count": 5,
+  "issue_count": 4,
   "verdict": "ISSUES"
 }
