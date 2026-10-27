@@ -431,7 +431,7 @@ compose:
   h3_audio_gain: 0.18               # 短视频平台常用 -14~-16 LUFS
   burn_subtitles: true # 硬字幕（红果/抖音常用，不可关闭显示）
   also_write_srt: true                      # 同时输出软字幕 .srt
-  show_speaker_name: true                   # 台词上方显示角色名
+  show_speaker_name: false                  # 台词上方不显示角色名（画面上更干净）
   subtitle_style:
     font: Microsoft YaHei
     font_size: 16                           # 内部按分辨率放大
@@ -439,7 +439,7 @@ compose:
     outline_color: "&H00000000"             # 黑边
     outline: 2
     shadow: 0
-    margin_v: 220                           # 距底部距离
+    margin_v: 1                              # 距画面底部几个字高（1 = 紧贴底部上方一个文字高）
     bold: true
     alignment: 2                            # 底部居中
     speaker_color: "&H0000E5FF"             # 角色名高亮色

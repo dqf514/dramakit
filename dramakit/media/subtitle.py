@@ -73,18 +73,17 @@ def _ass_header(style: dict, width: int, height: int) -> str:
     narr_back = style.get("narration_back_color", "&H66000000")
     narr_margin = style.get("narration_margin_v", 40)
     narr_align = style.get("narration_alignment", 8)
-    # The font size is relative to a 288 high canvas, the margin to a 1080
-    # high one - the values in the config come from a vertical 1080p frame,
-    # where a margin of 220 puts the text 20% up from the bottom. Scale both
-    # to the frame we are actually making, or the subtitle ends up in the
-    # middle of the picture.
+    # The font size is relative to a 288 high canvas. The margin is counted in
+    # text heights above the bottom of the picture, so the subtitle sits just
+    # above the edge whatever the frame is - a margin written in pixels for
+    # another frame lands across the actors' faces.
     k = height / 288
-    mk = height / 1080
     scaled = int(round(size * k))
     narr_scaled = int(round(narr_size * k))
-    margin_v = int(round(margin_v * mk))
-    narr_margin = int(round(narr_margin * mk))
-    margin_h = int(round(60 * mk))
+    heights = float(margin_v or 1)
+    margin_v = int(round(scaled * heights))
+    narr_margin = int(round(narr_scaled * 0.8))
+    margin_h = int(round(60 * height / 1080))
     return f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {width}
