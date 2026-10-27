@@ -323,6 +323,13 @@ integrated_multimodal_description / overall_soundscape / non_diegetic_music
   bed 模式下只写环境声与动作声，不要有人的说话声
 - non_diegetic_music 用 1-3 句描述观众听到的配乐：乐器、节奏速度、动态起伏；没有就给 N/A
 - 不要写 negative prompt，不要出现 "no text"、"without watermark" 这类否定描述
+- **integrated_multimodal_description 的结尾必须原样写上这些约束**（写在描述的最后）：
+  保持人物身份、脸部、发型与服装和第一帧完全一致；画面里不出现除第一帧已有文字以外的新文字，
+  也不加字幕和水印；不出现多余人物、多余肢体或畸形的手；镜头不抖动、不跳帧、不慢动作；
+  不要切换到别的场景或别的机位。
+- **描述里要写清楚时间轴**（例如 "From 0.0 to 2.0 seconds, ..."），
+  各段时间之和必须等于本镜时长；还要写明角色说话时的口型动作（opens her mouth and speaks），
+  台词由后期配音轨提供，画面里的口型要对得上。
 - 画面是 16:9 横屏"""
 
 H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模式：图片是第一帧）。
@@ -352,10 +359,10 @@ H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模�
 要求：
 - integrated_multimodal_description 以 [Shot 1] 开头，描述这一镜的完整画面与运动
 - 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词
+- **integrated_multimodal_description 的最后要原样带上这些约束**（写在描述的结尾）：
+  {{constraints}}
 输出JSON：
-{"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}
-
-{{constraints}}"""
+{"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}"""
 
 
 H3_SCORE_SYSTEM = """你是短剧配乐导演，为一个**没有人、没有角色、没有对白**的空镜写 H3 提示词。
