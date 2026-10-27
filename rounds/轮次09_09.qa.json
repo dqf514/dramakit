@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 17.4,
-        "sharp_min": 10.8,
-        "luma_spread": 7.6,
-        "src_luma_spread": 77.4,
-        "graded_luma_spread": 10.4,
-        "sat_spread": 1.8
+        "sharp_median": 21.4,
+        "sharp_min": 7.1,
+        "luma_spread": 8.8,
+        "src_luma_spread": 28.7,
+        "graded_luma_spread": 5.3,
+        "sat_spread": 2.9
       },
       "voice": {
         "lines": 12,
@@ -132,22 +132,12 @@
         "duration": 34.13,
         "timeline": 34.13,
         "lines": 12,
-        "onsets": 18
+        "onsets": 16
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
-        "rows": [
-          {
-            "line": "ln-2d4a8e64",
-            "speaker": "顾承舟",
-            "shot": "sh-e66c8a6a",
-            "on_screen": [
-              "苏念"
-            ],
-            "text": "我来，就是撑给你看。"
-          }
-        ]
+        "off_screen_lines": 0,
+        "rows": []
       },
       "frozen": {
         "short": 0,
@@ -158,21 +148,32 @@
         "rows": []
       },
       "pacing": {
-        "average": 4.88,
-        "long": 0,
-        "rows": []
+        "average": 3.41,
+        "long": 2,
+        "rows": [
+          {
+            "shot": "sh-1552e8c7",
+            "duration": 5.78,
+            "lines": 2
+          },
+          {
+            "shot": "sh-f89fdedc",
+            "duration": 4.02,
+            "lines": 1
+          }
+        ]
       },
       "framing": {
         "same_size": 0,
         "opens": 0
       },
       "rhythm": {
-        "shots": 8,
-        "avg_shot": 4.27,
-        "median_shot": 5.57,
-        "max_shot": 6.2,
-        "opening_shot": 6.2,
-        "cuts_per_min": 12.3
+        "shots": 11,
+        "avg_shot": 3.09,
+        "median_shot": 2.87,
+        "max_shot": 5.6,
+        "opening_shot": 2.2,
+        "cuts_per_min": 19.3
       },
       "hook": {
         "first_line_at": 0.0,
@@ -180,14 +181,14 @@
       },
       "mix": {
         "episode": {
-          "i": -17.0,
-          "lra": 4.8,
-          "pk": -2.1
+          "i": -17.1,
+          "lra": 4.1,
+          "pk": -1.9
         },
         "voice": {
           "i": -23.1,
-          "lra": 3.4,
-          "pk": -4.6
+          "lra": 3.3,
+          "pk": -4.5
         },
         "music": {
           "i": -37.5,
@@ -200,9 +201,9 @@
           "pk": -0.3
         },
         "audibility": {
-          "speech_lufs": -21.9,
+          "speech_lufs": -22.0,
           "bed_peak_lufs": -33.9,
-          "gap_lu": 12.0
+          "gap_lu": 11.8
         },
         "black_segments": 0
       },
@@ -220,7 +221,7 @@
         "height": 544
       },
       "nle": {
-        "spine": 7,
+        "spine": 10,
         "lanes": [
           "Dialogue",
           "Music"
@@ -233,18 +234,12 @@
   ],
   "issues": [
     {
-      "area": "rhythm",
-      "kind": "cuts_too_slow",
+      "area": "pacing",
+      "kind": "slow_shot",
       "where": "-",
-      "detail": "平均 4.27s 一刀（12.3 刀/分），短剧通常要 20~40 刀/分"
-    },
-    {
-      "area": "rhythm",
-      "kind": "hook_too_late",
-      "where": "-",
-      "detail": "开场第一个镜头 6.2s，钩子来得太晚"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-1552e8c7 5.78s（2 句）、sh-f89fdedc 4.02s（1 句）"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }

@@ -339,6 +339,7 @@ def compose_episode(ctx: Context, ep) -> str:
            codec=cc.codec, crf=cc.crf, preset=cc.preset, pixel_format=cc.pixel_format,
            fps=cc.fps, ass_file=str(ass) if (cc.burn_subtitles and ass) else None,
            watermark=mark, watermark_size=max(14, cc.height // 30),
+           watermark_seconds=float(cc.ai_declaration_seconds or 0),
            grain=int(cc.film_grain or 0))
 
     # --- cover ---

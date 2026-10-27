@@ -48,7 +48,14 @@ def _duration(path: Path) -> float:
 
 def analyse(path: Path) -> dict:
     dur = _duration(path)
-    cuts = sorted(set(round(t, 2) for t in _cuts(path)))
+    raw = sorted(set(round(t, 2) for t in _cuts(path)))
+    # a transition fades to black and back, which the detector sees as two
+    # cuts; they are one cut
+    cuts: list[float] = []
+    for t in raw:
+        if cuts and t - cuts[-1] < 0.5:
+            continue
+        cuts.append(t)
     bounds = [0.0] + cuts + [dur]
     lengths = [round(bounds[i + 1] - bounds[i], 2) for i in range(len(bounds) - 1)]
     lengths = [x for x in lengths if x > 0.15]

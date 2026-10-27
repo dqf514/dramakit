@@ -551,7 +551,7 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
         pixel_format: str = "yuv420p", fps: Optional[int] = None,
         ass_file: Optional[str | Path] = None,
         watermark: str = "", watermark_size: int = 18,
-        grain: int = 0) -> str:
+        watermark_seconds: float = 0.0, grain: int = 0) -> str:
     """Mux picture + audio into the final mp4; optionally burn ASS subtitles.
 
     When burning, we chdir into the ASS file's directory and reference it by a
@@ -573,10 +573,13 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
     if watermark:
         text = watermark.replace("\\", "\\\\").replace(":", "\\:").replace("'", "")
         font = _cjk_font()
-        vf.append(
-            f"drawtext=fontfile='{font}':text='{text}':fontcolor=white@0.6:"
-            f"fontsize={watermark_size}"
-            f":x=24:y=20:box=1:boxcolor=black@0.35:boxborderw=6")
+        label = (f"drawtext=fontfile='{font}':text='{text}':fontcolor=white@0.6:"
+                 f"fontsize={watermark_size}"
+                 f":x=24:y=20:box=1:boxcolor=black@0.35:boxborderw=6")
+        if watermark_seconds and watermark_seconds > 0:
+            # the platform asks for the label in the opening, not on every frame
+            label += f":enable='between(t,0,{watermark_seconds:.1f})'"
+        vf.append(label)
     if fps:
         vf.append(f"fps={fps}")
     if grain > 0:

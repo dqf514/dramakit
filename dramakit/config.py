@@ -465,6 +465,7 @@ class ComposeConfig(BaseModel):
     show_speaker_name: bool = False
     # 2026 年起 AIGC 微短剧必须标注 AI 生成，备案号也要上画面
     ai_declaration: str = "本片画面与声音由AI生成"
+    ai_declaration_seconds: float = 3.0                        # 声明只放在片头几秒
     filing_number: str = ""                                 # 备案号（上线前填）
     film_grain: int = 4                                    # 胶片颗粒强度（去掉 AI 塑料感，0=关）
     # 每句台词之间的留白（秒）。背靠背的台词听起来像在念清单，
