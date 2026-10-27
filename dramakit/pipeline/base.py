@@ -61,7 +61,7 @@ class Timeline:
 
 
 # a shot carries at most this much dialogue: a short drama cuts fast
-SHOT_DIALOGUE_MAX = 5.5
+SHOT_DIALOGUE_MAX = 3.5
 
 
 def _line_duration(line: Line) -> float:

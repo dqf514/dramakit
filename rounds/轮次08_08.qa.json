@@ -1,0 +1,279 @@
+{
+  "project": "轮次08_08",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "雨夜仓库的第五人",
+      "picture": {
+        "frames": 16,
+        "sharp_median": 21.7,
+        "sharp_min": 14.4,
+        "luma_spread": 8.9,
+        "src_luma_spread": 7.9,
+        "graded_luma_spread": 3.0,
+        "sat_spread": 3.0
+      },
+      "voice": {
+        "lines": 12,
+        "rows": [
+          {
+            "id": "ln-c55e2b03",
+            "speaker": "老周",
+            "emotion": "严肃",
+            "duration": 3.06,
+            "chars": 14
+          },
+          {
+            "id": "ln-ea8cdcf2",
+            "speaker": "小韩",
+            "emotion": "疑惑",
+            "duration": 2.5,
+            "chars": 8
+          },
+          {
+            "id": "ln-ef831d8f",
+            "speaker": "老周",
+            "emotion": "沉重",
+            "duration": 3.19,
+            "chars": 12
+          },
+          {
+            "id": "ln-d49a695b",
+            "speaker": "小韩",
+            "emotion": "紧张",
+            "duration": 2.82,
+            "chars": 11
+          },
+          {
+            "id": "ln-b9687ccf",
+            "speaker": "老周",
+            "emotion": "笃定",
+            "duration": 1.43,
+            "chars": 5
+          },
+          {
+            "id": "ln-b97e4659",
+            "speaker": "接线员",
+            "emotion": "紧张",
+            "duration": 4.11,
+            "chars": 15
+          },
+          {
+            "id": "ln-62016876",
+            "speaker": "老周",
+            "emotion": "惊讶",
+            "duration": 2.56,
+            "chars": 10
+          },
+          {
+            "id": "ln-3b9de0a6",
+            "speaker": "老周",
+            "emotion": "震惊",
+            "duration": 2.21,
+            "chars": 10
+          },
+          {
+            "id": "ln-38ea12c0",
+            "speaker": "接线员",
+            "emotion": "紧张",
+            "duration": 3.22,
+            "chars": 16
+          },
+          {
+            "id": "ln-484cd520",
+            "speaker": "老周",
+            "emotion": "果断",
+            "duration": 2.76,
+            "chars": 9
+          },
+          {
+            "id": "ln-02a27c26",
+            "speaker": "小韩",
+            "emotion": "紧张",
+            "duration": 3.34,
+            "chars": 12
+          },
+          {
+            "id": "ln-78f7c783",
+            "speaker": "老周",
+            "emotion": "坚定",
+            "duration": 1.69,
+            "chars": 5
+          }
+        ],
+        "per_emotion": {
+          "严肃": 3.06,
+          "疑惑": 2.5,
+          "沉重": 3.19,
+          "紧张": 3.37,
+          "笃定": 1.43,
+          "惊讶": 2.56,
+          "震惊": 2.21,
+          "果断": 2.76,
+          "坚定": 1.69
+        },
+        "voices": {
+          "老周": {
+            "pitch": 173.9,
+            "zcr": 1146.7,
+            "lines": 7
+          },
+          "小韩": {
+            "pitch": 222.2,
+            "zcr": 1016.8,
+            "lines": 3
+          },
+          "接线员": {
+            "pitch": 266.7,
+            "zcr": 815.5,
+            "lines": 2
+          }
+        }
+      },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
+      "completeness": {
+        "duration": 37.37,
+        "timeline": 37.37,
+        "lines": 12,
+        "onsets": 17
+      },
+      "story": {
+        "mismatched": 0,
+        "off_screen_lines": 2,
+        "rows": [
+          {
+            "line": "ln-b97e4659",
+            "speaker": "接线员",
+            "shot": "sh-d180ab9c",
+            "on_screen": [
+              "老周"
+            ],
+            "text": "周队！旧纺织厂三号仓库，有人"
+          },
+          {
+            "line": "ln-484cd520",
+            "speaker": "老周",
+            "shot": "sh-66b5b01e",
+            "on_screen": [
+              "接线员"
+            ],
+            "text": "小韩，带手电。走！"
+          }
+        ]
+      },
+      "frozen": {
+        "short": 0,
+        "rows": []
+      },
+      "sync": {
+        "off_cut": 0,
+        "rows": []
+      },
+      "pacing": {
+        "average": 3.74,
+        "long": 3,
+        "rows": [
+          {
+            "shot": "sh-dea8f160",
+            "duration": 4.53,
+            "lines": 1
+          },
+          {
+            "shot": "sh-69bfdb85",
+            "duration": 5.6,
+            "lines": 2
+          },
+          {
+            "shot": "sh-c937d4fd",
+            "duration": 5.46,
+            "lines": 2
+          }
+        ]
+      },
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 12,
+        "avg_shot": 3.11,
+        "median_shot": 3.24,
+        "max_shot": 5.6,
+        "opening_shot": 3.43,
+        "cuts_per_min": 17.7
+      },
+      "visible_cuts": {
+        "cuts": 11,
+        "invisible": 0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "这是第四个了。都二十岁上下。"
+      },
+      "mix": {
+        "episode": {
+          "i": -17.5,
+          "lra": 8.9,
+          "pk": -1.5
+        },
+        "voice": {
+          "i": -24.6,
+          "lra": 10.4,
+          "pk": -3.0
+        },
+        "music": {
+          "i": -37.5,
+          "lra": 7.0,
+          "pk": -23.2
+        },
+        "bed": {
+          "i": -19.3,
+          "lra": 7.0,
+          "pk": -5.0
+        },
+        "audibility": {
+          "speech_lufs": -23.3,
+          "bed_peak_lufs": -35.3,
+          "gap_lu": 12.0
+        },
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 13,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "subtitle_place": {
+        "margin_v": 30,
+        "height": 544
+      },
+      "nle": {
+        "spine": 10,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 37.37
+      }
+    }
+  ],
+  "issues": [
+    {
+      "area": "pacing",
+      "kind": "slow_shot",
+      "where": "-",
+      "detail": "3 个镜头太长（短剧要切得快）：sh-dea8f160 4.53s（1 句）、sh-69bfdb85 5.6s（2 句）、sh-c937d4fd 5.46s（2 句）"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
+}

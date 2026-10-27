@@ -6,12 +6,12 @@
       "title": "请假去抢保送名额",
       "picture": {
         "frames": 16,
-        "sharp_median": 10.5,
-        "sharp_min": 8.0,
-        "luma_spread": 7.6,
-        "src_luma_spread": 48.0,
-        "graded_luma_spread": 7.1,
-        "sat_spread": 0.8
+        "sharp_median": 12.9,
+        "sharp_min": 7.2,
+        "luma_spread": 10.1,
+        "src_luma_spread": 23.1,
+        "graded_luma_spread": 4.5,
+        "sat_spread": 1.5
       },
       "voice": {
         "lines": 14,
@@ -144,25 +144,15 @@
         "rows": []
       },
       "completeness": {
-        "duration": 32.51,
-        "timeline": 32.51,
+        "duration": 36.71,
+        "timeline": 36.71,
         "lines": 14,
-        "onsets": 27
+        "onsets": 29
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
-        "rows": [
-          {
-            "line": "ln-9ee11205",
-            "speaker": "林一舟",
-            "shot": "sh-1f05b3d8",
-            "on_screen": [
-              "班长"
-            ],
-            "text": "你上周说的是陪我妈去医院。"
-          }
-        ]
+        "off_screen_lines": 0,
+        "rows": []
       },
       "frozen": {
         "short": 0,
@@ -173,44 +163,66 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.25,
-        "long": 0,
-        "rows": []
+        "average": 2.62,
+        "long": 1,
+        "rows": [
+          {
+            "shot": "sh-c4c3ec17",
+            "duration": 4.13,
+            "lines": 1
+          }
+        ]
       },
       "framing": {
-        "same_size": 1,
-        "opens": 1
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 13,
+        "avg_shot": 2.82,
+        "median_shot": 2.53,
+        "max_shot": 4.67,
+        "opening_shot": 1.97,
+        "cuts_per_min": 19.6
+      },
+      "visible_cuts": {
+        "cuts": 12,
+        "invisible": 0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "第十七次了。"
       },
       "mix": {
         "episode": {
-          "i": -23.1,
-          "lra": 2.8,
-          "pk": -2.5
+          "i": -16.7,
+          "lra": 5.0,
+          "pk": -1.9
         },
         "voice": {
           "i": -23.0,
-          "lra": 2.8,
-          "pk": -2.4
+          "lra": 5.1,
+          "pk": -2.5
         },
         "music": {
-          "i": -36.1,
-          "lra": 6.2,
-          "pk": -15.7
+          "i": -38.2,
+          "lra": 8.9,
+          "pk": -20.8
         },
         "bed": {
-          "i": -23.6,
-          "lra": 6.2,
-          "pk": -3.2
+          "i": -18.0,
+          "lra": 8.9,
+          "pk": -0.7
         },
         "audibility": {
           "speech_lufs": -21.8,
-          "bed_peak_lufs": -33.7,
-          "gap_lu": 11.9
+          "bed_peak_lufs": -33.9,
+          "gap_lu": 12.0
         },
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 28,
+        "cues": 14,
         "styles": [
           "Default",
           "Speaker",
@@ -219,40 +231,29 @@
         "max_rows": 1
       },
       "subtitle_place": {
-        "margin_v": 111,
+        "margin_v": 30,
         "height": 544
       },
       "nle": {
-        "spine": 10,
+        "spine": 14,
         "lanes": [
-          "Dialogue"
+          "Dialogue",
+          "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 32.51
+        "spine_length": 36.71
       }
     }
   ],
   "issues": [
     {
-      "area": "framing",
-      "kind": "same_size_twice",
+      "area": "pacing",
+      "kind": "slow_shot",
       "where": "-",
-      "detail": "1 处连续两个镜头景别相同（看起来像证件照连播）：场景1 特写"
-    },
-    {
-      "area": "framing",
-      "kind": "opens_on_closeup",
-      "where": "-",
-      "detail": "1 个场以特写开场（观众还不知道是谁、在哪）：场景1"
-    },
-    {
-      "area": "mix",
-      "kind": "loudness_off",
-      "where": "-",
-      "detail": "整体响度 -23.1 LUFS（目标 -16）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-c4c3ec17 4.13s（1 句）"
     }
   ],
-  "issue_count": 3,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }

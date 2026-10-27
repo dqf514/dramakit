@@ -6,12 +6,12 @@
       "title": "雨夜仓库的第五人",
       "picture": {
         "frames": 16,
-        "sharp_median": 24.6,
-        "sharp_min": 13.3,
-        "luma_spread": 14.4,
-        "src_luma_spread": 23.3,
-        "graded_luma_spread": 2.7,
-        "sat_spread": 3.6
+        "sharp_median": 21.7,
+        "sharp_min": 14.4,
+        "luma_spread": 8.9,
+        "src_luma_spread": 7.9,
+        "graded_luma_spread": 3.0,
+        "sat_spread": 3.0
       },
       "voice": {
         "lines": 12,
@@ -130,25 +130,37 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
-        "duration": 33.5,
-        "timeline": 33.52,
+        "duration": 37.37,
+        "timeline": 37.37,
         "lines": 12,
-        "onsets": 19
+        "onsets": 17
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
+        "off_screen_lines": 2,
         "rows": [
           {
-            "line": "ln-d49a695b",
-            "speaker": "小韩",
-            "shot": "sh-43fa6e65",
+            "line": "ln-b97e4659",
+            "speaker": "接线员",
+            "shot": "sh-d180ab9c",
             "on_screen": [
-              "老周",
+              "老周"
+            ],
+            "text": "周队！旧纺织厂三号仓库，有人"
+          },
+          {
+            "line": "ln-484cd520",
+            "speaker": "老周",
+            "shot": "sh-66b5b01e",
+            "on_screen": [
               "接线员"
             ],
-            "text": "那下一个……就是今晚？"
+            "text": "小韩，带手电。走！"
           }
         ]
       },
@@ -157,41 +169,69 @@
         "rows": []
       },
       "sync": {
-        "off_cut": 1,
+        "off_cut": 0,
+        "rows": []
+      },
+      "pacing": {
+        "average": 3.74,
+        "long": 3,
         "rows": [
           {
-            "line": "ln-b97e4659",
-            "speaker": "接线员",
-            "shot": "sh-89a14d8a",
-            "drift": 2.56,
-            "text": "周队！旧纺织厂三号仓库，有人"
+            "shot": "sh-dea8f160",
+            "duration": 4.53,
+            "lines": 1
+          },
+          {
+            "shot": "sh-69bfdb85",
+            "duration": 5.6,
+            "lines": 2
+          },
+          {
+            "shot": "sh-c937d4fd",
+            "duration": 5.46,
+            "lines": 2
           }
         ]
       },
-      "pacing": {
-        "average": 4.19,
-        "long": 0,
-        "rows": []
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 12,
+        "avg_shot": 3.11,
+        "median_shot": 3.24,
+        "max_shot": 5.6,
+        "opening_shot": 3.43,
+        "cuts_per_min": 17.7
+      },
+      "visible_cuts": {
+        "cuts": 11,
+        "invisible": 0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "这是第四个了。都二十岁上下。"
       },
       "mix": {
         "episode": {
-          "i": -17.2,
-          "lra": 6.2,
-          "pk": -1.9
+          "i": -17.5,
+          "lra": 8.9,
+          "pk": -1.5
         },
         "voice": {
           "i": -24.6,
-          "lra": 10.3,
-          "pk": -3.1
+          "lra": 10.4,
+          "pk": -3.0
         },
         "music": {
-          "i": -37.2,
-          "lra": 7.2,
-          "pk": -22.6
+          "i": -37.5,
+          "lra": 7.0,
+          "pk": -23.2
         },
         "bed": {
-          "i": -19.6,
-          "lra": 7.2,
+          "i": -19.3,
+          "lra": 7.0,
           "pk": -5.0
         },
         "audibility": {
@@ -202,7 +242,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 25,
+        "cues": 13,
         "styles": [
           "Default",
           "Speaker",
@@ -211,27 +251,27 @@
         "max_rows": 1
       },
       "subtitle_place": {
-        "margin_v": 111,
+        "margin_v": 30,
         "height": 544
       },
       "nle": {
-        "spine": 8,
+        "spine": 10,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 33.52
+        "spine_length": 37.37
       }
     }
   ],
   "issues": [
     {
-      "area": "sync",
-      "kind": "line_not_on_a_cut",
+      "area": "pacing",
+      "kind": "slow_shot",
       "where": "-",
-      "detail": "1 句换了说话人但镜头里没有他（画面停在上一句的镜头上）：「周队！旧纺织厂三号仓库，有人」迟 2.56s"
+      "detail": "3 个镜头太长（短剧要切得快）：sh-dea8f160 4.53s（1 句）、sh-69bfdb85 5.6s（2 句）、sh-c937d4fd 5.46s（2 句）"
     }
   ],
   "issue_count": 1,
