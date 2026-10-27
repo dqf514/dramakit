@@ -436,6 +436,7 @@ compose:
   ai_declaration: "本片画面与声音由AI生成"
   filing_number: ""                        # 备案号（上线前填）
   film_grain: 4                            # 胶片颗粒强度（去掉 AI 塑料感，0=关）
+  line_gap: 0.35                            # 每句台词之间的留白（秒）
   subtitle_style:
     font: Microsoft YaHei
     font_size: 16                           # 内部按分辨率放大
@@ -455,7 +456,8 @@ compose:
     narration_margin_v: 40                  # 距顶部距离
     narration_alignment: 8                  # 顶部居中
   generate_cover: true
-  cover_from_shot: first                    # first | best | last
+  cover_from_shot: first                  # first/best/last
+  cover_title: true                       # 封面烧上标题（手机上要看得清）                    # first | best | last
 
 # --------------------------- 流水线控制 -------------------------------------
 pipeline:

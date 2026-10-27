@@ -183,7 +183,8 @@ def _scene_voice(ctx: Context, tscene, tmp: Path, idx: int = 0) -> str:
 
 def compose_episode(ctx: Context, ep) -> str:
     cc = ctx.cfg.compose
-    tl = build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds)
+    tl = build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds,
+                      line_gap=cc.line_gap)
     if tl.duration <= 0:
         raise RuntimeError(f"第{ep.index}集时间线为空")
     tmp = ctx.store.root / "tmp" / f"ep_{ep.index:03d}"
@@ -353,6 +354,11 @@ def compose_episode(ctx: Context, ep) -> str:
                 ff.extract_frame(final, cover,
                                  at=(cc.cover_from_shot == "last") * max(tl.duration - 0.5, 0)
                                  or min(1.0, tl.duration / 2), width=cc.width)
+            # The cover decides whether anybody clicks: the title has to be
+            # on it, big enough to read on a phone.
+            title = (ep.title or "").strip()
+            if title and cc.cover_title:
+                ff.draw_title(cover, title, width=cc.width, height=cc.height)
             ep.cover_path = ctx.store.rel(cover)
         except Exception as e:  # noqa: BLE001
             log.warning("封面生成失败: %s", e)
@@ -398,7 +404,8 @@ def run(ctx: Context) -> dict:
             made += 1
             ctx.log.info("compose: 第%d集 → %s (%.1fs)", ep.index,
                          Path(out).name,
-         build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds).duration)
+         build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds,
+                      line_gap=cc.line_gap).duration)
         except Exception as e:  # noqa: BLE001
             ctx.log.error("compose: 第%d集失败 %s", ep.index, e)
             ctx.mark(ep, "compose", Status.FAILED)

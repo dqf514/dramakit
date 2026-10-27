@@ -204,7 +204,7 @@ def _assign_by_cast(shots, line_durs: list[float],
 
 
 def build_timeline(ep: Episode, min_shot: float = 1.0,
-                   max_shot: float = 0.0) -> Timeline:
+                   max_shot: float = 0.0, line_gap: float = 0.0) -> Timeline:
     timed_scenes: list[TimedScene] = []
     cursor = 0.0
     for sc in ep.scenes:
@@ -213,7 +213,10 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
         spoken = [l for l in sc.lines if not is_narration(l)]
         narration = [l for l in sc.lines if is_narration(l)]
         raw_lines = [(_line_duration(l), l) for l in spoken]
-        scene_audio = round(sum(d for d, _ in raw_lines), 3)
+        gap = max(0.0, float(line_gap))
+        # the scene has to hold the lines and the breaths between them
+        scene_audio = round(sum(d for d, _ in raw_lines)
+                            + gap * max(0, len(raw_lines) - 1), 3)
 
         # 2) how long each shot lasts. When the storyboard says which lines a
         #    shot carries, the shot is exactly as long as those lines - the cut
@@ -227,14 +230,22 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
                                        [l.speaker for _, l in raw_lines],
                                        max_shot=max_shot,
                                        max_dialogue=SHOT_DIALOGUE_MAX)
+        # a shot with lines lasts exactly as long as those lines and the
+        # breaths between them; the breath after its last line is the room
+        # before the next shot starts
+        line_shot_pos = [i for i, sh in enumerate(sc.shots)
+                         if line_map and (line_map.get(sh.id) or [])]
+        last_line_shot = line_shot_pos[-1] if line_shot_pos else -1
         shot_durs: list[float] = []
-        for sh in sc.shots:
+        for i, sh in enumerate(sc.shots):
             d = max(sh.duration, min_shot)
             if line_map:
                 idxs = line_map.get(sh.id) or []
                 owned = sum(raw_lines[i - 1][0] for i in idxs)
                 if owned > 0:
-                    d = owned
+                    d = owned + gap * max(0, len(idxs) - 1)
+                    if i != last_line_shot:
+                        d += gap
             shot_durs.append(d)
         shot_sum = round(sum(shot_durs), 3)
         scene_dur = max(scene_audio, shot_sum, min_shot)
@@ -253,26 +264,40 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
                 shot_cursor += d
 
         # 4) place the spoken lines: inside the shot that carries them, one
-        #    after another, so the picture and the dialogue stay together
+        #    after another, so the picture and the dialogue stay together.
+        #    A short breath between the lines: lines that run into each
+        #    other sound like a list being read out.
         timed_lines: list[TimedLine] = []
         if line_map and timed_shots:
             by_shot: dict[str, list[int]] = line_map
             for ts in timed_shots:
                 idxs = sorted(by_shot.get(ts.shot.id) or [])
+                if not idxs:
+                    continue
                 inner = ts.start
-                for i in idxs:
+                total = sum(raw_lines[j - 1][0] for j in idxs)
+                gaps_total = gap * max(0, len(idxs) - 1)
+                # the room the lines need inside this shot, gaps included
+                need = total + gaps_total
+                room = max(ts.duration, need)
+                # the lines share what is left once the breaths have their room
+                share_k = (room - gaps_total) / max(total, 1e-6)
+                for n, i in enumerate(idxs):
                     d, l = raw_lines[i - 1]
-                    share = d * (ts.duration / max(
-                        sum(raw_lines[j - 1][0] for j in idxs), 1e-6))
+                    share = d * share_k
                     timed_lines.append(TimedLine(l, sc.id, round(inner, 3),
                                                  round(inner + share, 3)))
                     inner += share
+                    if n < len(idxs) - 1:
+                        inner += gap * share_k
         else:
             line_cursor = cursor
-            for d, l in raw_lines:
+            for n, (d, l) in enumerate(raw_lines):
                 timed_lines.append(TimedLine(l, sc.id, round(line_cursor, 3),
                                              round(line_cursor + d, 3)))
                 line_cursor += d
+                if n < len(raw_lines) - 1:
+                    line_cursor += gap
         timed_lines.sort(key=lambda t: t.start)
 
         # 5) narration: display-only cards spread across the scene. They overlap

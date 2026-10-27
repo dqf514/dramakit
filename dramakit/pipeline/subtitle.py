@@ -18,7 +18,8 @@ def run(ctx: Context) -> dict:
     for ep in ctx.target_episodes():
         if not ep.scenes:
             continue
-        tl = build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds)
+        tl = build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds,
+                           line_gap=ctx.cfg.compose.line_gap)
         cues: list[SubtitleCue] = []
         for tsc in tl.scenes:
             for tl_line in tsc.lines:

@@ -527,6 +527,24 @@ def _cjk_font() -> str:
     return ""
 
 
+def draw_title(src: str | Path, out: str | Path, title: str, *,
+              width: int = 960, height: int = 544) -> str:
+    """Put the title on the cover, big enough to read on a phone."""
+    out = Path(out)
+    font = _cjk_font()
+    size = max(20, int(height * 0.11))
+    # the title can be long: keep it on one line by shrinking it to fit
+    while size > 16 and len(title) * size * 1.05 > width * 0.86:
+        size -= 2
+    text = (title.replace("\\", "\\\\").replace(":", "\\:")
+            .replace("'", "").replace("%", "\\%"))
+    vf = (f"drawtext=fontfile='{font}':text='{text}':fontcolor=white:"
+          f"fontsize={size}:x=(w-text_w)/2:y=h-text_h-{int(height*0.06)}:"
+          f"box=1:boxcolor=black@0.45:boxborderw={max(8, int(height*0.03))}")
+    _run([ffmpeg_bin(), "-y", "-i", str(src), "-vf", vf, "-frames:v", "1", str(out)])
+    return str(out)
+
+
 def mux(video: str | Path, audio: str | Path, out: str | Path, *,
         video_bitrate: str = "6M", audio_bitrate: str = "192k",
         codec: str = "libx264", crf: int = 20, preset: str = "medium",
