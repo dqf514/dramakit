@@ -142,9 +142,14 @@ def _h3_needed(ctx: Context) -> bool:
 
 
 def _aspect(ctx: Context) -> tuple[str, str]:
-    """(aspect phrase, composition phrase) for the configured output size."""
-    w = ctx.cfg.comfyui.width or 1280
-    h = ctx.cfg.comfyui.height or 720
+    """(aspect phrase, composition phrase) for the configured output size.
+
+    The delivery format is the truth: the picture is made for the frame it
+    is going to be shown in. Getting this wrong is how a vertical drama ends
+    up with its faces cut off at the sides.
+    """
+    w = ctx.cfg.compose.width or 1280
+    h = ctx.cfg.compose.height or 720
     if w >= h:
         return "横屏(16:9)镜头", "横屏构图 horizontal composition, 16:9"
     return "竖屏(9:16)镜头", "竖屏构图 vertical composition, 9:16"

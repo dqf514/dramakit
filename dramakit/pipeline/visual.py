@@ -86,7 +86,7 @@ def _fit_refs(ctx: Context, refs: list[str], shot: Shot) -> list[str]:
     for i, path in enumerate(refs):
         dst = out_dir / f"{shot.id}_{i}.png"
         try:
-            ff.fit_reference(path, dst, c.width, c.height)
+            ff.fit_reference(path, dst, iw, ih)
             out.append(str(dst))
         except Exception as e:  # noqa: BLE001
             ctx.log.warning("参考图适配失败(%s)，用原图: %s", path, str(e)[:120])
@@ -118,6 +118,7 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
     if vis is None:
         return shot.id, False, "no visual provider"
     c = ctx.cfg.comfyui
+    iw, ih = _image_size(ctx)
     img_out = ctx.store.image_path(shot.id)
     end_out = ctx.store.end_image_path(shot.id)
     seed = _seed_for(ctx, shot)
@@ -127,7 +128,7 @@ def _gen_one(ctx: Context, sc, shot: Shot, *, do_image: bool, do_video: bool,
             refs = _fit_refs(ctx, _ref_images(ctx, shot, sc), shot)
             vis.generate_image(
                 prompt=shot.prompt, negative=shot.negative_prompt,
-                width=c.width, height=c.height, seed=seed, steps=c.steps, cfg=c.cfg,
+                width=iw, height=ih, seed=seed, steps=c.steps, cfg=c.cfg,
                 out_path=str(img_out), extra=_extra(ctx), ref_images=refs)
             meta["refs"] = len(refs)
         if img_out.exists():
@@ -203,6 +204,29 @@ def _render(ctx: Context, what: str, shot_id: str, fn, tries: int = 3):
                             shot_id, what, attempt + 2)
             time.sleep(15 + attempt * 10)
     raise last  # type: ignore[misc]
+
+
+def _image_size(ctx: Context) -> tuple[int, int]:
+    """The size the stills are made at.
+
+    The picture has to be made in the shape it is going to be shown in: a
+    still made in another shape is cropped to fit, and the crop is what takes
+    the faces off. The configured image size is kept as long as its shape
+    matches the delivery format.
+    """
+    c = ctx.cfg.comfyui
+    w, h = int(c.width or 1280), int(c.height or 720)
+    dw, dh = int(ctx.cfg.compose.width or 0), int(ctx.cfg.compose.height or 0)
+    if dw <= 0 or dh <= 0:
+        return w, h
+    if abs((w / h) - (dw / dh)) <= 0.03:
+        return w, h
+    k = min(w / dw, h / dh)
+    nw = max(512, int(dw * k) // 16 * 16)
+    nh = max(512, int(dh * k) // 16 * 16)
+    ctx.log.warning("visual: 出图尺寸 %dx%d 与成片 %dx%d 比例不符，改用 %dx%d",
+                    w, h, dw, dh, nw, nh)
+    return nw, nh
 
 
 def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
