@@ -305,7 +305,31 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
         return shot.id, False, msg
 
 
-def _gen_score(ctx: Context, ep, sc) -> tuple[str, bool, str]:
+def _gen_scores(ctx: Context) -> int:
+    """One music-only clip per scene: the score of the episode."""
+    if ctx.cfg.compose.h3_audio != "bed":
+        return 0
+    jobs = []
+    for ep in ctx.target_episodes():
+        for tscene in build_timeline(
+                ep, max_shot=ctx.cfg.comfyui.max_video_seconds).scenes:
+            jobs.append((ep, tscene.scene, tscene.duration))
+    if not jobs:
+        return 0
+    ctx.log.info("visual: 配乐镜头（%d 段）", len(jobs))
+    ok = 0
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        futs = [ex.submit(_gen_score, ctx, ep, sc, dur) for ep, sc, dur in jobs]
+        for i, fut in enumerate(as_completed(futs), 1):
+            _sid, good, _msg = fut.result()
+            ok += int(good)
+            _write_progress(ctx, "visual", i, len(jobs))
+            if i % 2 == 0 or i == len(jobs):
+                ctx.log.info("visual: 配乐 %d/%d 完成", i, len(jobs))
+    return ok
+
+
+def _gen_score(ctx: Context, ep, sc, scene_duration: float = 0.0) -> tuple[str, bool, str]:
     """Render the scene's music-only clip.
 
     The clip has no people in it, so its sound is only ambience and music -
@@ -334,7 +358,12 @@ def _gen_score(ctx: Context, ep, sc) -> tuple[str, bool, str]:
         if not shots:
             return sc.id, False, "没有可用的首帧"
         first = ctx.store.abs(shots[0].image_path)
-    frames = max(124, min(c.frames or 124, 17 * 7 + 5))
+    # the clip is as long as the scene it scores, so the music does not have
+    # to repeat every five seconds; a scene longer than the model can make
+    # is looped once
+    scene_dur = scene_duration or 0.0
+    frames = int(round(scene_dur * c.fps)) if scene_dur > 0 else 124
+    frames = max(124, min(frames, int(c.max_video_seconds * c.fps)))
     seed = 100000 + ep.index * 100 + sc.index
     try:
         _render(ctx, "配乐", sc.id, lambda: vis.generate_video(
@@ -404,6 +433,7 @@ def run(ctx: Context) -> dict:
 
     if not jobs:
         ctx.log.info("visual: 所有镜头已生成")
+        _gen_scores(ctx)
         return {"shots": 0}
 
     ctx.log.info("visual: 生成 %d 个镜头（并发=%d，模式=%s）", len(jobs), c.concurrency, c.mode)
@@ -446,21 +476,8 @@ def run(ctx: Context) -> dict:
                 shot.status = Status.DONE
 
     # the music bed: one music-only clip per scene
-    if do_video and ctx.cfg.compose.h3_audio == "bed":
-        score_jobs = []
-        for ep in ctx.target_episodes():
-            for sc in ep.scenes:
-                score_jobs.append((ep, sc))
-        if score_jobs:
-            ctx.log.info("visual: 第三批 · 配乐镜头（%d 段）", len(score_jobs))
-            with ThreadPoolExecutor(max_workers=1) as ex:
-                futs = [ex.submit(_gen_score, ctx, ep, sc) for ep, sc in score_jobs]
-                for i, fut in enumerate(as_completed(futs), 1):
-                    _sid, ok, _msg = fut.result()
-                    ok_count += int(ok)
-                    _write_progress(ctx, "visual", offset + i, total + len(score_jobs))
-                    if i % 2 == 0 or i == len(score_jobs):
-                        ctx.log.info("visual: 配乐 %d/%d 完成", i, len(score_jobs))
+    if do_video:
+        _gen_scores(ctx)
     ctx.save()
 
     for ep in ctx.target_episodes():
