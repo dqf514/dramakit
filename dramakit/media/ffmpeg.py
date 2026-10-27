@@ -432,7 +432,9 @@ def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path,
         raw.replace(out)
         return str(out)
     m = measure_loudness(raw)
-    af = f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11"
+    # the aac encode pushes the peaks up a little, so the normaliser leaves
+    # more headroom than the target itself
+    af = f"loudnorm=I={target_lufs}:TP=-2.2:LRA=11"
     if m.get("input_i"):
         af += (f":measured_I={m['input_i']}:measured_TP={m['input_tp']}"
                f":measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}")

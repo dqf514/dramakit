@@ -1,0 +1,219 @@
+{
+  "project": "轮次08_08",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "雨夜仓库的第五人",
+      "picture": {
+        "frames": 16,
+        "sharp_median": 26.1,
+        "sharp_min": 15.8,
+        "luma_spread": 9.2,
+        "src_luma_spread": 17.4,
+        "graded_luma_spread": 2.7,
+        "sat_spread": 2.5
+      },
+      "voice": {
+        "lines": 12,
+        "rows": [
+          {
+            "id": "ln-c55e2b03",
+            "speaker": "老周",
+            "emotion": "严肃",
+            "duration": 3.06,
+            "chars": 14
+          },
+          {
+            "id": "ln-ea8cdcf2",
+            "speaker": "小韩",
+            "emotion": "疑惑",
+            "duration": 2.5,
+            "chars": 8
+          },
+          {
+            "id": "ln-ef831d8f",
+            "speaker": "老周",
+            "emotion": "沉重",
+            "duration": 3.19,
+            "chars": 12
+          },
+          {
+            "id": "ln-d49a695b",
+            "speaker": "小韩",
+            "emotion": "紧张",
+            "duration": 2.82,
+            "chars": 11
+          },
+          {
+            "id": "ln-b9687ccf",
+            "speaker": "老周",
+            "emotion": "笃定",
+            "duration": 1.43,
+            "chars": 5
+          },
+          {
+            "id": "ln-b97e4659",
+            "speaker": "接线员",
+            "emotion": "紧张",
+            "duration": 4.11,
+            "chars": 15
+          },
+          {
+            "id": "ln-62016876",
+            "speaker": "老周",
+            "emotion": "惊讶",
+            "duration": 2.56,
+            "chars": 10
+          },
+          {
+            "id": "ln-3b9de0a6",
+            "speaker": "老周",
+            "emotion": "震惊",
+            "duration": 2.21,
+            "chars": 10
+          },
+          {
+            "id": "ln-38ea12c0",
+            "speaker": "接线员",
+            "emotion": "紧张",
+            "duration": 3.22,
+            "chars": 16
+          },
+          {
+            "id": "ln-484cd520",
+            "speaker": "老周",
+            "emotion": "果断",
+            "duration": 2.76,
+            "chars": 9
+          },
+          {
+            "id": "ln-02a27c26",
+            "speaker": "小韩",
+            "emotion": "紧张",
+            "duration": 3.34,
+            "chars": 12
+          },
+          {
+            "id": "ln-78f7c783",
+            "speaker": "老周",
+            "emotion": "坚定",
+            "duration": 1.69,
+            "chars": 5
+          }
+        ],
+        "per_emotion": {
+          "严肃": 3.06,
+          "疑惑": 2.5,
+          "沉重": 3.19,
+          "紧张": 3.37,
+          "笃定": 1.43,
+          "惊讶": 2.56,
+          "震惊": 2.21,
+          "果断": 2.76,
+          "坚定": 1.69
+        },
+        "voices": {
+          "老周": {
+            "pitch": 173.9,
+            "zcr": 1146.7,
+            "lines": 7
+          },
+          "小韩": {
+            "pitch": 222.2,
+            "zcr": 1016.8,
+            "lines": 3
+          },
+          "接线员": {
+            "pitch": 266.7,
+            "zcr": 815.5,
+            "lines": 2
+          }
+        }
+      },
+      "completeness": {
+        "duration": 36.42,
+        "timeline": 36.42,
+        "lines": 12,
+        "onsets": 18
+      },
+      "story": {
+        "mismatched": 0,
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-38ea12c0",
+            "speaker": "接线员",
+            "shot": "sh-57ce1a98",
+            "on_screen": [
+              "老周"
+            ],
+            "text": "报警人说……那人正在等第五个"
+          }
+        ]
+      },
+      "frozen": {
+        "short": 0,
+        "rows": []
+      },
+      "sync": {
+        "off_cut": 0,
+        "rows": []
+      },
+      "pacing": {
+        "average": 4.55,
+        "long": 0,
+        "rows": []
+      },
+      "mix": {
+        "episode": {
+          "i": -17.4,
+          "lra": 8.2,
+          "pk": -1.8
+        },
+        "voice": {
+          "i": -24.6,
+          "lra": 10.4,
+          "pk": -3.0
+        },
+        "music": {
+          "i": -37.8,
+          "lra": 5.1,
+          "pk": -18.4
+        },
+        "bed": {
+          "i": -24.7,
+          "lra": 5.2,
+          "pk": -5.3
+        },
+        "audibility": {
+          "speech_lufs": -23.3,
+          "bed_peak_lufs": -35.3,
+          "gap_lu": 12.0
+        },
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 25,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "nle": {
+        "spine": 8,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 36.42
+      }
+    }
+  ],
+  "issues": [],
+  "issue_count": 0,
+  "verdict": "PASS"
+}
