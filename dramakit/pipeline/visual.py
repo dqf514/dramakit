@@ -305,6 +305,49 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
         return shot.id, False, msg
 
 
+def _gen_score(ctx: Context, ep, sc) -> tuple[str, bool, str]:
+    """Render the scene's music-only clip.
+
+    The clip has no people in it, so its sound is only ambience and music -
+    which is what the episode needs for its score. The shots' own sound is
+    not used: H3 speaks the prompt out loud in gibberish when a character is
+    told to talk, and that belongs nowhere near the recorded dialogue.
+    """
+    if not sc.score_prompt:
+        return sc.id, False, "没有配乐提示词"
+    vis = ctx.providers.visual
+    c = ctx.cfg.comfyui
+    out = ctx.store.root / "music" / f"score_ep{ep.index:03d}_sc{sc.index:03d}.mp4"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if out.exists() and out.stat().st_size > 1024:
+        return sc.id, True, "cached"
+    # the location's own picture keeps the score in the right place
+    first = ctx.store.location_ref_path(sc.location, "ref", "png")
+    if not first.exists():
+        for ext in ("jpg", "jpeg", "webp"):
+            alt = ctx.store.location_ref_path(sc.location, "ref", ext)
+            if alt.exists():
+                first = alt
+                break
+    if not first.exists():
+        shots = [sh for sh in sc.shots if sh.image_path]
+        if not shots:
+            return sc.id, False, "没有可用的首帧"
+        first = ctx.store.abs(shots[0].image_path)
+    frames = max(124, min(c.frames or 124, 17 * 7 + 5))
+    seed = 100000 + ep.index * 100 + sc.index
+    try:
+        _render(ctx, "配乐", sc.id, lambda: vis.generate_video(
+            prompt=sc.score_prompt, negative="",
+            image_path=str(first), frames=frames, fps=c.fps, seed=seed,
+            out_path=str(out), extra=_extra(ctx)))
+        return sc.id, True, ""
+    except Exception as e:  # noqa: BLE001
+        msg = str(e)[:200]
+        ctx.log.error("visual: 场%d 配乐镜头失败 %s", sc.index, msg)
+        return sc.id, False, msg
+
+
 def _write_progress(ctx: "Context", stage: str, done: int, total: int) -> None:
     """Persist transient per-shot progress to a sidecar file the web console reads.
 
@@ -401,6 +444,23 @@ def run(ctx: Context) -> dict:
         for (_ep, _sc, shot) in jobs:
             if shot.image_path and shot.status != Status.FAILED:
                 shot.status = Status.DONE
+
+    # the music bed: one music-only clip per scene
+    if do_video and ctx.cfg.compose.h3_audio == "bed":
+        score_jobs = []
+        for ep in ctx.target_episodes():
+            for sc in ep.scenes:
+                score_jobs.append((ep, sc))
+        if score_jobs:
+            ctx.log.info("visual: 第三批 · 配乐镜头（%d 段）", len(score_jobs))
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                futs = [ex.submit(_gen_score, ctx, ep, sc) for ep, sc in score_jobs]
+                for i, fut in enumerate(as_completed(futs), 1):
+                    _sid, ok, _msg = fut.result()
+                    ok_count += int(ok)
+                    _write_progress(ctx, "visual", offset + i, total + len(score_jobs))
+                    if i % 2 == 0 or i == len(score_jobs):
+                        ctx.log.info("visual: 配乐 %d/%d 完成", i, len(score_jobs))
     ctx.save()
 
     for ep in ctx.target_episodes():

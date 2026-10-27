@@ -6,12 +6,12 @@
       "title": "被逐少爷归来夺股",
       "picture": {
         "frames": 16,
-        "sharp_median": 28.7,
-        "sharp_min": 11.8,
-        "luma_spread": 10.6,
-        "src_luma_spread": 31.9,
-        "graded_luma_spread": 2.9,
-        "sat_spread": 4.4
+        "sharp_median": 34.4,
+        "sharp_min": 20.4,
+        "luma_spread": 9.6,
+        "src_luma_spread": 25.9,
+        "graded_luma_spread": 5.2,
+        "sat_spread": 3.0
       },
       "voice": {
         "lines": 14,
@@ -151,10 +151,10 @@
         }
       },
       "completeness": {
-        "duration": 30.75,
+        "duration": 30.22,
         "timeline": 30.22,
         "lines": 14,
-        "onsets": 21
+        "onsets": 19
       },
       "story": {
         "mismatched": 0,
@@ -172,21 +172,8 @@
         ]
       },
       "frozen": {
-        "short": 2,
-        "rows": [
-          {
-            "shot": "sh-1ee86a6d",
-            "slot": 5.22,
-            "material": 3.75,
-            "frozen": 1.47
-          },
-          {
-            "shot": "sh-0272220c",
-            "slot": 6.34,
-            "material": 3.75,
-            "frozen": 2.59
-          }
-        ]
+        "short": 0,
+        "rows": []
       },
       "sync": {
         "off_cut": 0,
@@ -199,27 +186,27 @@
       },
       "mix": {
         "episode": {
-          "i": -16.7,
-          "lra": 4.8,
-          "pk": -1.2
+          "i": -17.1,
+          "lra": 3.7,
+          "pk": -2.0
         },
         "voice": {
           "i": -22.0,
-          "lra": 5.6,
+          "lra": 5.0,
           "pk": -0.9
         },
         "music": {
-          "i": -36.3,
-          "lra": 4.5,
-          "pk": -18.2
+          "i": -34.9,
+          "lra": 3.8,
+          "pk": -13.0
         },
         "bed": {
-          "i": -24.1,
-          "lra": 4.5,
-          "pk": -5.9
+          "i": -24.0,
+          "lra": 3.9,
+          "pk": -2.0
         },
         "audibility": {
-          "speech_lufs": -21.3,
+          "speech_lufs": -21.2,
           "bed_peak_lufs": -33.2,
           "gap_lu": 12.0
         },
@@ -242,78 +229,11 @@
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 30.75
+        "spine_length": 30.22
       }
     }
   ],
-  "issues": [
-    {
-      "area": "completeness",
-      "kind": "duration_mismatch",
-      "where": "-",
-      "detail": "成片 30.75s，时间线 30.22s，差了 +0.53s（有内容被截断）"
-    },
-    {
-      "area": "picture",
-      "kind": "frozen_shots",
-      "where": "-",
-      "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-1ee86a6d 短 1.47s；sh-0272220c 短 2.59s"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-d7973934",
-      "detail": "这句没有对应的字幕：陆沉。三年前被赶出去。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-30a2f5a4",
-      "detail": "这句没有对应的字幕：哥，别开玩笑了。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-c9cd5e90",
-      "detail": "这句没有对应的字幕：今天来的都是客人。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-ce667faa",
-      "detail": "这句没有对应的字幕：我来拿我的股权。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-e079e0f7",
-      "detail": "这句没有对应的字幕：周行长马上就到。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-9a764ccb",
-      "detail": "这句没有对应的字幕：遗嘱？十年前就改了。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-b80a3727",
-      "detail": "这句没有对应的字幕：改没改，档案里写着。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-d493f891",
-      "detail": "这句没有对应的字幕：保安！"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-7dfe1d02",
-      "detail": "这句没有对应的字幕：你……"
-    }
-  ],
-  "issue_count": 11,
-  "verdict": "ISSUES"
+  "issues": [],
+  "issue_count": 0,
+  "verdict": "PASS"
 }

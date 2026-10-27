@@ -212,19 +212,16 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     ad = ctx.project.art_direction
     try:
         if ctx.cfg.compose.h3_audio == "bed":
-            # H3 only renders the music/ambience bed; every spoken line comes
-            # from the TTS track, so H3 must not voice anything.
-            # Asking H3 to show someone talking makes it synthesise gibberish
-            # speech that fights the recorded voice - describe the expression
-            # and the movement, never the vocal action.
+            # The dialogue is recorded separately, so the shot only has to
+            # show the performance - that is what gives the lip movement. The
+            # clip's own sound is thrown away: the score comes from a separate
+            # music-only clip, so H3's gibberish voice never reaches the mix.
             dlg_text = "无"
-            note = ("重要：本镜台词由后期配音轨单独提供，H3 不得生成任何人声。"
-                    "请只用表情、眼神、姿态、镜头运动来表达情绪与张力，"
-                    "**不要描述任何发声动作**：不要出现 speaks / says / lips / "
-                    "voice / talking / dialogue / murmurs 这类词，也不要写"
-                    "「嘴唇开合」「开口说话」之类的描述。"
+            note = ("本镜台词由后期配音轨提供，**不要写出台词内容，也不要写 <d> 标签**。"
+                    "但要写清楚角色说话时的表演（开口、语气、情绪），用英文写，"
+                    "例如 the man speaks to the woman with a stern, restrained tone。"
                     "overall_soundscape 只写环境声与动作声（脚步、风、车辆、器物），"
-                    "不要有人的说话声、对话或旁白；non_diegetic_music 写配乐。")
+                    "不要重复对白；non_diegetic_music 写配乐。")
         else:
             dlg_text, _ids = _numbered_dialogue(lines)
             note = "台词必须原样用 <d>[zh-CN]...</d> 包住，不要改写。"
@@ -250,6 +247,35 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         ctx.log.warning("promptgen: 镜 %s H3提示词失败(%s)，用模板兜底",
                         shot.id, str(e)[:120])
         shot.video_prompt = _fallback_h3_prompt(ctx, shot, sc, lines)
+
+
+def _gen_score_prompt(ctx: Context, llm, sc) -> None:
+    """The prompt for the scene's music-only clip.
+
+    The score has to come from somewhere that does not also speak: H3 would
+    read the dialogue out loud in gibberish if it were asked for it, and that
+    ends up under the recorded voice. So every scene gets one extra clip of
+    the empty location, and its sound is the music bed.
+    """
+    ad = ctx.project.art_direction
+    loc = next((l for l in ctx.project.locations if l.name == sc.location), None)
+    location_visual = (loc.visual_prompt or loc.description) if loc else ""
+    user = T.render(T.H3_SCORE_USER, location=sc.location or "场景",
+                    time_of_day=sc.time_of_day,
+                    location_visual=location_visual or "（按剧情合理生成）",
+                    mood=sc.mood, style=ad.style_prompt_prefix or ad.style)
+    try:
+        data = llm.complete_json(T.H3_SCORE_SYSTEM, user)
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        desc = str(data.get("integrated_multimodal_description") or "").strip()
+        soundscape = str(data.get("overall_soundscape") or "").strip()
+        music = str(data.get("non_diegetic_music") or "").strip()
+        if desc:
+            sc.score_prompt = _assemble_h3_prompt(desc, soundscape or "N/A",
+                                                  music or "N/A")
+    except Exception as e:  # noqa: BLE001
+        ctx.log.warning("promptgen: 场%d 配乐提示词失败(%s)", sc.index, str(e)[:120])
 
 
 def run(ctx: Context) -> dict:
@@ -302,6 +328,13 @@ def run(ctx: Context) -> dict:
             for job in jobs:
                 _one(job)
         count += len(jobs)
+        # the music bed: one music-only clip per scene
+        if h3_needed:
+            for sc in ep.scenes:
+                if sc.score_prompt:
+                    continue
+                _gen_score_prompt(ctx, llm, sc)
+                count += 1
         ctx.mark(ep, "promptgen", Status.DONE)
         ctx.save()
     ctx.log.info("promptgen: 生成 %d 个镜头提示词", count)

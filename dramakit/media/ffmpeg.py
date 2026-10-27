@@ -272,6 +272,27 @@ def concat_audio(parts: Sequence[str | Path], out: str | Path) -> str:
     return str(out)
 
 
+def loop_audio(src: str | Path, out: str | Path, duration: float,
+               fade: float = 0.4) -> str:
+    """Loop a clip until it fills `duration`, with a fade at the end.
+
+    The music bed is one short clip of the scene played under the whole
+    scene; a hard cut every few seconds would be noticed, so it fades out
+    instead.
+    """
+    out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
+    cur = probe_duration(src)
+    if cur <= 0:
+        return make_silence(out, duration)
+    if cur >= duration - 0.05:
+        return pad_audio(src, out, duration)
+    af = f"afade=t=out:st={max(duration - fade, 0):.3f}:d={fade:.3f}"
+    _run([ffmpeg_bin(), "-y", "-stream_loop", "-1", "-i", str(src),
+          "-t", f"{duration:.3f}", "-af", af,
+          "-c:a", "libmp3lame", "-q:a", "3", str(out)])
+    return str(out)
+
+
 def pad_audio(src: str | Path, out: str | Path, total_duration: float) -> str:
     """Pad/truncate audio to exactly total_duration (trailing silence)."""
     out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)

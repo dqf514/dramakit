@@ -73,9 +73,18 @@ def _ass_header(style: dict, width: int, height: int) -> str:
     narr_back = style.get("narration_back_color", "&H66000000")
     narr_margin = style.get("narration_margin_v", 40)
     narr_align = style.get("narration_alignment", 8)
-    # ASS font sizes are relative to script resolution; scale up for 1080-wide
-    scaled = int(round(size * (height / 288)))
-    narr_scaled = int(round(narr_size * (height / 288)))
+    # The font size is relative to a 288 high canvas, the margin to a 1080
+    # high one - the values in the config come from a vertical 1080p frame,
+    # where a margin of 220 puts the text 20% up from the bottom. Scale both
+    # to the frame we are actually making, or the subtitle ends up in the
+    # middle of the picture.
+    k = height / 288
+    mk = height / 1080
+    scaled = int(round(size * k))
+    narr_scaled = int(round(narr_size * k))
+    margin_v = int(round(margin_v * mk))
+    narr_margin = int(round(narr_margin * mk))
+    margin_h = int(round(60 * mk))
     return f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {width}
@@ -85,9 +94,9 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font},{scaled},{primary},&H00FFFFFF,{outline_c},&H64000000,{bold},0,0,0,100,100,0,0,1,{outline},{shadow},{align},60,60,{margin_v},1
-Style: Speaker,{font},{int(scaled*0.72)},{style.get("speaker_color","&H0000E5FF")},&H00FFFFFF,{outline_c},&H64000000,{bold},0,0,0,100,100,0,0,1,{outline},0,{align},60,60,{margin_v + int(scaled*1.25)},1
-Style: Narration,{narr_font},{narr_scaled},{narr_color},&H00FFFFFF,{outline_c},{narr_back},{bold},1,0,0,100,100,0,0,3,1,0,{narr_align},80,80,{narr_margin},1
+Style: Default,{font},{scaled},{primary},&H00FFFFFF,{outline_c},&H64000000,{bold},0,0,0,100,100,0,0,1,{outline},{shadow},{align},{margin_h},{margin_h},{margin_v},1
+Style: Speaker,{font},{int(scaled*0.72)},{style.get("speaker_color","&H0000E5FF")},&H00FFFFFF,{outline_c},&H64000000,{bold},0,0,0,100,100,0,0,1,{outline},0,{align},{margin_h},{margin_h},{margin_v + int(scaled*1.25)},1
+Style: Narration,{narr_font},{narr_scaled},{narr_color},&H00FFFFFF,{outline_c},{narr_back},{bold},1,0,0,100,100,0,0,3,1,0,{narr_align},{margin_h},{margin_h},{narr_margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

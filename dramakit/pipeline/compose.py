@@ -231,35 +231,31 @@ def compose_episode(ctx: Context, ep) -> str:
     ep.voice_path = ctx.store.rel(voice)
 
     # --- MiniMax H3 native audio bed ---
-    # H3 renders its own stereo mix (score + ambience). Keep it as a bed under
-    # the TTS dialogue instead of throwing it away — that is where the BGM
-    # comes from. The H3 prompt does not carry any spoken lines, so there is
-    # no second voice fighting the TTS track.
+    # The score comes from a music-only clip of every scene: an empty shot of
+    # the location, with no one in it and nobody speaking. The shots' own
+    # sound is not used - H3 reads the prompt out loud in gibberish when a
+    # character is told to talk, and that would end up under the recorded
+    # dialogue.
     bed = None
     if cc.h3_audio == "bed":
         beds: list[str] = []
-        for i, tshot in enumerate(tl.shots):
-            vid = tshot.shot.video_path
-            if not vid:
+        for tscene in tl.scenes:
+            sc = tscene.scene
+            clip = ctx.store.root / "music" / f"score_ep{ep.index:03d}_sc{sc.index:03d}.mp4"
+            if not clip.exists():
                 continue
-            vp = ctx.store.abs(vid)
-            if not vp.exists():
-                continue
-            raw = ff.extract_audio(vp, tmp / f"h3raw_{i:04d}.mp3")
+            raw = ff.extract_audio(clip, tmp / f"score_sc{sc.index:03d}.mp3")
             if not raw:
                 continue
-            # Every H3 shot is generated separately, so its native score comes
-            # out at a different level. Normalise each one to the same
-            # loudness or the bed audibly pumps from shot to shot.
-            if cc.normalize_bed_loudness:
-                raw = ff.normalize_loudness(raw, tmp / f"h3norm_{i:04d}.mp3",
-                                           target_lufs=cc.bed_target_lufs, tp=-2.0)
-            beds.append(ff.pad_audio(raw, tmp / f"h3bed_{len(beds):04d}.mp3",
-                                      tshot.duration))
+            beds.append(ff.loop_audio(raw, tmp / f"scorebed_sc{sc.index:03d}.mp3",
+                                       tscene.duration))
         if beds:
             bed = tmp / "h3_bed.mp3"
             ff.concat_audio(beds, bed)
-            ctx.log.info("compose: 第%d集 H3 原生音频垫底 %d 段", ep.index, len(beds))
+            ctx.log.info("compose: 第%d集 配乐垫底 %d 段（每场一段无人空镜）",
+                         ep.index, len(beds))
+        else:
+            ctx.log.warning("compose: 第%d集 没有配乐镜头，音乐垫底为空", ep.index)
 
     # --- music stem ---
     # One music track under the dialogue: the H3 bed and the library BGM each

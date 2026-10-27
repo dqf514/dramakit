@@ -60,6 +60,10 @@ class Timeline:
         return [tl for sc in self.scenes for tl in sc.lines]
 
 
+# a shot carries at most this much dialogue: a short drama cuts fast
+SHOT_DIALOGUE_MAX = 5.5
+
+
 def _line_duration(line: Line) -> float:
     """Use measured audio duration if the voice stage ran; else estimate."""
     if line.duration and line.duration > 0:
@@ -68,19 +72,24 @@ def _line_duration(line: Line) -> float:
 
 
 def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
-                   line_durs: list[float] | None = None) -> dict[str, list[int]] | None:
+                   line_durs: list[float] | None = None,
+                   max_dialogue: float = 0.0) -> dict[str, list[int]] | None:
     """Which lines each shot carries, and who gets the leftovers.
 
     The storyboard says which lines a shot covers. When it does, the shot
     lasts exactly as long as those lines, so the cut lands on a line boundary
     and the camera is on the person who is talking.
 
-    A shot cannot hold more than the longest video the model can make, so a
-    shot that claims too much has to give the tail of it back.
+    A shot cannot hold more than the longest video the model can make, and
+    it cannot hold more than a few seconds of dialogue either - a short
+    drama cuts fast. A shot that claims too much has to give it back.
     """
     if not shots or n_lines <= 0:
         return None
     durs = line_durs or []
+    limit = max_shot if max_shot > 0 else 0.0
+    if max_dialogue > 0:
+        limit = max_dialogue if limit <= 0 else min(limit, max_dialogue)
     claimed: dict[str, list[int]] = {}
     used: set[int] = set()
     for sh in shots:
@@ -89,19 +98,24 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
             if 1 <= n <= n_lines and n not in used:
                 idxs.append(n)
                 used.add(n)
-        if idxs and max_shot > 0 and durs:
+        if idxs and limit > 0 and durs:
             # give back the tail that does not fit into one clip
             total = 0.0
             keep = []
             for n in idxs:
                 d = durs[n - 1] if n - 1 < len(durs) else 0.0
-                if keep and total + d > max_shot:
+                if keep and total + d > limit:
                     break
                 total += d
                 keep.append(n)
             for n in idxs[len(keep):]:
                 used.discard(n)
             idxs = keep
+        if len(idxs) > 2:
+            # a short drama cuts fast: a shot carries at most two lines
+            for n in idxs[2:]:
+                used.discard(n)
+            idxs = idxs[:2]
         if idxs:
             claimed[sh.id] = idxs
     if not claimed:
@@ -122,7 +136,7 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
             d = durs[n - 1] if n - 1 < len(durs) else 0.0
             want = (n - 0.5) / n_lines * n_shots
             fits = [sh for sh in shots
-                    if not (max_shot > 0 and length_of(sh.id) + d > max_shot)]
+                    if not (limit > 0 and length_of(sh.id) + d > limit)]
             empty = [sh for sh in fits if not claimed.get(sh.id)]
             if empty:
                 best = min(empty, key=lambda sh: abs(sh.index - want))
@@ -140,7 +154,8 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
 
 def _assign_by_cast(shots, line_durs: list[float],
                     speakers: list[str],
-                    max_shot: float = 0.0) -> dict[str, list[int]] | None:
+                    max_shot: float = 0.0,
+                    max_dialogue: float = 0.0) -> dict[str, list[int]] | None:
     """Work out which lines each shot carries when the storyboard did not say.
 
     The lines go to the shot that has the speaker in frame, which keeps the
@@ -152,6 +167,9 @@ def _assign_by_cast(shots, line_durs: list[float],
         return None
     n = len(speakers)
     claimed: dict[str, list[int]] = {}
+    limit = max_shot if max_shot > 0 else 0.0
+    if max_dialogue > 0:
+        limit = max_dialogue if limit <= 0 else min(limit, max_dialogue)
 
     def length_of(sid: str) -> float:
         return sum(line_durs[i - 1] for i in claimed.get(sid, []))
@@ -161,7 +179,7 @@ def _assign_by_cast(shots, line_durs: list[float],
         d = line_durs[k] if k < len(line_durs) else 0.0
         cands = [sh for sh in shots
                  if sp in (sh.characters or []) and len(claimed.get(sh.id, [])) < 2
-                 and not (max_shot > 0 and length_of(sh.id) + d > max_shot)]
+                 and not (limit > 0 and length_of(sh.id) + d > limit)]
         if not cands:
             continue
         want = (k + 0.5) / n * len(shots)
@@ -175,7 +193,7 @@ def _assign_by_cast(shots, line_durs: list[float],
         d = line_durs[k] if k < len(line_durs) else 0.0
         free = [sh for sh in shots
                 if len(claimed.get(sh.id, [])) < 2
-                and not (max_shot > 0 and length_of(sh.id) + d > max_shot)]
+                and not (limit > 0 and length_of(sh.id) + d > limit)]
         best = (min(free, key=lambda sh: len(claimed.get(sh.id, []))) if free
                 else min(shots, key=lambda sh: len(claimed.get(sh.id, []))))
         claimed.setdefault(best.id, []).append(k + 1)
@@ -201,12 +219,14 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
         #    shot carries, the shot is exactly as long as those lines - the cut
         #    lands on the dialogue instead of drifting through it.
         line_map = _shot_line_map(sc.shots, len(raw_lines), max_shot=max_shot,
-                                   line_durs=[d for d, _ in raw_lines])
+                                   line_durs=[d for d, _ in raw_lines],
+                                   max_dialogue=SHOT_DIALOGUE_MAX)
         if line_map is None and sc.shots:
             # the storyboard did not say: work it out from who is in frame
             line_map = _assign_by_cast(sc.shots, [d for d, _ in raw_lines],
                                        [l.speaker for _, l in raw_lines],
-                                       max_shot=max_shot)
+                                       max_shot=max_shot,
+                                       max_dialogue=SHOT_DIALOGUE_MAX)
         shot_durs: list[float] = []
         for sh in sc.shots:
             d = max(sh.duration, min_shot)

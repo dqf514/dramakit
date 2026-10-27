@@ -6,12 +6,12 @@
       "title": "死去三年的新娘",
       "picture": {
         "frames": 16,
-        "sharp_median": 18.1,
-        "sharp_min": 10.8,
-        "luma_spread": 14.5,
-        "src_luma_spread": 25.9,
-        "graded_luma_spread": 5.0,
-        "sat_spread": 2.6
+        "sharp_median": 16.0,
+        "sharp_min": 9.3,
+        "luma_spread": 17.3,
+        "src_luma_spread": 32.0,
+        "graded_luma_spread": 11.1,
+        "sat_spread": 1.5
       },
       "voice": {
         "lines": 13,
@@ -129,15 +129,25 @@
         }
       },
       "completeness": {
-        "duration": 36.77,
-        "timeline": 36.78,
+        "duration": 37.23,
+        "timeline": 37.28,
         "lines": 13,
-        "onsets": 20
+        "onsets": 15
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-09d848f7",
+            "speaker": "沈默",
+            "shot": "sh-c4acb1e0",
+            "on_screen": [
+              "程夏"
+            ],
+            "text": "我要你看一个人。"
+          }
+        ]
       },
       "frozen": {
         "short": 0,
@@ -148,41 +158,30 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.68,
-        "long": 2,
-        "rows": [
-          {
-            "shot": "sh-3e875bd6",
-            "duration": 8.35,
-            "lines": 3
-          },
-          {
-            "shot": "sh-339fc17e",
-            "duration": 9.68,
-            "lines": 3
-          }
-        ]
+        "average": 3.73,
+        "long": 0,
+        "rows": []
       },
       "mix": {
         "episode": {
-          "i": -17.8,
-          "lra": 4.9,
-          "pk": -1.8
+          "i": -18.2,
+          "lra": 4.8,
+          "pk": -1.9
         },
         "voice": {
           "i": -20.4,
-          "lra": 5.2,
-          "pk": -0.6
+          "lra": 5.0,
+          "pk": -0.7
         },
         "music": {
-          "i": -34.5,
-          "lra": 6.6,
-          "pk": -16.4
+          "i": -33.6,
+          "lra": 3.9,
+          "pk": -11.3
         },
         "bed": {
-          "i": -24.3,
-          "lra": 6.6,
-          "pk": -6.3
+          "i": -24.5,
+          "lra": 3.9,
+          "pk": -2.2
         },
         "audibility": {
           "speech_lufs": -19.5,
@@ -208,18 +207,11 @@
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 36.78
+        "spine_length": 37.28
       }
     }
   ],
-  "issues": [
-    {
-      "area": "pacing",
-      "kind": "slow_shot",
-      "where": "-",
-      "detail": "2 个镜头太长（短剧要切得快）：sh-3e875bd6 8.35s（3 句）、sh-339fc17e 9.68s（3 句）"
-    }
-  ],
-  "issue_count": 1,
-  "verdict": "ISSUES"
+  "issues": [],
+  "issue_count": 0,
+  "verdict": "PASS"
 }

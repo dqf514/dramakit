@@ -179,6 +179,7 @@ class Scene(BaseModel):
     summary: str = ""
     mood: str = "中性"                        # 用于配乐情绪匹配
     bgm_mood: str = ""                        # 覆盖 scene.mood 的配乐标签
+    score_prompt: str = ""                    # 这一场的纯配乐镜头提示词（H3 三字段）
     lines: list[Line] = Field(default_factory=list)
     shots: list[Shot] = Field(default_factory=list)
     status: Status = Status.PENDING

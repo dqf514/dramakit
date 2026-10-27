@@ -312,8 +312,8 @@ integrated_multimodal_description / overall_soundscape / non_diegetic_music
 - 对白原样写进 <d>[zh-CN]台词</d>；说话人标注 (S1)/(S2)，只给真正发声的角色，
   同一角色跨镜头复用同一编号；身份与说话动作写在 <d> 之外
 - **当用户提示说明台词由后期配音轨提供时（bed 模式）：不要写 <d> 标签，
-  也不要描述任何发声动作（不要说 speaks / lips / voice / talking / dialogue），
-  只用表情、眼神、姿态和运镜表达情绪**
+  但要描述角色说话时的表演（开口、语气），画面里才有对得上的口型；
+  台词内容与配音由后期轨提供**
 - overall_soundscape 用 1-4 句概括环境声、动作声、非语言人声，不要重复对白；
   bed 模式下只写环境声与动作声，不要有人的说话声
 - non_diegetic_music 用 1-3 句描述观众听到的配乐：乐器、节奏速度、动态起伏；没有就给 N/A
@@ -341,6 +341,35 @@ H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模�
 要求：
 - integrated_multimodal_description 以 [Shot 1] 开头，描述这一镜的完整画面与运动
 - 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词
+输出JSON：
+{"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}"""
+
+
+H3_SCORE_SYSTEM = """你是短剧配乐导演，为一个**没有人、没有角色、没有对白**的空镜写 H3 提示词。
+只输出JSON。
+
+官方三字段（必须齐全）：integrated_multimodal_description / overall_soundscape / non_diegetic_music
+
+硬规则：
+- 所有描述性文字用英文书写
+- integrated_multimodal_description 以 "[Shot 1] " 开头：只写这个空镜头的环境、天气、光线与缓慢的镜头运动
+- 必须写明 no people, no characters, no voices
+- overall_soundscape 只写环境声（雨、风、街道、车辆、机器、室内空气），不要有任何人的声音
+- non_diegetic_music 写这一场该有的配乐：乐器、速度、情绪走向；短剧要的是情绪张力，不是电影感
+- 不要写 negative prompt，不要出现否定描述"""
+
+H3_SCORE_USER = """为下面这个场景生成一段**纯配乐镜头**的 H3 提示词。
+
+场景：{{location}} / {{time_of_day}}
+场景设定：{{location_visual}}
+本场情绪：{{mood}}
+全剧画风：{{style}}
+
+这个镜头里**没有任何人、没有角色、没有对白**，只有环境与配乐：
+- integrated_multimodal_description 以 [Shot 1] 开头：写这个空镜头的画面（环境、天气、光线、镜头缓慢移动），明确写明 no people, no characters, no voices
+- overall_soundscape：只写环境声（雨、风、街道、车、机器、室内空气），**不要有任何人的声音**
+- non_diegetic_music：写这一场该有的配乐（乐器、速度、情绪走向）
+
 输出JSON：
 {"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}"""
 
