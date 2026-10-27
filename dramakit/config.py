@@ -398,10 +398,11 @@ class SegmentConfig(BaseModel):
 class StoryboardConfig(BaseModel):
     shots_per_scene: Literal["auto"] = "auto"
     min_shots_per_scene: int = 2
-    max_shots_per_scene: int = 8
-    # 一集最多几个镜头：短剧靠快切留人，镜头太多每段时长就被摊薄了
-    max_shots_per_episode: int = 10
-    shot_duration_range: list[float] = Field(default_factory=lambda: [2.0, 5.0])
+    max_shots_per_scene: int = 10
+    # 一集最多几个镜头：短剧靠快切留人，平均 2~3 秒一刀，
+    # 三十多秒的一集要十几个镜头才切得起来
+    max_shots_per_episode: int = 14
+    shot_duration_range: list[float] = Field(default_factory=lambda: [2.0, 4.0])
     prefer_dynamic: bool = True                       # 多用推拉摇移
     include_insert_shots: bool = True                 # 空镜/特写插入
     language: Literal["zh", "en", "bilingual"] = "bilingual"  # prompt language
