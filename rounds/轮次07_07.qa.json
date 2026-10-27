@@ -6,9 +6,9 @@
       "title": "请假去抢保送名额",
       "picture": {
         "frames": 16,
-        "sharp_median": 11.1,
-        "sharp_min": 8.8,
-        "luma_spread": 7.9,
+        "sharp_median": 10.5,
+        "sharp_min": 8.0,
+        "luma_spread": 7.6,
         "src_luma_spread": 48.0,
         "graded_luma_spread": 7.1,
         "sat_spread": 0.8
@@ -139,11 +139,15 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
         "duration": 32.51,
         "timeline": 32.51,
         "lines": 14,
-        "onsets": 20
+        "onsets": 27
       },
       "story": {
         "mismatched": 0,
@@ -173,11 +177,15 @@
         "long": 0,
         "rows": []
       },
+      "framing": {
+        "same_size": 1,
+        "opens": 1
+      },
       "mix": {
         "episode": {
-          "i": -16.5,
-          "lra": 3.0,
-          "pk": -1.2
+          "i": -23.1,
+          "lra": 2.8,
+          "pk": -2.5
         },
         "voice": {
           "i": -23.0,
@@ -210,11 +218,14 @@
         ],
         "max_rows": 1
       },
+      "subtitle_place": {
+        "margin_v": 111,
+        "height": 544
+      },
       "nle": {
         "spine": 10,
         "lanes": [
-          "Dialogue",
-          "Music"
+          "Dialogue"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
@@ -222,7 +233,26 @@
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "framing",
+      "kind": "same_size_twice",
+      "where": "-",
+      "detail": "1 处连续两个镜头景别相同（看起来像证件照连播）：场景1 特写"
+    },
+    {
+      "area": "framing",
+      "kind": "opens_on_closeup",
+      "where": "-",
+      "detail": "1 个场以特写开场（观众还不知道是谁、在哪）：场景1"
+    },
+    {
+      "area": "mix",
+      "kind": "loudness_off",
+      "where": "-",
+      "detail": "整体响度 -23.1 LUFS（目标 -16）"
+    }
+  ],
+  "issue_count": 3,
+  "verdict": "ISSUES"
 }

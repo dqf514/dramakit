@@ -532,7 +532,8 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
         codec: str = "libx264", crf: int = 20, preset: str = "medium",
         pixel_format: str = "yuv420p", fps: Optional[int] = None,
         ass_file: Optional[str | Path] = None,
-        watermark: str = "", watermark_size: int = 18) -> str:
+        watermark: str = "", watermark_size: int = 18,
+        grain: int = 0) -> str:
     """Mux picture + audio into the final mp4; optionally burn ASS subtitles.
 
     When burning, we chdir into the ASS file's directory and reference it by a
@@ -560,6 +561,9 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
             f":x=24:y=20:box=1:boxcolor=black@0.35:boxborderw=6")
     if fps:
         vf.append(f"fps={fps}")
+    if grain > 0:
+        # a little grain takes the plastic look off an AI picture
+        vf.append(f"noise=alls={int(grain)}:allf=t")
     cmd = [ffmpeg_bin(), "-y", "-i", str(video), "-i", str(audio),
            "-map", "0:v:0", "-map", "1:a:0"]
     if vf:

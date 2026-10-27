@@ -189,6 +189,11 @@ STORYBOARD_USER = """为下面这场戏设计分镜（竖屏手机观看）。
 分镜规则：
 - 生成 {{min_shots}}~{{max_shots}} 个镜头，覆盖本场全部台词与动作
 - shot_type: 特写/近景/中景/全景/远景/过肩/主观/空镜（对白多用近景特写，情绪爆发用特写，交代环境用全景/空镜）
+- **景别必须有变化**：不要连着三个同景别。两个角色对话要用正反打（过肩 ↔ 特写交替），
+  否则整集看起来像同一张证件照在播。每场第一个镜头用中景或全景交代环境，
+  不要一上来就给特写（观众还不知道这是谁、在哪里）。
+- **机位也要有对比**：强势的一方可以略低机位（显得压人），弱势的一方略高机位，
+  但每场最多用一次，不要跳。
 - camera_move: 固定/推/拉/摇/移/跟（{{prefer_dynamic}}）
 - duration: 该镜头秒数（{{dur_min}}~{{dur_max}}秒；对白镜头时长要够说完对应台词）
 - action: 画面内容中文描述（谁、在哪、做什么、什么表情）
@@ -214,7 +219,7 @@ PROMPT_SYSTEM = """你是AI绘画提示词工程师，为短剧分镜写高质�
 
 PROMPT_USER = """为下面这个{{aspect}}镜头生成AI绘画提示词。
 
-镜头：{{shot_type}} / 运镜 {{camera_move}}
+镜头：{{shot_type}} / 运镜 {{camera_move}}（本镜约 {{duration}} 秒）
 画面：{{action}}
 出镜角色及锁定锚点（必须原样沿用，外貌/发型/服装一个字都不要改写）：
 {{character_anchors}}
@@ -338,11 +343,19 @@ H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模�
 {% endif %}
 {{dialogue_note}}
 
+**参考图的分工**：
+{{references}}
+
+**时间轴（必须与 {{duration}} 秒一致）**：
+{{timeline}}
+
 要求：
 - integrated_multimodal_description 以 [Shot 1] 开头，描述这一镜的完整画面与运动
 - 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词
 输出JSON：
-{"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}"""
+{"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}
+
+{{constraints}}"""
 
 
 H3_SCORE_SYSTEM = """你是短剧配乐导演，为一个**没有人、没有角色、没有对白**的空镜写 H3 提示词。

@@ -162,6 +162,10 @@
         "long": 0,
         "rows": []
       },
+      "framing": {
+        "same_size": 0,
+        "opens": 1
+      },
       "mix": {
         "episode": {
           "i": -17.0,
@@ -215,7 +219,14 @@
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "framing",
+      "kind": "opens_on_closeup",
+      "where": "-",
+      "detail": "1 个场以特写开场（观众还不知道是谁、在哪）：场景1"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
 }

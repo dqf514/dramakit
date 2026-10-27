@@ -175,6 +175,10 @@
         "long": 0,
         "rows": []
       },
+      "framing": {
+        "same_size": 3,
+        "opens": 0
+      },
       "mix": {
         "episode": {
           "i": -16.4,
@@ -228,7 +232,14 @@
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "framing",
+      "kind": "same_size_twice",
+      "where": "-",
+      "detail": "3 处连续两个镜头景别相同（看起来像证件照连播）：场景1 特写、场景2 特写、场景2 特写"
+    }
+  ],
+  "issue_count": 1,
+  "verdict": "ISSUES"
 }

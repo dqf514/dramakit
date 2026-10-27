@@ -6,12 +6,12 @@
       "title": "雪夜血诏废太后",
       "picture": {
         "frames": 16,
-        "sharp_median": 18.7,
-        "sharp_min": 11.1,
-        "luma_spread": 7.5,
-        "src_luma_spread": 20.5,
-        "graded_luma_spread": 3.0,
-        "sat_spread": 1.1
+        "sharp_median": 18.3,
+        "sharp_min": 9.8,
+        "luma_spread": 10.7,
+        "src_luma_spread": 20.7,
+        "graded_luma_spread": 3.2,
+        "sat_spread": 1.0
       },
       "voice": {
         "lines": 15,
@@ -143,16 +143,30 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
-        "duration": 38.45,
-        "timeline": 38.45,
+        "duration": 36.25,
+        "timeline": 36.25,
         "lines": 15,
-        "onsets": 23
+        "onsets": 33
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-549c6117",
+            "speaker": "传旨宫人",
+            "shot": "sh-1bbd8bb8",
+            "on_screen": [
+              "沈氏"
+            ],
+            "text": "迁居长乐宫。"
+          }
+        ]
       },
       "frozen": {
         "short": 0,
@@ -163,19 +177,23 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.85,
+        "average": 3.63,
         "long": 0,
         "rows": []
       },
+      "framing": {
+        "same_size": 1,
+        "opens": 1
+      },
       "mix": {
         "episode": {
-          "i": -16.4,
-          "lra": 3.5,
-          "pk": -1.3
+          "i": -22.6,
+          "lra": 4.0,
+          "pk": -4.4
         },
         "voice": {
           "i": -22.6,
-          "lra": 3.6,
+          "lra": 4.0,
           "pk": -4.5
         },
         "music": {
@@ -196,7 +214,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 31,
+        "cues": 16,
         "styles": [
           "Default",
           "Speaker",
@@ -204,19 +222,41 @@
         ],
         "max_rows": 1
       },
+      "subtitle_place": {
+        "margin_v": 30,
+        "height": 544
+      },
       "nle": {
         "spine": 10,
         "lanes": [
-          "Dialogue",
-          "Music"
+          "Dialogue"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 38.45
+        "spine_length": 36.25
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "framing",
+      "kind": "same_size_twice",
+      "where": "-",
+      "detail": "1 处连续两个镜头景别相同（看起来像证件照连播）：场景1 特写"
+    },
+    {
+      "area": "framing",
+      "kind": "opens_on_closeup",
+      "where": "-",
+      "detail": "1 个场以特写开场（观众还不知道是谁、在哪）：场景3"
+    },
+    {
+      "area": "mix",
+      "kind": "loudness_off",
+      "where": "-",
+      "detail": "整体响度 -22.6 LUFS（目标 -16）"
+    }
+  ],
+  "issue_count": 3,
+  "verdict": "ISSUES"
 }

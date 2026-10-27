@@ -463,6 +463,7 @@ class ComposeConfig(BaseModel):
     # 2026 年起 AIGC 微短剧必须标注 AI 生成，备案号也要上画面
     ai_declaration: str = "本片画面与声音由AI生成"
     filing_number: str = ""                                 # 备案号（上线前填）
+    film_grain: int = 4                                    # 胶片颗粒强度（去掉 AI 塑料感，0=关）
     # cover
     generate_cover: bool = True
     cover_from_shot: Literal["first", "best", "last"] = "first"
