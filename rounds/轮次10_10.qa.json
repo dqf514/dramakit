@@ -134,7 +134,7 @@
       },
       "completeness": {
         "duration": 33.87,
-        "timeline": 33.9,
+        "timeline": 37.4,
         "lines": 12,
         "onsets": 28
       },
@@ -143,13 +143,13 @@
         "off_screen_lines": 2,
         "rows": [
           {
-            "line": "ln-5661af4b",
-            "speaker": "陈默",
-            "shot": "sh-3a36f72a",
+            "line": "ln-c7e0b43c",
+            "speaker": "病号女孩",
+            "shot": "sh-78cd0788",
             "on_screen": [
-              "病号女孩"
+              "陈默"
             ],
-            "text": "这单……你订的？"
+            "text": "等了三周，你终于来了。"
           },
           {
             "line": "ln-c3166249",
@@ -171,13 +171,25 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.39,
+        "average": 3.74,
         "long": 0,
         "rows": []
       },
       "framing": {
-        "same_size": 3,
+        "same_size": 1,
         "opens": 0
+      },
+      "rhythm": {
+        "shots": 8,
+        "avg_shot": 4.23,
+        "median_shot": 4.1,
+        "max_shot": 7.56,
+        "opening_shot": 4.1,
+        "cuts_per_min": 12.4
+      },
+      "hook": {
+        "first_line_at": 2.0,
+        "first_line": "最后一单，放这儿。"
       },
       "mix": {
         "episode": {
@@ -234,12 +246,84 @@
   ],
   "issues": [
     {
-      "area": "framing",
-      "kind": "same_size_twice",
+      "area": "completeness",
+      "kind": "duration_mismatch",
       "where": "-",
-      "detail": "3 处连续两个镜头景别相同（看起来像证件照连播）：场景1 特写、场景2 特写、场景2 特写"
+      "detail": "成片 33.87s，时间线 37.40s，差了 -3.53s（有内容被截断）"
+    },
+    {
+      "area": "framing",
+      "kind": "same_size_run",
+      "where": "-",
+      "detail": "1 处连续三个以上镜头景别相同（看起来像证件照连播）：场景2 特写"
+    },
+    {
+      "area": "rhythm",
+      "kind": "cuts_too_slow",
+      "where": "-",
+      "detail": "平均 4.23s 一刀（12.4 刀/分），短剧通常要 20~40 刀/分"
+    },
+    {
+      "area": "rhythm",
+      "kind": "hook_too_late",
+      "where": "-",
+      "detail": "开场第一个镜头 4.1s，钩子来得太晚"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-c7e0b43c",
+      "detail": "这句没有对应的字幕：等了三周，你终于来了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-5661af4b",
+      "detail": "这句没有对应的字幕：这单……你订的？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-2a331608",
+      "detail": "这句没有对应的字幕：三年前高架桥下，你把头盔给了我。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-a15e9602",
+      "detail": "这句没有对应的字幕：那个女孩……是你？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-607eeb6d",
+      "detail": "这句没有对应的字幕：便签上，是医院。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-6e8e22e2",
+      "detail": "这句没有对应的字幕：我等你的单，只为见你。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-c3166249",
+      "detail": "这句没有对应的字幕：医生说，我还有三个月。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-8d06bfa6",
+      "detail": "这句没有对应的字幕：这单，我送。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d11e4163",
+      "detail": "这句没有对应的字幕：剩下的每一单，都我送。"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 13,
   "verdict": "ISSUES"
 }
