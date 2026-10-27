@@ -383,11 +383,12 @@ def _gen_score(ctx: Context, ep, sc, scene_duration: float = 0.0) -> tuple[str, 
             return sc.id, False, "没有可用的首帧"
         first = ctx.store.abs(shots[0].image_path)
     # the clip is as long as the scene it scores, so the music does not have
-    # to repeat every five seconds; a scene longer than the model can make
-    # is looped once
+    # to repeat every five seconds - but the model's cost climbs steeply
+    # past a quarter of a minute, so the cap keeps the job affordable and the
+    # music loops inside the scene
     scene_dur = scene_duration or 0.0
     frames = int(round(scene_dur * c.fps)) if scene_dur > 0 else 124
-    frames = max(124, min(frames, int(c.max_video_seconds * c.fps)))
+    frames = max(124, min(frames, 240, int(c.max_video_seconds * c.fps)))
     seed = 100000 + ep.index * 100 + sc.index
     try:
         _render(ctx, "配乐", sc.id, lambda: vis.generate_video(
