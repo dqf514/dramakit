@@ -560,9 +560,9 @@ const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"
 const num = (v,d)=>{const x=parseFloat(v);return Number.isFinite(x)?x:d;};
 const attr = s => esc(s).replace(/'/g,"&#39;");
 
-const STAGES=["ingest","analyze","character","segment","script","storyboard","promptgen","visual","voice","subtitle","music","compose"];
-const STAGE_ZH={ingest:"导入",analyze:"分析",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",visual:"画面",voice:"配音",subtitle:"字幕",music:"配乐",compose:"合成"};
-const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",character:"锚点 · 三视图",segment:"按钩子切集",script:"台词 · 旁白",storyboard:"场次 · 镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"逐句 TTS",subtitle:"跟着配音走",music:"情绪匹配 BGM",compose:"ffmpeg 成片"};
+const STAGES=["ingest","analyze","character","segment","script","storyboard","promptgen","voice","visual","subtitle","music","precheck","compose","qc"];
+const STAGE_ZH={ingest:"导入",analyze:"分析",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",voice:"配音",visual:"画面",subtitle:"字幕",music:"配乐",precheck:"预检",compose:"合成",qc:"质检"};
+const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",character:"锚点 · 三视图",segment:"按钩子切集",script:"台词 · 旁白",storyboard:"场次 · 镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"逐句 TTS",subtitle:"跟着配音走",music:"情绪匹配 BGM",precheck:"成片前校验",compose:"ffmpeg 成片",qc:"成片质检"};
 
 const S = {
   state:null, templates:null, projects:[], current:"", tags:{}, tagSel:new Set(),
@@ -684,14 +684,25 @@ function renderProjects(){
   $$("#projlist .proj").forEach(x=>x.onclick=()=>selectProject(x.dataset.slug));
 }
 function stageSummary(slug){
-  // lightweight from project list (server detail has the truth; this is a hint)
+  // A stage counts as done when the project says so, or when the episode
+  // says so: the first stages are recorded on the project, the rest on the
+  // episode, and counting only one of them leaves a finished project
+  // looking half finished.
   const p=S.projects.find(x=>x.slug===slug);
-  const total=STAGES.length*(p&&p.episodes?p.episodes:1);
-  let done=0;
-  if(S.detail&&S.detail.slug===slug){
-    (S.detail.episodes||[]).forEach(ep=>STAGES.forEach(s=>{ if((ep.stage_status||{})[s]==="done") done++; }));
+  const nEp=(p&&p.episodes)?p.episodes:1;
+  const total=STAGES.length*nEp;
+  const det=(S.detail&&S.detail.slug===slug)?S.detail:null;
+  const projStatus=(det&&det.stage_status)||{};
+  const eps=(det&&det.episodes)||[];
+  const done=(s,ep)=>String(projStatus[s]||"").endsWith("done")
+                 ||String((ep&&(ep.stage_status||{})[s])||"").endsWith("done");
+  let n=0;
+  if(eps.length){
+    eps.forEach(ep=>{ STAGES.forEach(s=>{ if(done(s,ep)) n++; }); });
+  }else{
+    STAGES.forEach(s=>{ if(done(s,null)) n+=nEp; });
   }
-  return {total,done};
+  return {total,done:n};
 }
 
 async function renderTags(){
@@ -1234,6 +1245,10 @@ async function createProjectFromGuide(){
 // ---------- workbench ----------
 function stageState(stage){
   const eps=(S.detail&&S.detail.episodes)||[];
+  const proj=(S.detail&&S.detail.stage_status)||{};
+  const pv=String(proj[stage]||"");
+  if(pv==="done") return "done";      // the project level stages (import, analyse, cast, split)
+  if(pv==="running") return "running";
   if(!eps.length) return "pending";
   let done=0, run=0;
   eps.forEach(ep=>{const v=(ep.stage_status||{})[stage]; if(v==="done")done++; else if(v==="running")run++;});
