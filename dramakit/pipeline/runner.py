@@ -8,8 +8,9 @@ from ..config import Config
 from ..models import Status
 from ..project import ProjectStore
 from ..providers import Providers
-from . import (analyze, character, compose, ingest, music_stage, precheck, promptgen,
-               qc, script, segment, storyboard, subtitle, visual, voice)
+from . import (analyze, character, compose, ingest, lipsync, music_stage,
+               precheck, promptgen, qc, script, segment, storyboard, subtitle,
+               visual, voice)
 from .base import Context
 
 log = logging.getLogger("dramakit.runner")
@@ -19,8 +20,8 @@ log = logging.getLogger("dramakit.runner")
 # dialogue, so the video has to be shot to the timing of the finished lines
 # rather than to an estimate of them.
 ORDER = ["ingest", "analyze", "character", "segment", "script", "storyboard",
-         "promptgen", "voice", "visual", "subtitle", "music", "precheck",
-         "compose", "qc"]
+         "promptgen", "voice", "visual", "lipsync", "subtitle", "music",
+         "precheck", "compose", "qc"]
 
 
 def _stage_fn(name: str) -> Optional[Callable]:
@@ -34,6 +35,7 @@ def _stage_fn(name: str) -> Optional[Callable]:
         "promptgen": promptgen.run,
         "visual": visual.run,
         "voice": voice.run,
+        "lipsync": lipsync.run,
         "subtitle": subtitle.run,
         "music": music_stage.run,
         "precheck": precheck.run,

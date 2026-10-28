@@ -468,6 +468,12 @@ class ComposeConfig(BaseModel):
     ai_declaration_seconds: float = 3.0                        # 声明只放在片头几秒
     filing_number: str = ""                                 # 备案号（上线前填）
     film_grain: int = 4                                    # 胶片颗粒强度（去掉 AI 塑料感，0=关）
+    # 口型对齐：画面里的嘴由模型自己动，录好的声音和嘴对不上，
+    # 观众就会觉得声音飘在画面外。MuseTalk 用录好的音频重画嘴。
+    lipsync: bool = False
+    musetalk_root: str = r"E:\musetalk"
+    musetalk_python: str = r"E:\ComfyUI\venv\Scripts\python.exe"
+    lipsync_timeout: float = 900.0
     # 每句台词之间的留白（秒）。背靠背的台词听起来像在念清单，
     # 留半秒让对方接住，这是短剧的戏在的地方。
     line_gap: float = 0.35

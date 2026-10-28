@@ -438,6 +438,12 @@ compose:
   ai_declaration_seconds: 3                    # 声明只放在片头 3 秒（平台要求）
   filing_number: ""                        # 备案号（上线前填）
   film_grain: 4                            # 胶片颗粒强度（去掉 AI 塑料感，0=关）
+  # 口型对齐：画面里的嘴由模型自己动，录好的声音和嘴对不上，
+  # 观众就会觉得声音飘在画面外。MuseTalk 用录好的音频重画嘴。
+  lipsync: false                           # 打开后每个有台词的镜头都会过一遍 MuseTalk
+  musetalk_root: "E:\musetalk"            # MuseTalk 的代码与权重
+  musetalk_python: "E:\ComfyUI\venv\Scripts\python.exe"
+  lipsync_timeout: 900                     # 一个镜头的口型对齐最多等多久（秒）
   line_gap: 0.35                            # 每句台词之间的留白（秒）
   subtitle_style:
     font: Microsoft YaHei
