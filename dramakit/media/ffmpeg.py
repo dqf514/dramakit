@@ -600,6 +600,19 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
     return str(out)
 
 
+def image_size(path: str | Path) -> tuple[int, int]:
+    """The pixel size of a picture."""
+    r = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+         "stream=width,height", "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, errors="replace")
+    try:
+        w, h = r.stdout.strip().split(",")[:2]
+        return int(w), int(h)
+    except (ValueError, IndexError):
+        return 0, 0
+
+
 def extract_frame(video_or_image: str | Path, out: str | Path, at: float = 0.0,
                   width: Optional[int] = None) -> str:
     """Grab a single frame (for episode covers)."""
