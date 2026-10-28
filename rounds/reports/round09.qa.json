@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 19.9,
-        "sharp_min": 8.3,
-        "luma_spread": 12.4,
-        "src_luma_spread": 32.1,
-        "graded_luma_spread": 6.8,
-        "sat_spread": 1.4
+        "sharp_median": 18.0,
+        "sharp_min": 12.3,
+        "luma_spread": 13.3,
+        "src_luma_spread": 32.2,
+        "graded_luma_spread": 5.6,
+        "sat_spread": 2.6
       },
       "voice": {
         "lines": 12,
@@ -129,8 +129,8 @@
         "rows": []
       },
       "completeness": {
-        "duration": 38.53,
-        "timeline": 36.23,
+        "duration": 36.13,
+        "timeline": 36.13,
         "lines": 12,
         "onsets": 18
       },
@@ -151,11 +151,16 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.02,
-        "long": 1,
+        "average": 3.28,
+        "long": 2,
         "rows": [
           {
-            "shot": "sh-a787847d",
+            "shot": "sh-b4c96b0a",
+            "duration": 5.88,
+            "lines": 2
+          },
+          {
+            "shot": "sh-452237ff",
             "duration": 4.02,
             "lines": 1
           }
@@ -173,16 +178,16 @@
         "wrong": 0
       },
       "rhythm": {
-        "shots": 14,
-        "avg_shot": 2.75,
-        "median_shot": 2.7,
-        "max_shot": 4.26,
+        "shots": 12,
+        "avg_shot": 3.01,
+        "median_shot": 2.77,
+        "max_shot": 5.9,
         "opening_shot": 2.2,
-        "cuts_per_min": 20.2
+        "cuts_per_min": 18.3
       },
       "visible_cuts": {
-        "cuts": 13,
-        "invisible": 5
+        "cuts": 11,
+        "invisible": 0
       },
       "hook": {
         "first_line_at": 0.0,
@@ -190,9 +195,9 @@
       },
       "mix": {
         "episode": {
-          "i": -17.2,
-          "lra": 14.3,
-          "pk": -1.9
+          "i": -17.0,
+          "lra": 14.4,
+          "pk": -2.0
         },
         "voice": {
           "i": -23.1,
@@ -230,37 +235,25 @@
         "height": 1920
       },
       "nle": {
-        "spine": 13,
+        "spine": 11,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 38.53
+        "spine_length": 36.13
       }
     }
   ],
   "issues": [
     {
-      "area": "completeness",
-      "kind": "duration_mismatch",
-      "where": "-",
-      "detail": "成片 38.53s，时间线 36.23s，差了 +2.31s（有内容被截断）"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "1 个镜头太长（短剧要切得快）：sh-a787847d 4.02s（1 句）"
-    },
-    {
-      "area": "rhythm",
-      "kind": "invisible_cut",
-      "where": "-",
-      "detail": "5 个切点观众看不出来（前后两个镜头太像）：13.6s、16.1s、23.4s、27.7s"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-b4c96b0a 5.88s（2 句）、sh-452237ff 4.02s（1 句）"
     }
   ],
-  "issue_count": 3,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }

@@ -136,8 +136,12 @@ def write_ass(cues: list[SubtitleCue], out_path: str | Path, *, style: dict,
     for c in cues:
         start, end = _ass_time(c.start), _ass_time(c.end)
         text = _clean(c.text).replace(":", "：")
-        if c.kind in (LineKind.NARRATION, LineKind.CAPTION):
-            # narration card: own style, no speaker label
+        if c.kind == LineKind.NARRATION:
+            # a voice over is heard, not written on the picture: as a line of
+            # text at the top it reads like a note the editor left in frame
+            continue
+        if c.kind == LineKind.CAPTION:
+            # a caption card ("三年后") belongs on the picture
             parts.append(f"Dialogue: 0,{start},{end},Narration,,0,0,0,,{text}")
             continue
         named = c.speaker and c.speaker not in ("旁白", "解说")
