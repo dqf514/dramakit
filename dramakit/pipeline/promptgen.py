@@ -17,7 +17,7 @@ H3_I2VA_ALIGN = ("For the target video, at 0.00 seconds into the target video, "
                   "<Picture 1> (from [Shot 1]) is fully referenced.")
 
 
-def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str]]]:
+def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str, float]]]:
     """Map every shot id to the dialogue lines that fall inside it.
 
     Uses the same timeline the compose stage builds, so the lines we hand to H3
@@ -32,7 +32,8 @@ def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str]]]:
             for ts in tsc.shots:
                 if ts.start <= tl_line.start < ts.start + ts.duration:
                     out.setdefault(ts.shot.id, []).append(
-                        (tl_line.line.speaker, tl_line.line.text))
+                        (tl_line.line.speaker, tl_line.line.text,
+                         float(tl_line.line.duration or 0.0)))
                     break
     return out
 
@@ -46,7 +47,7 @@ def _speaker_note(shot: Shot, lines) -> str:
     speaker and tell the others to listen with closed mouths.
     """
     speakers: list[str] = []
-    for spk, _ in lines or []:
+    for spk, _t, _d in lines or []:
         if spk and spk not in speakers:
             speakers.append(spk)
     others = [c for c in (shot.characters or []) if c not in speakers]
@@ -66,11 +67,11 @@ def _speaker_note(shot: Shot, lines) -> str:
     return txt
 
 
-def _numbered_dialogue(lines: list[tuple[str, str]]) -> tuple[str, dict[str, str]]:
+def _numbered_dialogue(lines: list[tuple]) -> tuple[str, dict[str, str]]:
     """Render dialogue with stable (Sx) speaker ids; return text + id map."""
     ids: dict[str, str] = {}
     parts = []
-    for speaker, text in lines:
+    for speaker, text, _d in lines:
         if not (text or "").strip():
             continue
         if speaker not in ids:
@@ -100,7 +101,7 @@ def _fallback_h3_prompt(ctx: Context, shot: Shot, sc, lines) -> str:
     loc = next((l for l in ctx.project.locations if l.name == sc.location), None)
     location = (loc.visual_prompt or loc.description) if loc else sc.location
     style = ad.style_prompt_prefix or ad.style
-    desc = (f"[Shot 1] {style}, 16:9 widescreen, {anchors + ', ' if anchors else ''}"
+    desc = (f"[Shot 1] {style}, 9:16 vertical widescreen, {anchors + ', ' if anchors else ''}"
             f"{who}, {shot.action}, {location}, {sc.time_of_day}, "
             f"{shot.shot_type.value} shot with {shot.camera_move} camera movement, "
             f"cinematic lighting, highly detailed")
@@ -274,17 +275,25 @@ def _reference_jobs(shot) -> str:
 
 
 def _shot_timeline(shot, lines) -> str:
-    """The beat by beat timeline, matching the length of the clip."""
+    """The beat by beat timeline, matching the length of the clip.
+
+    The segments follow the length of each recording, not an even split:
+    a gesture has to happen while its own sentence is being said.
+    """
     dur = _shot_seconds(shot)
     if not lines:
         return (f"0-{dur:.1f}秒：{shot.action[:40]}，角色不说话，"
                 "只用表情、眼神和动作推进")
-    seg = dur / len(lines)
     out = []
-    for i, (spk, _txt) in enumerate(lines[:4]):
-        out.append(f"{i*seg:.1f}-{(i+1)*seg:.1f}秒：{spk} 开口说这句台词")
-    if len(lines) > 4:
-        out.append(f"之后到 {dur:.1f}秒：保持情绪与姿态")
+    at = 0.0
+    for spk, _txt, d in lines[:4]:
+        length = float(d) if d and d > 0 else 0.0
+        if length <= 0:
+            length = dur / len(lines)
+        out.append(f"{at:.1f}-{at + length:.1f}秒：{spk} 开口说这句台词")
+        at += length
+    if at < dur - 0.05:
+        out.append(f"{at:.1f}-{dur:.1f}秒：保持情绪与姿态")
     return "；".join(out)
 
 

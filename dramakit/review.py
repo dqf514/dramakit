@@ -100,8 +100,10 @@ def review(project: str, cfg: Config, *, limit: int = 12,
         return {"error": "没有成片或抽不出帧"}
     facts = _facts(ctx, ep)
     llm = ctx.providers.llm_for("review")
+    # M3 is a reasoning model: it spends the tokens on thinking first, and a
+    # small budget leaves the answer empty (finish_reason "length")
     r = llm.complete_vision(SYSTEM, facts, [str(p) for p in frames],
-                            temperature=0.2, max_tokens=4000)
+                            temperature=0.2, max_tokens=24000)
     text = r.text.strip()
     try:
         data = json.loads(re.sub(r"^```(?:json)?|```$", "", text, flags=re.M).strip())

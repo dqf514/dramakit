@@ -281,6 +281,10 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
         #    after another, so the picture and the dialogue stay together.
         #    A short breath between the lines: lines that run into each
         #    other sound like a list being read out.
+        #    A line keeps the length of its own recording. The breath after
+        #    the last line of a shot is room at the end of the shot, not
+        #    part of the line - stretching the line is what puts the mouth
+        #    out of step with the voice.
         timed_lines: list[TimedLine] = []
         if line_map and timed_shots:
             by_shot: dict[str, list[int]] = line_map
@@ -293,17 +297,17 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
                 gaps_total = gap * max(0, len(idxs) - 1)
                 # the room the lines need inside this shot, gaps included
                 need = total + gaps_total
-                room = max(ts.duration, need)
-                # the lines share what is left once the breaths have their room
-                share_k = (room - gaps_total) / max(total, 1e-6)
+                # only when the shot is too short for its lines do they have
+                # to be stretched - and that is worth reporting
+                k = need / ts.duration if (ts.duration > 0 and need > ts.duration) else 1.0
                 for n, i in enumerate(idxs):
                     d, l = raw_lines[i - 1]
-                    share = d * share_k
+                    share = d * k
                     timed_lines.append(TimedLine(l, sc.id, round(inner, 3),
                                                  round(inner + share, 3)))
                     inner += share
                     if n < len(idxs) - 1:
-                        inner += gap * share_k
+                        inner += gap * k
         else:
             line_cursor = cursor
             for n, (d, l) in enumerate(raw_lines):

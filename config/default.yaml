@@ -342,16 +342,16 @@ comfyui:
   # 本机 ComfyUI 的 models 目录（模型文件存放处，也是同步来源）
   models_dir: E:\\ComfyUI\\models
   mode: image_then_video # image | video | image_then_video
-  width: 1344                             # 出图分辨率（FLUX 3 / H3 都吃 32 的倍数）
-  height: 768                              # 16:9 横屏原生
+  width: 768                              # 出图分辨率（FLUX 3 / H3 都吃 32 的倍数）
+  height: 1344                            # 9:16 竖屏原生（短剧就是竖着看的）
   steps: 16                               # FLUX 3 Klein 蒸馏版：16 步
   cfg: 1.0                                # 蒸馏版无引导，cfg 必须 1
   sampler: euler
   scheduler: simple
   checkpoint: flux3-image-klein-int8-convrot.safetensors
   # 出视频分辨率（H3 标准 16:9 = 960x544，32 的倍数）
-  video_width: 960
-  video_height: 544
+  video_width: 768
+  video_height: 1344
   frames: 124                               # frame_mode=fixed 时所有镜头都用这个帧数
   # 视频时长：auto = 按每个镜头在时间线上实际占多长生成（对齐 H3 的 17k+5 网格）
   frame_mode: auto
@@ -410,8 +410,8 @@ storyboard:
 
 # --------------------------- 合成 compose -----------------------------------
 compose:
-  width: 960
-  height: 544                               # 横屏 16:9 · H3 标准原生分辨率（不放大）
+  width: 1080
+  height: 1920                            # 9:16 竖屏成片（平台标准）
   fps: 30
   video_bitrate: 6M
   audio_bitrate: 192k

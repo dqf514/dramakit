@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 25.2,
-        "sharp_min": 9.2,
-        "luma_spread": 10.2,
-        "src_luma_spread": 22.8,
-        "graded_luma_spread": 5.7,
-        "sat_spread": 1.4
+        "sharp_median": 22.9,
+        "sharp_min": 15.0,
+        "luma_spread": 8.2,
+        "src_luma_spread": 15.4,
+        "graded_luma_spread": 2.4,
+        "sat_spread": 1.1
       },
       "voice": {
         "lines": 12,
@@ -136,18 +136,8 @@
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
-        "rows": [
-          {
-            "line": "ln-09477f24",
-            "speaker": "苏念",
-            "shot": "sh-58c69b3d",
-            "on_screen": [
-              "顾承舟"
-            ],
-            "text": "爷爷说的是，交给能撑住的人。"
-          }
-        ]
+        "off_screen_lines": 0,
+        "rows": []
       },
       "line_order": {
         "scenes_out_of_order": 0
@@ -161,18 +151,13 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.41,
-        "long": 2,
+        "average": 3.1,
+        "long": 1,
         "rows": [
           {
-            "shot": "sh-58c69b3d",
+            "shot": "sh-9113abe0",
             "duration": 4.02,
             "lines": 1
-          },
-          {
-            "shot": "sh-6059f276",
-            "duration": 8.04,
-            "lines": 3
           }
         ]
       },
@@ -180,19 +165,42 @@
         "same_size": 0,
         "opens": 0
       },
+      "line_stretch": {
+        "stretched": 3,
+        "rows": [
+          {
+            "line": "ln-0cd51ee0",
+            "text": "我想清楚了。",
+            "voice": 1.84,
+            "timeline": 2.19
+          },
+          {
+            "line": "ln-702c5ece",
+            "text": "想清楚退婚？",
+            "voice": 1.8,
+            "timeline": 2.15
+          },
+          {
+            "line": "ln-34289f88",
+            "text": "婚约是我爷爷定的。",
+            "voice": 2.16,
+            "timeline": 2.51
+          }
+        ]
+      },
       "shot_shape": {
         "wrong": 0
       },
       "rhythm": {
-        "shots": 10,
-        "avg_shot": 3.41,
+        "shots": 11,
+        "avg_shot": 3.1,
         "median_shot": 2.87,
-        "max_shot": 8.0,
+        "max_shot": 4.26,
         "opening_shot": 2.2,
-        "cuts_per_min": 15.8
+        "cuts_per_min": 17.6
       },
       "visible_cuts": {
-        "cuts": 9,
+        "cuts": 10,
         "invisible": 0
       },
       "hook": {
@@ -241,7 +249,7 @@
         "height": 544
       },
       "nle": {
-        "spine": 10,
+        "spine": 11,
         "lanes": [
           "Dialogue",
           "Music"
@@ -257,9 +265,15 @@
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "2 个镜头太长（短剧要切得快）：sh-58c69b3d 4.02s（1 句）、sh-6059f276 8.04s（3 句）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-9113abe0 4.02s（1 句）"
+    },
+    {
+      "area": "sync",
+      "kind": "line_stretched",
+      "where": "-",
+      "detail": "3 句台词在时间线上被拉长了（配音比画面短，嘴和声音对不上）：「我想清楚了。」1.84s→2.19s、「想清楚退婚？」1.8s→2.15s、「婚约是我爷爷定的。」2.16s→2.51s"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }
