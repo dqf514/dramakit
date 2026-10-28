@@ -143,6 +143,9 @@
         "off_screen_lines": 0,
         "rows": []
       },
+      "line_order": {
+        "scenes_out_of_order": 0
+      },
       "frozen": {
         "short": 0,
         "rows": []

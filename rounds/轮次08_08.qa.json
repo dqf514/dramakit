@@ -142,31 +142,66 @@
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 2,
+        "off_screen_lines": 4,
         "rows": [
+          {
+            "line": "ln-d49a695b",
+            "speaker": "小韩",
+            "shot": "sh-2b4fe9c5",
+            "on_screen": [
+              "老周"
+            ],
+            "text": "那下一个……就是今晚？"
+          },
           {
             "line": "ln-b97e4659",
             "speaker": "接线员",
-            "shot": "sh-d180ab9c",
+            "shot": "sh-4b2c2cee",
             "on_screen": [
-              "老周"
+              "老周",
+              "小韩"
             ],
             "text": "周队！旧纺织厂三号仓库，有人"
           },
           {
-            "line": "ln-484cd520",
+            "line": "ln-3b9de0a6",
             "speaker": "老周",
-            "shot": "sh-66b5b01e",
+            "shot": "sh-dea8f160",
             "on_screen": [
               "接线员"
             ],
-            "text": "小韩，带手电。走！"
+            "text": "那儿，十年前就拆了！"
+          },
+          {
+            "line": "ln-38ea12c0",
+            "speaker": "接线员",
+            "shot": "sh-69bfdb85",
+            "on_screen": [
+              "老周"
+            ],
+            "text": "报警人说……那人正在等第五个"
           }
         ]
       },
+      "line_order": {
+        "scenes_out_of_order": 0
+      },
       "frozen": {
-        "short": 0,
-        "rows": []
+        "short": 2,
+        "rows": [
+          {
+            "shot": "sh-311e1cc4",
+            "slot": 6.5,
+            "material": 3.04,
+            "frozen": 3.45
+          },
+          {
+            "shot": "sh-d180ab9c",
+            "slot": 7.5,
+            "material": 2.33,
+            "frozen": 5.17
+          }
+        ]
       },
       "sync": {
         "off_cut": 0,
@@ -174,21 +209,16 @@
       },
       "pacing": {
         "average": 3.74,
-        "long": 3,
+        "long": 2,
         "rows": [
           {
-            "shot": "sh-dea8f160",
-            "duration": 4.53,
-            "lines": 1
-          },
-          {
-            "shot": "sh-69bfdb85",
-            "duration": 5.6,
+            "shot": "sh-311e1cc4",
+            "duration": 6.5,
             "lines": 2
           },
           {
-            "shot": "sh-c937d4fd",
-            "duration": 5.46,
+            "shot": "sh-d180ab9c",
+            "duration": 7.5,
             "lines": 2
           }
         ]
@@ -207,7 +237,7 @@
       },
       "visible_cuts": {
         "cuts": 11,
-        "invisible": 0
+        "invisible": 2
       },
       "hook": {
         "first_line_at": 0.0,
@@ -268,12 +298,24 @@
   ],
   "issues": [
     {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-311e1cc4 短 3.45s；sh-d180ab9c 短 5.17s"
+    },
+    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "3 个镜头太长（短剧要切得快）：sh-dea8f160 4.53s（1 句）、sh-69bfdb85 5.6s（2 句）、sh-c937d4fd 5.46s（2 句）"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-311e1cc4 6.5s（2 句）、sh-d180ab9c 7.5s（2 句）"
+    },
+    {
+      "area": "rhythm",
+      "kind": "invisible_cut",
+      "where": "-",
+      "detail": "2 个切点观众看不出来（前后两个镜头太像）：22.5s、35.6s"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 3,
   "verdict": "ISSUES"
 }

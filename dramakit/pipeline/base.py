@@ -149,6 +149,38 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
             claimed.setdefault(best.id, []).append(n)
         for sid in claimed:
             claimed[sid].sort()
+
+    # The lines have to come out in the order they were written. A storyboard
+    # sometimes hands a later line to an earlier shot, and the timeline
+    # places the lines inside their shots - the scene would be played back
+    # with the dialogue out of order, the answer before the question. When
+    # that happens the lines are handed out in order instead, using the
+    # storyboard's counts.
+    seq: list[int] = []
+    for sh in shots:
+        seq += claimed.get(sh.id, [])
+    if seq != sorted(seq):
+        counts = [len(claimed.get(sh.id, [])) for sh in shots]
+        claimed = {}
+        nxt = 1
+        for sh, n in zip(shots, counts):
+            if n <= 0:
+                continue
+            take = list(range(nxt, min(nxt + n, n_lines + 1)))
+            if take:
+                claimed[sh.id] = take
+                nxt = take[-1] + 1
+        # anything the storyboard did not place goes to a shot with room, in
+        # order
+        left = [k for k in range(1, n_lines + 1) if k not in seq]
+        for sh in shots:
+            if not left:
+                break
+            if len(claimed.get(sh.id, [])) >= 2:
+                continue
+            claimed.setdefault(sh.id, []).append(left.pop(0))
+        for sid in claimed:
+            claimed[sid].sort()
     return claimed
 
 

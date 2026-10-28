@@ -136,12 +136,38 @@
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-2d4a8e64",
+            "speaker": "顾承舟",
+            "shot": "sh-f89fdedc",
+            "on_screen": [
+              "苏念"
+            ],
+            "text": "我来，就是撑给你看。"
+          }
+        ]
+      },
+      "line_order": {
+        "scenes_out_of_order": 0
       },
       "frozen": {
-        "short": 0,
-        "rows": []
+        "short": 2,
+        "rows": [
+          {
+            "shot": "sh-c4b07fbe",
+            "slot": 5.88,
+            "material": 2.33,
+            "frozen": 3.55
+          },
+          {
+            "shot": "sh-1552e8c7",
+            "slot": 7.29,
+            "material": 5.88,
+            "frozen": 1.41
+          }
+        ]
       },
       "sync": {
         "off_cut": 0,
@@ -152,14 +178,14 @@
         "long": 2,
         "rows": [
           {
-            "shot": "sh-1552e8c7",
-            "duration": 5.78,
+            "shot": "sh-c4b07fbe",
+            "duration": 5.88,
             "lines": 2
           },
           {
-            "shot": "sh-f89fdedc",
-            "duration": 4.02,
-            "lines": 1
+            "shot": "sh-1552e8c7",
+            "duration": 7.29,
+            "lines": 2
           }
         ]
       },
@@ -177,7 +203,7 @@
       },
       "visible_cuts": {
         "cuts": 9,
-        "invisible": 0
+        "invisible": 2
       },
       "hook": {
         "first_line_at": 0.0,
@@ -238,12 +264,24 @@
   ],
   "issues": [
     {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "2 个镜头的素材比槽位短，会出现静止画面：sh-c4b07fbe 短 3.55s；sh-1552e8c7 短 1.41s"
+    },
+    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "2 个镜头太长（短剧要切得快）：sh-1552e8c7 5.78s（2 句）、sh-f89fdedc 4.02s（1 句）"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-c4b07fbe 5.88s（2 句）、sh-1552e8c7 7.29s（2 句）"
+    },
+    {
+      "area": "rhythm",
+      "kind": "invisible_cut",
+      "where": "-",
+      "detail": "2 个切点观众看不出来（前后两个镜头太像）：16.1s、26.1s"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 3,
   "verdict": "ISSUES"
 }

@@ -216,8 +216,26 @@
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
+        "off_screen_lines": 3,
         "rows": [
+          {
+            "line": "ln-c63aafac",
+            "speaker": "HR",
+            "shot": "sh-7a2060b9",
+            "on_screen": [
+              "林知夏"
+            ],
+            "text": "公司决定不再续签。"
+          },
+          {
+            "line": "ln-4269432b",
+            "speaker": "周总",
+            "shot": "sh-480f8134",
+            "on_screen": [
+              "林知夏"
+            ],
+            "text": "你再撑一个月，项目奖金翻倍。"
+          },
           {
             "line": "ln-0b404884",
             "speaker": "周总",
@@ -229,9 +247,31 @@
           }
         ]
       },
+      "line_order": {
+        "scenes_out_of_order": 0
+      },
       "frozen": {
-        "short": 0,
-        "rows": []
+        "short": 3,
+        "rows": [
+          {
+            "shot": "sh-a6073b0a",
+            "slot": 6.35,
+            "material": 5.17,
+            "frozen": 1.19
+          },
+          {
+            "shot": "sh-817df059",
+            "slot": 7.58,
+            "material": 6.58,
+            "frozen": 0.99
+          },
+          {
+            "shot": "sh-78f25a9b",
+            "slot": 8.55,
+            "material": 7.29,
+            "frozen": 1.26
+          }
+        ]
       },
       "sync": {
         "off_cut": 0,
@@ -247,9 +287,9 @@
             "lines": 1
           },
           {
-            "shot": "sh-7a2060b9",
-            "duration": 4.2,
-            "lines": 1
+            "shot": "sh-a6073b0a",
+            "duration": 6.35,
+            "lines": 3
           },
           {
             "shot": "sh-ce7dc7cd",
@@ -263,12 +303,12 @@
           },
           {
             "shot": "sh-480f8134",
-            "duration": 6.6,
+            "duration": 5.74,
             "lines": 2
           },
           {
             "shot": "sh-817df059",
-            "duration": 6.17,
+            "duration": 7.58,
             "lines": 2
           },
           {
@@ -278,12 +318,12 @@
           },
           {
             "shot": "sh-78f25a9b",
-            "duration": 7.07,
+            "duration": 8.55,
             "lines": 2
           },
           {
             "shot": "sh-d62e7603",
-            "duration": 7.48,
+            "duration": 6.0,
             "lines": 2
           }
         ]
@@ -302,7 +342,7 @@
       },
       "visible_cuts": {
         "cuts": 11,
-        "invisible": 0
+        "invisible": 4
       },
       "hook": {
         "first_line_at": 0.0,
@@ -369,10 +409,16 @@
       "detail": "成片 73s，超过一集短剧的长度上限 60s"
     },
     {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "3 个镜头的素材比槽位短，会出现静止画面：sh-a6073b0a 短 1.19s；sh-817df059 短 0.99s；sh-78f25a9b 短 1.26s"
+    },
+    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "9 个镜头太长（短剧要切得快）：sh-b701ee36 4.45s（1 句）、sh-7a2060b9 4.2s（1 句）、sh-ce7dc7cd 7.66s（2 句）"
+      "detail": "9 个镜头太长（短剧要切得快）：sh-b701ee36 4.45s（1 句）、sh-a6073b0a 6.35s（3 句）、sh-ce7dc7cd 7.66s（2 句）"
     },
     {
       "area": "pacing",
@@ -391,8 +437,62 @@
       "kind": "hook_too_late",
       "where": "-",
       "detail": "开场第一个镜头 4.47s，钩子来得太晚"
+    },
+    {
+      "area": "rhythm",
+      "kind": "invisible_cut",
+      "where": "-",
+      "detail": "4 个切点观众看不出来（前后两个镜头太像）：6.9s、36.3s、43.9s、67.3s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-87a8913f",
+      "detail": "这句没有对应的字幕：是我绩效不够，还是另有原因？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-4269432b",
+      "detail": "字幕只显示到 2.25s，配音却要 3.12s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-cb12e6e7",
+      "detail": "这句没有对应的字幕：那一个月以后呢？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d61468c6",
+      "detail": "这句没有对应的字幕：一个月以后……公司再安排。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-56c367f3",
+      "detail": "这句没有对应的字幕：三年前最难的项目，您交给我。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-06b37d5c",
+      "detail": "这句没有对应的字幕：现在项目要交付，您却让我走？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-e800b507",
+      "detail": "字幕只显示到 3.00s，配音却要 4.51s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-3a278c58",
+      "detail": "这句没有对应的字幕：你动了项目A的核心代码？"
     }
   ],
-  "issue_count": 5,
+  "issue_count": 15,
   "verdict": "ISSUES"
 }
