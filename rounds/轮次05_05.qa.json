@@ -6,12 +6,12 @@
       "title": "雪夜血诏废太后",
       "picture": {
         "frames": 16,
-        "sharp_median": 21.2,
-        "sharp_min": 6.8,
-        "luma_spread": 10.1,
-        "src_luma_spread": 15.0,
-        "graded_luma_spread": 3.6,
-        "sat_spread": 1.4
+        "sharp_median": 19.1,
+        "sharp_min": 10.3,
+        "luma_spread": 9.5,
+        "src_luma_spread": 31.0,
+        "graded_luma_spread": 6.5,
+        "sat_spread": 1.8
       },
       "voice": {
         "lines": 15,
@@ -148,23 +148,23 @@
         "rows": []
       },
       "completeness": {
-        "duration": 42.85,
+        "duration": 40.45,
         "timeline": 40.45,
         "lines": 15,
-        "onsets": 29
+        "onsets": 28
       },
       "story": {
         "mismatched": 0,
         "off_screen_lines": 1,
         "rows": [
           {
-            "line": "ln-7647f115",
+            "line": "ln-549c6117",
             "speaker": "传旨宫人",
-            "shot": "sh-e2b656ae",
+            "shot": "sh-7f4e6714",
             "on_screen": [
               "沈氏"
             ],
-            "text": "太后懿旨。"
+            "text": "迁居长乐宫。"
           }
         ]
       },
@@ -180,12 +180,12 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.11,
+        "average": 3.37,
         "long": 1,
         "rows": [
           {
-            "shot": "sh-af07a2f1",
-            "duration": 5.13,
+            "shot": "sh-f73faab7",
+            "duration": 6.17,
             "lines": 2
           }
         ]
@@ -195,16 +195,16 @@
         "opens": 0
       },
       "rhythm": {
-        "shots": 13,
-        "avg_shot": 3.3,
-        "median_shot": 3.1,
-        "max_shot": 5.83,
-        "opening_shot": 2.4,
-        "cuts_per_min": 16.8
+        "shots": 10,
+        "avg_shot": 4.04,
+        "median_shot": 3.53,
+        "max_shot": 7.0,
+        "opening_shot": 2.07,
+        "cuts_per_min": 13.3
       },
       "visible_cuts": {
-        "cuts": 12,
-        "invisible": 6
+        "cuts": 9,
+        "invisible": 0
       },
       "hook": {
         "first_line_at": 0.0,
@@ -212,9 +212,9 @@
       },
       "mix": {
         "episode": {
-          "i": -16.5,
-          "lra": 4.7,
-          "pk": -1.8
+          "i": -16.4,
+          "lra": 3.9,
+          "pk": -1.9
         },
         "voice": {
           "i": -22.6,
@@ -222,14 +222,14 @@
           "pk": -4.5
         },
         "music": {
-          "i": -37.0,
-          "lra": 13.7,
+          "i": -36.9,
+          "lra": 14.2,
           "pk": -16.8
         },
         "bed": {
-          "i": -22.3,
-          "lra": 13.7,
-          "pk": -2.1
+          "i": -22.1,
+          "lra": 14.3,
+          "pk": -2.0
         },
         "audibility": {
           "speech_lufs": -21.5,
@@ -252,115 +252,31 @@
         "height": 544
       },
       "nle": {
-        "spine": 13,
+        "spine": 12,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 42.85
+        "spine_length": 40.45
       }
     }
   ],
   "issues": [
     {
-      "area": "completeness",
-      "kind": "duration_mismatch",
-      "where": "-",
-      "detail": "成片 42.85s，时间线 40.45s，差了 +2.40s（有内容被截断）"
-    },
-    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "1 个镜头太长（短剧要切得快）：sh-af07a2f1 5.13s（2 句）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-f73faab7 6.17s（2 句）"
     },
     {
       "area": "rhythm",
-      "kind": "invisible_cut",
+      "kind": "cuts_too_slow",
       "where": "-",
-      "detail": "6 个切点观众看不出来（前后两个镜头太像）：5.0s、12.4s、15.5s、22.5s"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-7647f115",
-      "detail": "这句没有对应的字幕：太后懿旨。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-1a9c0405",
-      "detail": "这句没有对应的字幕：册封沈氏为贵妃。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-549c6117",
-      "detail": "这句没有对应的字幕：迁居长乐宫。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-27f6befe",
-      "detail": "这句没有对应的字幕：三年前，谁跪求太医？"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-677edae0",
-      "detail": "这句没有对应的字幕：太后说，旧事翻篇了。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-be1b4be0",
-      "detail": "这句没有对应的字幕：翻篇？"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-9a90c147",
-      "detail": "这句没有对应的字幕：请太后收回懿旨。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_shorter_than_voice",
-      "where": "ln-11459605",
-      "detail": "字幕只显示到 2.40s，配音却要 3.01s"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-4f4c4d10",
-      "detail": "这句没有对应的字幕：死罪便死罪。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_shorter_than_voice",
-      "where": "ln-a2b6416f",
-      "detail": "字幕只显示到 2.40s，配音却要 3.55s"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-dbcb2231",
-      "detail": "这句没有对应的字幕：废太后，立先帝长子。"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_missing_for_line",
-      "where": "ln-84c35793",
-      "detail": "这句没有对应的字幕：沈氏，你疯了？"
-    },
-    {
-      "area": "subtitle",
-      "kind": "cue_shorter_than_voice",
-      "where": "ln-da36c440",
-      "detail": "字幕只显示到 2.40s，配音却要 3.49s"
+      "detail": "平均 4.04s 一刀（13.3 刀/分），短剧通常要 20~40 刀/分"
     }
   ],
-  "issue_count": 16,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }

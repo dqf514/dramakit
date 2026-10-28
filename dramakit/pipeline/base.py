@@ -166,7 +166,14 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
         for sh, n in zip(shots, counts):
             if n <= 0:
                 continue
-            take = list(range(nxt, min(nxt + n, n_lines + 1)))
+            take: list[int] = []
+            total = 0.0
+            for k in range(nxt, min(nxt + n, n_lines + 1)):
+                d = durs[k - 1] if k - 1 < len(durs) else 0.0
+                if take and limit > 0 and total + d > limit:
+                    break
+                take.append(k)
+                total += d
             if take:
                 claimed[sh.id] = take
                 nxt = take[-1] + 1
@@ -177,6 +184,11 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
             if not left:
                 break
             if len(claimed.get(sh.id, [])) >= 2:
+                continue
+            d = durs[left[0] - 1] if left[0] - 1 < len(durs) else 0.0
+            have = sum(durs[k - 1] for k in claimed.get(sh.id, [])
+                       if k - 1 < len(durs))
+            if limit > 0 and have + d > limit:
                 continue
             claimed.setdefault(sh.id, []).append(left.pop(0))
         for sid in claimed:

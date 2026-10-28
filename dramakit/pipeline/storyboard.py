@@ -55,12 +55,15 @@ def run(ctx: Context) -> dict:
         if not ep.scenes:
             ctx.log.warning("storyboard: 第%d集无剧本，跳过（先跑 script）", ep.index)
             continue
-        # every scene gets the shots its own lines need - two lines per shot
-        # is the rhythm a short drama runs at
+        # every scene gets the shots its own dialogue needs: a shot holds
+        # three and a half seconds of talking, so the count comes from the
+        # length of the lines and not from how many there are
         needs = []
         for sc in ep.scenes:
-            spoken = sum(1 for l in sc.lines if not is_narration(l))
-            needs.append(max(cfg.min_shots_per_scene, -(-spoken // 2)))
+            spoken = [l for l in sc.lines if not is_narration(l)]
+            secs = sum(estimate_reading_seconds(l.text) for l in spoken) * 1.2
+            want = max(cfg.min_shots_per_scene, (int(secs * 100) + 349) // 350)
+            needs.append(want)
         total_need = sum(needs)
         budget = max(cfg.max_shots_per_episode, total_need)
         for sc, need in zip(ep.scenes, needs):
