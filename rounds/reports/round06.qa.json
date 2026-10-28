@@ -6,12 +6,12 @@
       "title": "八十万买断三年",
       "picture": {
         "frames": 16,
-        "sharp_median": 16.8,
-        "sharp_min": 10.4,
-        "luma_spread": 11.2,
-        "src_luma_spread": 26.1,
-        "graded_luma_spread": 9.5,
-        "sat_spread": 1.7
+        "sharp_median": 14.7,
+        "sharp_min": 9.1,
+        "luma_spread": 18.3,
+        "src_luma_spread": 28.6,
+        "graded_luma_spread": 8.2,
+        "sat_spread": 2.2
       },
       "voice": {
         "lines": 21,
@@ -211,27 +211,85 @@
       "completeness": {
         "duration": 73.3,
         "timeline": 73.3,
-        "lines": 21,
-        "onsets": 34
+        "lines": 14,
+        "onsets": 33
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
+        "off_screen_lines": 3,
         "rows": [
           {
-            "line": "ln-0b404884",
+            "line": "ln-87a8913f",
+            "speaker": "林知夏",
+            "shot": "sh-03e6cf79",
+            "on_screen": [
+              "HR"
+            ],
+            "text": "是我绩效不够，还是另有原因？"
+          },
+          {
+            "line": "ln-599e75c3",
             "speaker": "周总",
-            "shot": "sh-329681dc",
+            "shot": "sh-6b166429",
             "on_screen": [
               "林知夏"
             ],
-            "text": "公司愿意给你八十万补偿。"
+            "text": "今天大客户演示，团队缺人。"
+          },
+          {
+            "line": "ln-56c367f3",
+            "speaker": "林知夏",
+            "shot": "sh-e467e99e",
+            "on_screen": [
+              "周总"
+            ],
+            "text": "三年前最难的项目，您交给我。"
           }
         ]
       },
+      "line_order": {
+        "scenes_out_of_order": 0
+      },
       "frozen": {
-        "short": 0,
-        "rows": []
+        "short": 6,
+        "rows": [
+          {
+            "shot": "sh-f95e2b02",
+            "slot": 6.56,
+            "material": 4.46,
+            "frozen": 2.1
+          },
+          {
+            "shot": "sh-9f04d5bf",
+            "slot": 3.65,
+            "material": 3.04,
+            "frozen": 0.6
+          },
+          {
+            "shot": "sh-061c068c",
+            "slot": 5.36,
+            "material": 3.75,
+            "frozen": 1.61
+          },
+          {
+            "shot": "sh-e467e99e",
+            "slot": 4.64,
+            "material": 3.75,
+            "frozen": 0.89
+          },
+          {
+            "shot": "sh-210aeabd",
+            "slot": 6.89,
+            "material": 3.75,
+            "frozen": 3.14
+          },
+          {
+            "shot": "sh-eb10cb27",
+            "slot": 6.21,
+            "material": 4.46,
+            "frozen": 1.75
+          }
+        ]
       },
       "sync": {
         "off_cut": 0,
@@ -242,49 +300,49 @@
         "long": 9,
         "rows": [
           {
-            "shot": "sh-b701ee36",
-            "duration": 4.45,
+            "shot": "sh-f95e2b02",
+            "duration": 6.56,
             "lines": 1
           },
           {
-            "shot": "sh-7a2060b9",
-            "duration": 4.2,
+            "shot": "sh-03e6cf79",
+            "duration": 6.19,
             "lines": 1
           },
           {
-            "shot": "sh-ce7dc7cd",
-            "duration": 7.66,
-            "lines": 2
-          },
-          {
-            "shot": "sh-bb919bd9",
-            "duration": 5.67,
-            "lines": 2
-          },
-          {
-            "shot": "sh-480f8134",
-            "duration": 6.6,
-            "lines": 2
-          },
-          {
-            "shot": "sh-817df059",
-            "duration": 6.17,
-            "lines": 2
-          },
-          {
-            "shot": "sh-013adcbe",
-            "duration": 4.09,
+            "shot": "sh-061c068c",
+            "duration": 5.36,
             "lines": 1
           },
           {
-            "shot": "sh-78f25a9b",
-            "duration": 7.07,
-            "lines": 2
+            "shot": "sh-6b166429",
+            "duration": 5.61,
+            "lines": 1
           },
           {
-            "shot": "sh-d62e7603",
-            "duration": 7.48,
-            "lines": 2
+            "shot": "sh-6b665498",
+            "duration": 5.21,
+            "lines": 1
+          },
+          {
+            "shot": "sh-210aeabd",
+            "duration": 6.89,
+            "lines": 1
+          },
+          {
+            "shot": "sh-eb10cb27",
+            "duration": 6.21,
+            "lines": 1
+          },
+          {
+            "shot": "sh-10d3154d",
+            "duration": 5.88,
+            "lines": 1
+          },
+          {
+            "shot": "sh-f352c4de",
+            "duration": 6.55,
+            "lines": 1
           }
         ]
       },
@@ -293,16 +351,16 @@
         "opens": 0
       },
       "rhythm": {
-        "shots": 12,
-        "avg_shot": 6.11,
-        "median_shot": 6.17,
-        "max_shot": 13.3,
+        "shots": 14,
+        "avg_shot": 5.24,
+        "median_shot": 5.5,
+        "max_shot": 9.1,
         "opening_shot": 4.47,
-        "cuts_per_min": 9.0
+        "cuts_per_min": 10.6
       },
       "visible_cuts": {
-        "cuts": 11,
-        "invisible": 0
+        "cuts": 13,
+        "invisible": 9
       },
       "hook": {
         "first_line_at": 0.0,
@@ -311,12 +369,12 @@
       "mix": {
         "episode": {
           "i": -16.5,
-          "lra": 3.9,
-          "pk": -2.0
+          "lra": 3.8,
+          "pk": -1.9
         },
         "voice": {
           "i": -23.2,
-          "lra": 4.8,
+          "lra": 4.6,
           "pk": -4.6
         },
         "music": {
@@ -369,10 +427,16 @@
       "detail": "成片 73s，超过一集短剧的长度上限 60s"
     },
     {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "6 个镜头的素材比槽位短，会出现静止画面：sh-f95e2b02 短 2.1s；sh-9f04d5bf 短 0.6s；sh-061c068c 短 1.61s"
+    },
+    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "9 个镜头太长（短剧要切得快）：sh-b701ee36 4.45s（1 句）、sh-7a2060b9 4.2s（1 句）、sh-ce7dc7cd 7.66s（2 句）"
+      "detail": "9 个镜头太长（短剧要切得快）：sh-f95e2b02 6.56s（1 句）、sh-03e6cf79 6.19s（1 句）、sh-061c068c 5.36s（1 句）"
     },
     {
       "area": "pacing",
@@ -384,15 +448,99 @@
       "area": "rhythm",
       "kind": "cuts_too_slow",
       "where": "-",
-      "detail": "平均 6.11s 一刀（9.0 刀/分），短剧通常要 20~40 刀/分"
+      "detail": "平均 5.24s 一刀（10.6 刀/分），短剧通常要 20~40 刀/分"
     },
     {
       "area": "rhythm",
       "kind": "hook_too_late",
       "where": "-",
       "detail": "开场第一个镜头 4.47s，钩子来得太晚"
+    },
+    {
+      "area": "rhythm",
+      "kind": "invisible_cut",
+      "where": "-",
+      "detail": "9 个切点观众看不出来（前后两个镜头太像）：10.2s、16.4s、19.6s、28.4s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-6fa76196",
+      "detail": "字幕只显示到 4.45s，配音却要 6.56s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-c63aafac",
+      "detail": "这句没有对应的字幕：公司决定不再续签。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-87a8913f",
+      "detail": "这句没有对应的字幕：是我绩效不够，还是另有原因？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-0c231c7c",
+      "detail": "这句没有对应的字幕：公司战略调整。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-93d50b3c",
+      "detail": "这句没有对应的字幕：项目A代码，三年不许带出去。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-cede3334",
+      "detail": "字幕只显示到 1.93s，配音却要 3.43s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-599e75c3",
+      "detail": "这句没有对应的字幕：今天大客户演示，团队缺人。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-4269432b",
+      "detail": "字幕只显示到 2.34s，配音却要 5.21s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d61468c6",
+      "detail": "这句没有对应的字幕：一个月以后……公司再安排。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-56c367f3",
+      "detail": "字幕只显示到 3.36s，配音却要 6.89s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_shorter_than_voice",
+      "where": "ln-2fc9a2ed",
+      "detail": "字幕只显示到 4.10s，配音却要 6.21s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-704a3e16",
+      "detail": "这句没有对应的字幕：你手里……是不是还留着什么？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-e800b507",
+      "detail": "这句没有对应的字幕：客户私有仓库的密码，是我设的。"
     }
   ],
-  "issue_count": 5,
+  "issue_count": 20,
   "verdict": "ISSUES"
 }

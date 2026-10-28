@@ -120,6 +120,10 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
             claimed[sh.id] = idxs
     if not claimed:
         return None
+
+    def length_of(sid: str) -> float:
+        return sum(durs[n - 1] for n in claimed.get(sid, []) if n - 1 < len(durs))
+
     missing = [n for n in range(1, n_lines + 1) if n not in used]
     if missing:
         # hand each leftover to the shot that sits closest to it in the list -
@@ -128,9 +132,6 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
         # The length limit still applies: a shot that cannot take the line
         # within it is not considered.
         n_shots = len(shots)
-
-        def length_of(sid: str) -> float:
-            return sum(durs[n - 1] for n in claimed.get(sid, []) if n - 1 < len(durs))
 
         for n in missing:
             d = durs[n - 1] if n - 1 < len(durs) else 0.0
@@ -178,19 +179,33 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
                 claimed[sh.id] = take
                 nxt = take[-1] + 1
         # anything the storyboard did not place goes to a shot with room, in
-        # order
-        left = [k for k in range(1, n_lines + 1) if k not in seq]
+        # order - a line is never dropped, because a line that belongs to no
+        # shot makes the scene longer than its shots and every line is then
+        # stretched to fit
+        placed = {k for v in claimed.values() for k in v}
+        left = [k for k in range(1, n_lines + 1) if k not in placed]
+        last_pos = -1
         for sh in shots:
-            if not left:
-                break
-            if len(claimed.get(sh.id, [])) >= 2:
-                continue
-            d = durs[left[0] - 1] if left[0] - 1 < len(durs) else 0.0
-            have = sum(durs[k - 1] for k in claimed.get(sh.id, [])
-                       if k - 1 < len(durs))
-            if limit > 0 and have + d > limit:
-                continue
-            claimed.setdefault(sh.id, []).append(left.pop(0))
+            for k in claimed.get(sh.id, []):
+                last_pos = max(last_pos, k)
+        for k in left:
+            d = durs[k - 1] if k - 1 < len(durs) else 0.0
+            # the line has to go after the ones already placed, or the scene
+            # is played back out of order
+            later = [sh for sh in shots if sh.index > last_pos]
+            free = [sh for sh in later
+                    if len(claimed.get(sh.id, [])) < 2
+                    and not (limit > 0 and length_of(sh.id) + d > limit)]
+            if free:
+                best = free[0]
+            elif later:
+                best = min(later, key=lambda sh: length_of(sh.id))
+            else:
+                # no shot is left to put it in: the last one takes it, so the
+                # lines still come out in order
+                best = max(shots, key=lambda sh: sh.index)
+            claimed.setdefault(best.id, []).append(k)
+            last_pos = max(last_pos, k)
         for sid in claimed:
             claimed[sid].sort()
     return claimed
