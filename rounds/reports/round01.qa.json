@@ -6,12 +6,12 @@
       "title": "雨夜担保索赔两千万",
       "picture": {
         "frames": 16,
-        "sharp_median": 24.7,
-        "sharp_min": 16.8,
-        "luma_spread": 13.6,
-        "src_luma_spread": 10.2,
-        "graded_luma_spread": 3.5,
-        "sat_spread": 1.3
+        "sharp_median": 24.2,
+        "sharp_min": 19.4,
+        "luma_spread": 5.7,
+        "src_luma_spread": 13.2,
+        "graded_luma_spread": 3.2,
+        "sat_spread": 1.6
       },
       "voice": {
         "lines": 16,
@@ -152,16 +152,105 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
-        "duration": 38.83,
-        "timeline": 38.86,
+        "duration": 44.11,
+        "timeline": 44.11,
         "lines": 15,
-        "onsets": 20
+        "onsets": 11
       },
       "story": {
-        "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "mismatched": 1,
+        "off_screen_lines": 9,
+        "rows": [
+          {
+            "line": "ln-cf37dc4d",
+            "speaker": "神秘男人",
+            "shot": "sh-f833ad95",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "林小满。"
+          },
+          {
+            "line": "ln-6b94bc11",
+            "speaker": "神秘男人",
+            "shot": "sh-f833ad95",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "三年前，在建设银行。"
+          },
+          {
+            "line": "ln-72bffb8a",
+            "speaker": "神秘男人",
+            "shot": "sh-cdd0a1b0",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "我不会认错。"
+          },
+          {
+            "line": "ln-99983ad0",
+            "speaker": "神秘男人",
+            "shot": "sh-cdd0a1b0",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "三年前那份担保。"
+          },
+          {
+            "line": "ln-8859a4bb",
+            "speaker": "神秘男人",
+            "shot": "sh-cdd0a1b0",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "现在值两千万。"
+          },
+          {
+            "line": "ln-a21b669c",
+            "speaker": "神秘男人",
+            "shot": "sh-4776b1d8",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "伪造不伪造，银行会查。"
+          },
+          {
+            "line": "ln-cc17d8e1",
+            "speaker": "神秘男人",
+            "shot": "sh-4776b1d8",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "明天上午九点，建行信贷部。"
+          },
+          {
+            "line": "ln-d2031e2b",
+            "speaker": "神秘男人",
+            "shot": "sh-f30f2234",
+            "on_screen": [
+              "林小满"
+            ],
+            "text": "你不去，我就去你租的地方。"
+          },
+          {
+            "line": "ln-c3d900b0",
+            "speaker": "林小满",
+            "shot": "sh-307ce126",
+            "on_screen": [
+              "神秘男人"
+            ],
+            "text": "你到底想干什么？"
+          }
+        ]
+      },
+      "line_order": {
+        "scenes_out_of_order": 0
       },
       "frozen": {
         "short": 0,
@@ -172,40 +261,66 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.89,
-        "long": 0,
-        "rows": []
+        "average": 3.68,
+        "long": 1,
+        "rows": [
+          {
+            "shot": "sh-4776b1d8",
+            "duration": 6.57,
+            "lines": 3
+          }
+        ]
+      },
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 11,
+        "avg_shot": 4.01,
+        "median_shot": 3.87,
+        "max_shot": 6.57,
+        "opening_shot": 3.7,
+        "cuts_per_min": 13.6
+      },
+      "visible_cuts": {
+        "cuts": 10,
+        "invisible": 0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "你也睡不着？"
       },
       "mix": {
         "episode": {
-          "i": -17.6,
-          "lra": 10.4,
-          "pk": -1.9
+          "i": -17.7,
+          "lra": 13.1,
+          "pk": -2.0
         },
         "voice": {
-          "i": -29.4,
-          "lra": 7.4,
+          "i": -29.5,
+          "lra": 6.2,
           "pk": -6.7
         },
         "music": {
-          "i": -44.5,
-          "lra": 10.7,
-          "pk": -26.3
+          "i": -41.7,
+          "lra": 6.9,
+          "pk": -25.5
         },
         "bed": {
-          "i": -24.7,
-          "lra": 10.7,
-          "pk": -6.6
+          "i": -15.7,
+          "lra": 6.9,
+          "pk": 0.4
         },
         "audibility": {
           "speech_lufs": -29.2,
-          "bed_peak_lufs": -41.2,
-          "gap_lu": 12.0
+          "bed_peak_lufs": -39.4,
+          "gap_lu": 10.2
         },
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 38,
+        "cues": 22,
         "styles": [
           "Default",
           "Speaker",
@@ -213,19 +328,42 @@
         ],
         "max_rows": 1
       },
+      "subtitle_place": {
+        "margin_v": 30,
+        "height": 544
+      },
       "nle": {
-        "spine": 10,
+        "spine": 12,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 38.86
+        "spine_length": 44.11
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "story",
+      "kind": "speaker_off_screen",
+      "where": "-",
+      "detail": "神秘男人 有 8/10 句台词时不在画面里，角色分配有问题"
+    },
+    {
+      "area": "pacing",
+      "kind": "slow_shot",
+      "where": "-",
+      "detail": "1 个镜头太长（短剧要切得快）：sh-4776b1d8 6.57s（3 句）"
+    },
+    {
+      "area": "rhythm",
+      "kind": "cuts_too_slow",
+      "where": "-",
+      "detail": "平均 4.01s 一刀（13.6 刀/分），短剧通常要 20~40 刀/分"
+    }
+  ],
+  "issue_count": 3,
+  "verdict": "ISSUES"
 }

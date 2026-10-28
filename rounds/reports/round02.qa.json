@@ -6,12 +6,12 @@
       "title": "被逐少爷归来夺股",
       "picture": {
         "frames": 16,
-        "sharp_median": 34.4,
-        "sharp_min": 20.4,
-        "luma_spread": 9.6,
-        "src_luma_spread": 25.9,
-        "graded_luma_spread": 5.2,
-        "sat_spread": 3.0
+        "sharp_median": 25.1,
+        "sharp_min": 20.9,
+        "luma_spread": 10.0,
+        "src_luma_spread": 22.3,
+        "graded_luma_spread": 3.9,
+        "sat_spread": 3.8
       },
       "voice": {
         "lines": 14,
@@ -150,26 +150,23 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
-        "duration": 30.22,
-        "timeline": 30.22,
+        "duration": 32.42,
+        "timeline": 32.42,
         "lines": 14,
-        "onsets": 19
+        "onsets": 17
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
-        "rows": [
-          {
-            "line": "ln-e079e0f7",
-            "speaker": "陆沉",
-            "shot": "sh-2b2d60a8",
-            "on_screen": [
-              "陆明远"
-            ],
-            "text": "周行长马上就到。"
-          }
-        ]
+        "off_screen_lines": 0,
+        "rows": []
+      },
+      "line_order": {
+        "scenes_out_of_order": 0
       },
       "frozen": {
         "short": 0,
@@ -180,40 +177,60 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.02,
+        "average": 2.49,
         "long": 0,
         "rows": []
+      },
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 12,
+        "avg_shot": 2.7,
+        "median_shot": 2.46,
+        "max_shot": 5.93,
+        "opening_shot": 1.5,
+        "cuts_per_min": 20.4
+      },
+      "visible_cuts": {
+        "cuts": 11,
+        "invisible": 0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "哪儿来的？"
       },
       "mix": {
         "episode": {
           "i": -17.1,
-          "lra": 3.7,
+          "lra": 6.3,
           "pk": -2.0
         },
         "voice": {
           "i": -22.0,
-          "lra": 5.0,
+          "lra": 6.2,
           "pk": -0.9
         },
         "music": {
           "i": -34.9,
-          "lra": 3.8,
-          "pk": -13.0
+          "lra": 11.4,
+          "pk": -15.6
         },
         "bed": {
-          "i": -24.0,
-          "lra": 3.9,
-          "pk": -2.0
+          "i": -22.8,
+          "lra": 11.4,
+          "pk": -2.9
         },
         "audibility": {
-          "speech_lufs": -21.2,
-          "bed_peak_lufs": -33.2,
+          "speech_lufs": -21.3,
+          "bed_peak_lufs": -33.3,
           "gap_lu": 12.0
         },
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 29,
+        "cues": 15,
         "styles": [
           "Default",
           "Speaker",
@@ -221,15 +238,19 @@
         ],
         "max_rows": 1
       },
+      "subtitle_place": {
+        "margin_v": 30,
+        "height": 544
+      },
       "nle": {
-        "spine": 10,
+        "spine": 13,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 30.22
+        "spine_length": 32.42
       }
     }
   ],

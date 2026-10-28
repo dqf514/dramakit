@@ -148,6 +148,10 @@ def _repair_line_casts(sc) -> int:
     reaction shot is fine now and then, but when an empty shot with the
     speaker in it is available, the line belongs there - otherwise the
     viewer hears one person and sees another.
+
+    Whatever happens, the people who speak in a shot are put into that
+    shot: the shot's picture is made from its characters, so a speaker who
+    is not in the list is a voice with nobody behind it.
     """
     spoken = [l for l in sc.lines if not is_narration(l)]
     if not spoken:
@@ -171,6 +175,15 @@ def _repair_line_casts(sc) -> int:
                     other.line_indices.append(n)
                     moved += 1
                     break
+    # everybody who speaks in a shot is in that shot
+    for shot in sc.shots:
+        names = list(shot.characters or [])
+        for n in shot.line_indices:
+            if 1 <= n <= len(spoken):
+                spk = spoken[n - 1].speaker
+                if spk and spk not in names:
+                    names.append(spk)
+        shot.characters = names
     for shot in sc.shots:
         shot.line_indices.sort()
     return moved
