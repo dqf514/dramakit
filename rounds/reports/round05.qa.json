@@ -6,12 +6,12 @@
       "title": "雪夜血诏废太后",
       "picture": {
         "frames": 16,
-        "sharp_median": 19.1,
-        "sharp_min": 10.3,
-        "luma_spread": 9.5,
-        "src_luma_spread": 31.0,
-        "graded_luma_spread": 6.5,
-        "sat_spread": 1.8
+        "sharp_median": 20.1,
+        "sharp_min": 8.8,
+        "luma_spread": 10.0,
+        "src_luma_spread": 22.5,
+        "graded_luma_spread": 4.5,
+        "sat_spread": 2.1
       },
       "voice": {
         "lines": 15,
@@ -160,7 +160,7 @@
           {
             "line": "ln-549c6117",
             "speaker": "传旨宫人",
-            "shot": "sh-7f4e6714",
+            "shot": "sh-47305190",
             "on_screen": [
               "沈氏"
             ],
@@ -180,30 +180,24 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.37,
-        "long": 1,
-        "rows": [
-          {
-            "shot": "sh-f73faab7",
-            "duration": 6.17,
-            "lines": 2
-          }
-        ]
+        "average": 3.11,
+        "long": 0,
+        "rows": []
       },
       "framing": {
         "same_size": 0,
         "opens": 0
       },
       "rhythm": {
-        "shots": 10,
-        "avg_shot": 4.04,
-        "median_shot": 3.53,
+        "shots": 11,
+        "avg_shot": 3.68,
+        "median_shot": 3.48,
         "max_shot": 7.0,
         "opening_shot": 2.07,
-        "cuts_per_min": 13.3
+        "cuts_per_min": 14.8
       },
       "visible_cuts": {
-        "cuts": 9,
+        "cuts": 10,
         "invisible": 0
       },
       "hook": {
@@ -252,7 +246,7 @@
         "height": 544
       },
       "nle": {
-        "spine": 12,
+        "spine": 13,
         "lanes": [
           "Dialogue",
           "Music"
@@ -265,18 +259,12 @@
   ],
   "issues": [
     {
-      "area": "pacing",
-      "kind": "slow_shot",
-      "where": "-",
-      "detail": "1 个镜头太长（短剧要切得快）：sh-f73faab7 6.17s（2 句）"
-    },
-    {
       "area": "rhythm",
       "kind": "cuts_too_slow",
       "where": "-",
-      "detail": "平均 4.04s 一刀（13.3 刀/分），短剧通常要 20~40 刀/分"
+      "detail": "平均 3.68s 一刀（14.8 刀/分），短剧通常要 20~40 刀/分"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 1,
   "verdict": "ISSUES"
 }

@@ -6,12 +6,12 @@
       "title": "雨夜仓库的第五人",
       "picture": {
         "frames": 16,
-        "sharp_median": 21.7,
-        "sharp_min": 14.4,
-        "luma_spread": 8.9,
-        "src_luma_spread": 7.9,
-        "graded_luma_spread": 3.0,
-        "sat_spread": 3.0
+        "sharp_median": 25.0,
+        "sharp_min": 13.2,
+        "luma_spread": 11.2,
+        "src_luma_spread": 18.1,
+        "graded_luma_spread": 4.5,
+        "sat_spread": 1.3
       },
       "voice": {
         "lines": 12,
@@ -138,7 +138,7 @@
         "duration": 37.37,
         "timeline": 37.37,
         "lines": 12,
-        "onsets": 17
+        "onsets": 13
       },
       "story": {
         "mismatched": 0,
@@ -147,26 +147,37 @@
           {
             "line": "ln-b97e4659",
             "speaker": "接线员",
-            "shot": "sh-d180ab9c",
+            "shot": "sh-bdf2ae93",
             "on_screen": [
               "老周"
             ],
             "text": "周队！旧纺织厂三号仓库，有人"
           },
           {
-            "line": "ln-484cd520",
-            "speaker": "老周",
-            "shot": "sh-66b5b01e",
+            "line": "ln-38ea12c0",
+            "speaker": "接线员",
+            "shot": "sh-b79daf9b",
             "on_screen": [
-              "接线员"
+              "老周",
+              "小韩"
             ],
-            "text": "小韩，带手电。走！"
+            "text": "报警人说……那人正在等第五个"
           }
         ]
       },
+      "line_order": {
+        "scenes_out_of_order": 0
+      },
       "frozen": {
-        "short": 0,
-        "rows": []
+        "short": 1,
+        "rows": [
+          {
+            "shot": "sh-6b7248d9",
+            "slot": 8.62,
+            "material": 3.75,
+            "frozen": 4.87
+          }
+        ]
       },
       "sync": {
         "off_cut": 0,
@@ -174,22 +185,17 @@
       },
       "pacing": {
         "average": 3.74,
-        "long": 3,
+        "long": 2,
         "rows": [
           {
-            "shot": "sh-dea8f160",
+            "shot": "sh-1620ee45",
             "duration": 4.53,
             "lines": 1
           },
           {
-            "shot": "sh-69bfdb85",
-            "duration": 5.6,
-            "lines": 2
-          },
-          {
-            "shot": "sh-c937d4fd",
-            "duration": 5.46,
-            "lines": 2
+            "shot": "sh-6b7248d9",
+            "duration": 8.62,
+            "lines": 3
           }
         ]
       },
@@ -198,16 +204,16 @@
         "opens": 0
       },
       "rhythm": {
-        "shots": 12,
-        "avg_shot": 3.11,
-        "median_shot": 3.24,
-        "max_shot": 5.6,
-        "opening_shot": 3.43,
-        "cuts_per_min": 17.7
+        "shots": 11,
+        "avg_shot": 3.4,
+        "median_shot": 3.43,
+        "max_shot": 7.6,
+        "opening_shot": 4.07,
+        "cuts_per_min": 16.1
       },
       "visible_cuts": {
-        "cuts": 11,
-        "invisible": 0
+        "cuts": 10,
+        "invisible": 9
       },
       "hook": {
         "first_line_at": 0.0,
@@ -215,19 +221,19 @@
       },
       "mix": {
         "episode": {
-          "i": -17.5,
-          "lra": 8.9,
-          "pk": -1.5
+          "i": -18.0,
+          "lra": 9.9,
+          "pk": -1.6
         },
         "voice": {
-          "i": -24.6,
-          "lra": 10.4,
+          "i": -24.9,
+          "lra": 11.2,
           "pk": -3.0
         },
         "music": {
-          "i": -37.5,
+          "i": -37.8,
           "lra": 7.0,
-          "pk": -23.2
+          "pk": -23.5
         },
         "bed": {
           "i": -19.3,
@@ -235,14 +241,14 @@
           "pk": -5.0
         },
         "audibility": {
-          "speech_lufs": -23.3,
-          "bed_peak_lufs": -35.3,
+          "speech_lufs": -23.6,
+          "bed_peak_lufs": -35.6,
           "gap_lu": 12.0
         },
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 13,
+        "cues": 11,
         "styles": [
           "Default",
           "Speaker",
@@ -268,12 +274,102 @@
   ],
   "issues": [
     {
+      "area": "picture",
+      "kind": "frozen_shots",
+      "where": "-",
+      "detail": "1 个镜头的素材比槽位短，会出现静止画面：sh-6b7248d9 短 4.87s"
+    },
+    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "3 个镜头太长（短剧要切得快）：sh-dea8f160 4.53s（1 句）、sh-69bfdb85 5.6s（2 句）、sh-c937d4fd 5.46s（2 句）"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-1620ee45 4.53s（1 句）、sh-6b7248d9 8.62s（3 句）"
+    },
+    {
+      "area": "rhythm",
+      "kind": "hook_too_late",
+      "where": "-",
+      "detail": "开场第一个镜头 4.07s，钩子来得太晚"
+    },
+    {
+      "area": "rhythm",
+      "kind": "invisible_cut",
+      "where": "-",
+      "detail": "9 个切点观众看不出来（前后两个镜头太像）：3.5s、6.3s、9.9s、13.2s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "missing_cues",
+      "where": "-",
+      "detail": "13 句台词只有 11 条字幕"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-ea8cdcf2",
+      "detail": "这句没有对应的字幕：全在城西老楼区？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-ef831d8f",
+      "detail": "这句没有对应的字幕：对。失踪日，正好隔七天。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d49a695b",
+      "detail": "这句没有对应的字幕：那下一个……就是今晚？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-b9687ccf",
+      "detail": "这句没有对应的字幕：就是今晚。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-b97e4659",
+      "detail": "这句没有对应的字幕：周队！旧纺织厂三号仓库，有人！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-62016876",
+      "detail": "这句没有对应的字幕：旧纺织厂？三号仓库？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-3b9de0a6",
+      "detail": "这句没有对应的字幕：那儿，十年前就拆了！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-38ea12c0",
+      "detail": "这句没有对应的字幕：报警人说……那人正在等第五个人。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-484cd520",
+      "detail": "这句没有对应的字幕：小韩，带手电。走！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-02a27c26",
+      "detail": "这句没有对应的字幕：十年没人去……会有埋伏？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-78f7c783",
+      "detail": "这句没有对应的字幕：怕也得去。"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 16,
   "verdict": "ISSUES"
 }

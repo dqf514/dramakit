@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 21.4,
-        "sharp_min": 7.1,
-        "luma_spread": 8.8,
-        "src_luma_spread": 28.7,
-        "graded_luma_spread": 5.3,
-        "sat_spread": 2.9
+        "sharp_median": 21.1,
+        "sharp_min": 10.3,
+        "luma_spread": 10.8,
+        "src_luma_spread": 43.6,
+        "graded_luma_spread": 8.0,
+        "sat_spread": 1.7
       },
       "voice": {
         "lines": 12,
@@ -136,8 +136,21 @@
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 0,
-        "rows": []
+        "off_screen_lines": 1,
+        "rows": [
+          {
+            "line": "ln-09477f24",
+            "speaker": "苏念",
+            "shot": "sh-58c69b3d",
+            "on_screen": [
+              "顾承舟"
+            ],
+            "text": "爷爷说的是，交给能撑住的人。"
+          }
+        ]
+      },
+      "line_order": {
+        "scenes_out_of_order": 0
       },
       "frozen": {
         "short": 0,
@@ -152,14 +165,14 @@
         "long": 2,
         "rows": [
           {
-            "shot": "sh-1552e8c7",
-            "duration": 5.78,
-            "lines": 2
-          },
-          {
-            "shot": "sh-f89fdedc",
+            "shot": "sh-58c69b3d",
             "duration": 4.02,
             "lines": 1
+          },
+          {
+            "shot": "sh-6059f276",
+            "duration": 8.04,
+            "lines": 3
           }
         ]
       },
@@ -168,12 +181,16 @@
         "opens": 0
       },
       "rhythm": {
-        "shots": 11,
-        "avg_shot": 3.09,
-        "median_shot": 2.87,
-        "max_shot": 5.6,
+        "shots": 13,
+        "avg_shot": 2.63,
+        "median_shot": 2.5,
+        "max_shot": 8.0,
         "opening_shot": 2.2,
-        "cuts_per_min": 19.3
+        "cuts_per_min": 21.1
+      },
+      "visible_cuts": {
+        "cuts": 12,
+        "invisible": 0
       },
       "hook": {
         "first_line_at": 0.0,
@@ -237,7 +254,7 @@
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "2 个镜头太长（短剧要切得快）：sh-1552e8c7 5.78s（2 句）、sh-f89fdedc 4.02s（1 句）"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-58c69b3d 4.02s（1 句）、sh-6059f276 8.04s（3 句）"
     }
   ],
   "issue_count": 1,
