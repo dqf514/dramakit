@@ -35,6 +35,11 @@ for ep in proj.episodes:
             sh.video_prompt = ''
             sh.video_path = ''
             sh.status = Status.PENDING
+# the music clips are made again too, so they carry the scene's sounds
+music = root / 'music'
+if music.exists():
+    for f in music.glob('*.mp4'):
+        f.unlink()
 store.save(proj)
 print('{name} 已重置')
 """

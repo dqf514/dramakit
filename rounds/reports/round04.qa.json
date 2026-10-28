@@ -6,12 +6,12 @@
       "title": "除夕宴上两个母亲",
       "picture": {
         "frames": 16,
-        "sharp_median": 24.0,
-        "sharp_min": 9.9,
-        "luma_spread": 10.7,
-        "src_luma_spread": 6.4,
-        "graded_luma_spread": 5.2,
-        "sat_spread": 2.3
+        "sharp_median": 25.9,
+        "sharp_min": 8.8,
+        "luma_spread": 5.4,
+        "src_luma_spread": 14.0,
+        "graded_luma_spread": 3.4,
+        "sat_spread": 1.7
       },
       "voice": {
         "lines": 14,
@@ -143,36 +143,33 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
-        "duration": 40.6,
-        "timeline": 40.64,
+        "duration": 44.49,
+        "timeline": 44.49,
         "lines": 14,
-        "onsets": 17
+        "onsets": 24
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 2,
+        "off_screen_lines": 1,
         "rows": [
           {
-            "line": "ln-a01467de",
-            "speaker": "神秘女人",
-            "shot": "sh-9a5ece52",
+            "line": "ln-d5d60026",
+            "speaker": "陈放",
+            "shot": "sh-fe50fc06",
             "on_screen": [
-              "陈放"
+              "陈放母亲"
             ],
-            "text": "你左肩的疤，是那天我推你留下"
-          },
-          {
-            "line": "ln-72bf941d",
-            "speaker": "陈放母亲",
-            "shot": "sh-49b51db3",
-            "on_screen": [
-              "神秘女人",
-              "陈放"
-            ],
-            "text": "她替我死了，我活了三年。"
+            "text": "我没忘……"
           }
         ]
+      },
+      "line_order": {
+        "scenes_out_of_order": 0
       },
       "frozen": {
         "short": 0,
@@ -183,36 +180,61 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.39,
-        "long": 1,
+        "average": 3.18,
+        "long": 2,
         "rows": [
           {
-            "shot": "sh-49b51db3",
-            "duration": 10.94,
-            "lines": 3
+            "shot": "sh-1e39645a",
+            "duration": 6.11,
+            "lines": 1
+          },
+          {
+            "shot": "sh-601193b8",
+            "duration": 5.53,
+            "lines": 1
           }
         ]
+      },
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 12,
+        "avg_shot": 3.71,
+        "median_shot": 3.63,
+        "max_shot": 8.77,
+        "opening_shot": 2.73,
+        "cuts_per_min": 14.8
+      },
+      "visible_cuts": {
+        "cuts": 11,
+        "invisible": 0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "妈，这鱼你爱吃。"
       },
       "mix": {
         "episode": {
           "i": -16.8,
-          "lra": 6.9,
-          "pk": -1.6
+          "lra": 7.4,
+          "pk": -1.9
         },
         "voice": {
           "i": -24.9,
-          "lra": 8.1,
+          "lra": 11.9,
           "pk": -5.5
         },
         "music": {
-          "i": -38.3,
-          "lra": 5.7,
-          "pk": -19.3
+          "i": -39.6,
+          "lra": 9.0,
+          "pk": -19.1
         },
         "bed": {
-          "i": -23.8,
-          "lra": 5.7,
-          "pk": -4.7
+          "i": -19.8,
+          "lra": 9.0,
+          "pk": 0.7
         },
         "audibility": {
           "speech_lufs": -23.6,
@@ -222,7 +244,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 29,
+        "cues": 15,
         "styles": [
           "Default",
           "Speaker",
@@ -230,15 +252,19 @@
         ],
         "max_rows": 1
       },
+      "subtitle_place": {
+        "margin_v": 30,
+        "height": 544
+      },
       "nle": {
-        "spine": 12,
+        "spine": 14,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 40.64
+        "spine_length": 44.49
       }
     }
   ],
@@ -247,9 +273,15 @@
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "1 个镜头太长（短剧要切得快）：sh-49b51db3 10.94s（3 句）"
+      "detail": "2 个镜头太长（短剧要切得快）：sh-1e39645a 6.11s（1 句）、sh-601193b8 5.53s（1 句）"
+    },
+    {
+      "area": "rhythm",
+      "kind": "cuts_too_slow",
+      "where": "-",
+      "detail": "平均 3.71s 一刀（14.8 刀/分），短剧通常要 20~40 刀/分"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 2,
   "verdict": "ISSUES"
 }

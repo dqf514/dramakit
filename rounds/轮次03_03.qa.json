@@ -6,12 +6,12 @@
       "title": "死去三年的新娘",
       "picture": {
         "frames": 16,
-        "sharp_median": 16.0,
-        "sharp_min": 9.3,
-        "luma_spread": 17.3,
-        "src_luma_spread": 32.0,
-        "graded_luma_spread": 11.1,
-        "sat_spread": 1.5
+        "sharp_median": 15.6,
+        "sharp_min": 11.1,
+        "luma_spread": 8.3,
+        "src_luma_spread": 23.8,
+        "graded_luma_spread": 3.9,
+        "sat_spread": 1.9
       },
       "voice": {
         "lines": 13,
@@ -128,26 +128,42 @@
           }
         }
       },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
       "completeness": {
-        "duration": 37.23,
-        "timeline": 37.28,
+        "duration": 38.63,
+        "timeline": 38.63,
         "lines": 13,
-        "onsets": 15
+        "onsets": 18
       },
       "story": {
         "mismatched": 0,
-        "off_screen_lines": 1,
+        "off_screen_lines": 2,
         "rows": [
           {
-            "line": "ln-09d848f7",
-            "speaker": "沈默",
-            "shot": "sh-c4acb1e0",
+            "line": "ln-5aaf334d",
+            "speaker": "程夏",
+            "shot": "sh-88eb39de",
             "on_screen": [
-              "程夏"
+              "小雨"
             ],
-            "text": "我要你看一个人。"
+            "text": "小雨……她已经死了！"
+          },
+          {
+            "line": "ln-939dd757",
+            "speaker": "沈默",
+            "shot": "sh-88eb39de",
+            "on_screen": [
+              "小雨"
+            ],
+            "text": "她没死。"
           }
         ]
+      },
+      "line_order": {
+        "scenes_out_of_order": 0
       },
       "frozen": {
         "short": 0,
@@ -158,30 +174,71 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.73,
-        "long": 0,
-        "rows": []
+        "average": 2.97,
+        "long": 4,
+        "rows": [
+          {
+            "shot": "sh-c9c96f62",
+            "duration": 4.02,
+            "lines": 1
+          },
+          {
+            "shot": "sh-88eb39de",
+            "duration": 5.03,
+            "lines": 2
+          },
+          {
+            "shot": "sh-cbad70b2",
+            "duration": 4.63,
+            "lines": 1
+          },
+          {
+            "shot": "sh-8b421c6f",
+            "duration": 4.14,
+            "lines": 1
+          }
+        ]
+      },
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "rhythm": {
+        "shots": 10,
+        "avg_shot": 3.86,
+        "median_shot": 4.13,
+        "max_shot": 8.0,
+        "opening_shot": 4.17,
+        "cuts_per_min": 14.0
+      },
+      "visible_cuts": {
+        "cuts": 9,
+        "invisible": 2
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "别动。"
       },
       "mix": {
         "episode": {
-          "i": -18.2,
-          "lra": 4.8,
-          "pk": -1.9
+          "i": -17.8,
+          "lra": 5.3,
+          "pk": -2.1
         },
         "voice": {
-          "i": -20.4,
+          "i": -20.3,
           "lra": 5.0,
-          "pk": -0.7
+          "pk": -0.6
         },
         "music": {
-          "i": -33.6,
-          "lra": 3.9,
-          "pk": -11.3
+          "i": -34.8,
+          "lra": 11.8,
+          "pk": -14.5
         },
         "bed": {
-          "i": -24.5,
-          "lra": 3.9,
-          "pk": -2.2
+          "i": -24.2,
+          "lra": 11.9,
+          "pk": -3.9
         },
         "audibility": {
           "speech_lufs": -19.5,
@@ -191,7 +248,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 30,
+        "cues": 17,
         "styles": [
           "Default",
           "Speaker",
@@ -199,19 +256,48 @@
         ],
         "max_rows": 1
       },
+      "subtitle_place": {
+        "margin_v": 30,
+        "height": 544
+      },
       "nle": {
-        "spine": 10,
+        "spine": 13,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 37.28
+        "spine_length": 38.63
       }
     }
   ],
-  "issues": [],
-  "issue_count": 0,
-  "verdict": "PASS"
+  "issues": [
+    {
+      "area": "pacing",
+      "kind": "slow_shot",
+      "where": "-",
+      "detail": "4 个镜头太长（短剧要切得快）：sh-c9c96f62 4.02s（1 句）、sh-88eb39de 5.03s（2 句）、sh-cbad70b2 4.63s（1 句）"
+    },
+    {
+      "area": "rhythm",
+      "kind": "cuts_too_slow",
+      "where": "-",
+      "detail": "平均 3.86s 一刀（14.0 刀/分），短剧通常要 20~40 刀/分"
+    },
+    {
+      "area": "rhythm",
+      "kind": "hook_too_late",
+      "where": "-",
+      "detail": "开场第一个镜头 4.17s，钩子来得太晚"
+    },
+    {
+      "area": "rhythm",
+      "kind": "invisible_cut",
+      "where": "-",
+      "detail": "2 个切点观众看不出来（前后两个镜头太像）：1.4s、16.9s"
+    }
+  ],
+  "issue_count": 4,
+  "verdict": "ISSUES"
 }
