@@ -464,7 +464,7 @@ compose:
     narration_color: "&H00A0DCFA"           # 暖米色
     narration_back_color: "&H66000000"      # 40% 透明黑底板
     narration_margin_v: 40                  # 距顶部距离
-    narration_alignment: 8                  # 顶部居中
+    narration_alignment: 5                  # 居中（在顶部像是没剪完的说明）
   generate_cover: true
   cover_from_shot: first                  # first/best/last
   cover_title: true                       # 封面烧上标题（手机上要看得清）                    # first | best | last

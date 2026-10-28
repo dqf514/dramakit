@@ -335,12 +335,26 @@ def compose_episode(ctx: Context, ep) -> str:
     mark = (cc.ai_declaration or "").strip()
     if mark and cc.filing_number:
         mark = f"{mark}  {cc.filing_number}"
-    ff.mux(picture, mix, final, video_bitrate=cc.video_bitrate, audio_bitrate=cc.audio_bitrate,
-           codec=cc.codec, crf=cc.crf, preset=cc.preset, pixel_format=cc.pixel_format,
-           fps=cc.fps, ass_file=str(ass) if (cc.burn_subtitles and ass) else None,
-           watermark=mark, watermark_size=max(12, cc.width // 52),
-           watermark_seconds=float(cc.ai_declaration_seconds or 0),
-           grain=int(cc.film_grain or 0))
+    # The episode is written to a temporary file and only put in place when
+    # it is finished: a failed render must not leave the previous episode
+    # on disk, or the QC would certify a picture that is not this one.
+    final = ctx.store.episode_video_path(ep)
+    staged = final.with_name(final.stem + ".new" + final.suffix)
+    try:
+        ff.mux(picture, mix, staged, video_bitrate=cc.video_bitrate,
+               audio_bitrate=cc.audio_bitrate,
+               codec=cc.codec, crf=cc.crf, preset=cc.preset,
+               pixel_format=cc.pixel_format,
+               fps=cc.fps, ass_file=str(ass) if (cc.burn_subtitles and ass) else None,
+               watermark=mark, watermark_size=max(12, cc.width // 52),
+               watermark_seconds=float(cc.ai_declaration_seconds or 0),
+               width=cc.width, height=cc.height,
+               grain=int(cc.film_grain or 0))
+    except Exception:
+        staged.unlink(missing_ok=True)
+        final.unlink(missing_ok=True)
+        raise
+    staged.replace(final)
 
     # --- cover ---
     if cc.generate_cover:

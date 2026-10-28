@@ -559,7 +559,8 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
         pixel_format: str = "yuv420p", fps: Optional[int] = None,
         ass_file: Optional[str | Path] = None,
         watermark: str = "", watermark_size: int = 18,
-        watermark_seconds: float = 0.0, grain: int = 0) -> str:
+        watermark_seconds: float = 0.0, grain: int = 0,
+        width: int = 0, height: int = 0) -> str:
     """Mux picture + audio into the final mp4; optionally burn ASS subtitles.
 
     When burning, we chdir into the ASS file's directory and reference it by a
@@ -583,10 +584,12 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
         font = _cjk_font()
         # a label, not a title: it belongs in the corner, small enough not
         # to take the attention the first second needs
+        pad_x = max(16, (width or 1080) // 40)
+        pad_y = max(16, (height or 1920) // 90)
         label = (f"drawtext=fontfile='{font}':text='{text}':fontcolor=white@0.55:"
                  f"fontsize={watermark_size}"
-                 f":x=w-text_w-{max(16, width // 40)}:y={max(16, height // 90)}"
-                 f":box=1:boxcolor=black@0.3:boxborderw={max(4, height // 180)}")
+                 f":x=w-text_w-{pad_x}:y={pad_y}"
+                 f":box=1:boxcolor=black@0.3:boxborderw={max(4, (height or 1920) // 180)}")
         if watermark_seconds and watermark_seconds > 0:
             # the platform asks for the label in the opening, not on every frame
             label += f":enable='between(t,0,{watermark_seconds:.1f})'"

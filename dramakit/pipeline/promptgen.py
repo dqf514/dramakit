@@ -5,6 +5,7 @@ across shots. Falls back to a deterministic template if the LLM call fails.
 """
 from __future__ import annotations
 
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -36,6 +37,32 @@ def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str, float]
                          float(tl_line.line.duration or 0.0)))
                     break
     return out
+
+
+_QUOTE_CHARS = "\u201c\u201d\u2018\u2019\u300c\u300d\"'"
+_QUOTED = re.compile(
+    "[" + re.escape(_QUOTE_CHARS) + "]"
+    "[^" + re.escape(_QUOTE_CHARS) + "]{0,80}"
+    "[" + re.escape(_QUOTE_CHARS) + "]")
+
+
+def _action_without_words(action: str) -> str:
+    """The action, with the spoken words taken out.
+
+    The storyboard writes what the character says inside quotes, and both
+    picture models draw those quotes as captions on the picture. The
+    performance is what the picture needs; the words come from the voice
+    track later.
+    """
+    text = action or ""
+    # "他反问：'想清楚退婚？'" -> "他反问"
+    text = re.sub(r"[:：]\s*[" + re.escape(_QUOTE_CHARS) + "]"
+                  "[^" + re.escape(_QUOTE_CHARS) + "]{0,80}"
+                  "[" + re.escape(_QUOTE_CHARS) + "]", "，", text)
+    text = _QUOTED.sub("", text)
+    text = re.sub(r"[，,]\s*[，,]+", "，", text)
+    text = re.sub(r"\s{2,}", " ", text)
+    return text.strip("，,、 ")
 
 
 def _speaker_note(shot: Shot, lines) -> str:
@@ -201,7 +228,8 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     template = T.FLUX3_IMAGE_USER if flux3 else T.PROMPT_USER
     aspect, composition = _aspect(ctx)
     user = T.render(template, shot_type=shot.shot_type.value,
-                    camera_move=shot.camera_move, action=shot.action,
+                    camera_move=shot.camera_move,
+                    action=_action_without_words(shot.action),
                     character_anchors=visuals, location=sc.location or "场景",
                     location_visual=location_visual or "（按剧情合理生成）",
                     scene_summary=sc.summary or "", time_of_day=sc.time_of_day,
@@ -328,7 +356,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         h3_user = T.render(
             T.H3_VIDEO_USER,
             shot_type=shot.shot_type.value, camera_move=shot.camera_move,
-            action=shot.action, character_anchors=visuals,
+            action=_action_without_words(shot.action), character_anchors=visuals,
             location=sc.location or "场景",
             location_visual=location_visual or "（按剧情合理生成）",
             scene_summary=sc.summary or "", time_of_day=sc.time_of_day,

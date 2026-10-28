@@ -81,7 +81,6 @@ def _ass_header(style: dict, width: int, height: int,
     narr_color = style.get("narration_color", "&H00A0DCFA")
     narr_back = style.get("narration_back_color", "&H66000000")
     narr_margin = style.get("narration_margin_v", 40)
-    narr_align = style.get("narration_alignment", 8)
     # The font size is relative to a 288 high canvas. The margin is counted in
     # text heights above the bottom of the picture, so the subtitle sits just
     # above the edge whatever the frame is - a margin written in pixels for
@@ -103,6 +102,9 @@ def _ass_header(style: dict, width: int, height: int,
     if pct > 0:
         margin_v = max(margin_v, int(round(height * pct / 100.0)))
     narr_margin = int(round(narr_scaled * 0.8))
+    # A caption card belongs in the middle of the picture: at the top it
+    # reads like a note the editor left in the frame.
+    narr_align = style.get("narration_alignment", 5)
     margin_h = int(round(60 * height / 1080))
     return f"""[Script Info]
 ScriptType: v4.00+
