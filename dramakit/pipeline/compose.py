@@ -183,8 +183,7 @@ def _scene_voice(ctx: Context, tscene, tmp: Path, idx: int = 0) -> str:
 
 def compose_episode(ctx: Context, ep) -> str:
     cc = ctx.cfg.compose
-    tl = build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds,
-                      line_gap=cc.line_gap)
+    tl = ctx.timeline(ep)
     if tl.duration <= 0:
         raise RuntimeError(f"第{ep.index}集时间线为空")
     tmp = ctx.store.root / "tmp" / f"ep_{ep.index:03d}"
@@ -405,8 +404,7 @@ def run(ctx: Context) -> dict:
             made += 1
             ctx.log.info("compose: 第%d集 → %s (%.1fs)", ep.index,
                          Path(out).name,
-         build_timeline(ep, max_shot=ctx.cfg.comfyui.max_video_seconds,
-                      line_gap=cc.line_gap).duration)
+         ctx.timeline(ep).duration)
         except Exception as e:  # noqa: BLE001
             ctx.log.error("compose: 第%d集失败 %s", ep.index, e)
             ctx.mark(ep, "compose", Status.FAILED)

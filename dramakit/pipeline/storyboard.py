@@ -137,6 +137,8 @@ def run(ctx: Context) -> dict:
                 ))
             sc.shots = shots or _fallback_shots(sc, dmin, dmax)
             _repair_line_casts(sc)
+            # a shot that carries too much dialogue gets a second shot
+            _split_long_shots(sc)
         ctx.mark(ep, "storyboard", Status.DONE)
         ctx.save()
         done += 1
@@ -190,6 +192,104 @@ def _repair_line_casts(sc) -> int:
     for shot in sc.shots:
         shot.line_indices.sort()
     return moved
+
+
+# a shot carries at most this much dialogue: a short drama cuts fast
+SHOT_DIALOGUE_MAX = 3.5
+
+# the second half of a split shot must not look like the first half
+_SPLIT_FRAMING = {
+    "特写": "近景", "近景": "特写", "中景": "近景", "过肩": "特写",
+    "全景": "中景", "远景": "全景", "主观": "特写", "空镜": "中景",
+}
+
+
+def _split_action(action: str, texts: list[str]) -> tuple[str, str]:
+    """Cut the action description at the first of the lines that moves.
+
+    The model often runs two lines together inside one pair of quotes, so
+    the exact quote is not always there: the line's own text is used to
+    find the place, and a quote left dangling at the end of the first half
+    is moved over to the second.
+    """
+    text = action or ""
+    pos = -1
+    for t in texts:
+        found = -1
+        for q in (f"“{t}”", f"「{t}」", f'"{t}"'):
+            i = text.find(q)
+            if i >= 0:
+                found = i
+                break
+        if found < 0:
+            found = text.find(t)
+        if found >= 0:
+            pos = found if pos < 0 else min(pos, found)
+    if pos < 0:
+        return text, ""
+    head = text[:pos].rstrip("，,、 ")
+    tail = text[pos:].lstrip()
+    if head.endswith(("“", "「", '"')):
+        head = head[:-1].rstrip()
+        tail = "“" + tail
+    return head, tail
+
+
+def _split_long_shots(sc, max_dialogue: float = SHOT_DIALOGUE_MAX) -> int:
+    """Give a shot that carries too much dialogue a second shot.
+
+    Three sentences in one shot is six seconds of one face, and a short
+    drama cuts away. The lines that do not fit move into a new shot right
+    behind it, with a different framing so the cut reads as a cut and not
+    as a jump.
+    """
+    spoken = [l for l in sc.lines if not is_narration(l)]
+    if not spoken:
+        return 0
+    added = 0
+    i = 0
+    while i < len(sc.shots):
+        shot = sc.shots[i]
+        idxs = [n for n in shot.line_indices if 1 <= n <= len(spoken)]
+        if len(idxs) < 2:
+            i += 1
+            continue
+        durs = [estimate_reading_seconds(spoken[n - 1].text) for n in idxs]
+        keep = 0
+        total = 0.0
+        for k, d in enumerate(durs):
+            if keep and (total + d > max_dialogue or keep >= 2):
+                break
+            if not keep and d > max_dialogue:
+                break
+            total += d
+            keep = k + 1
+        if keep >= len(idxs):
+            i += 1
+            continue
+        moved = idxs[keep:]
+        head, tail = _split_action(shot.action or "",
+                                   [spoken[n - 1].text for n in moved])
+        shot.line_indices = idxs[:keep]
+        if head:
+            shot.action = head
+        rest = Shot(
+            id=_id("sh"),
+            index=shot.index + 1,
+            shot_type=_to_shot_type(
+                _SPLIT_FRAMING.get(shot.shot_type.value, "近景")),
+            camera_move=shot.camera_move,
+            duration=shot.duration,
+            action=(f"接上：{tail}" if tail else f"接上：{shot.action or ''}"),
+            characters=list(shot.characters),
+            line_indices=sorted(moved),
+        )
+        sc.shots.insert(i + 1, rest)
+        added += 1
+        i += 1
+    for n, shot in enumerate(sc.shots):
+        shot.index = n
+    return added
 
 
 def _fallback_shots(sc, dmin: float, dmax: float) -> list[Shot]:

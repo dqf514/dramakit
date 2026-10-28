@@ -11,7 +11,8 @@ Implemented directly on httpx so no vendor SDK is required.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Sequence
 
 import httpx
 from tenacity import (Retrying, retry_if_exception_type, stop_after_attempt,
@@ -75,6 +76,54 @@ class OpenAICompatLLM(BaseLLM):
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
+            ],
+            "temperature": self.cfg.temperature if temperature is None else temperature,
+            "top_p": self.cfg.top_p,
+            "max_tokens": max_tokens or self.cfg.max_tokens,
+            "stream": False,
+        }
+        if json_mode and self.cfg.json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        data = self._post(payload)
+        try:
+            text = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError):
+            raise RuntimeError(f"Unexpected LLM response shape: {str(data)[:300]}")
+        usage = data.get("usage", {}) or {}
+        return LLMResponse(
+            text=text or "",
+            model=data.get("model", payload["model"]),
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+        )
+
+    def complete_vision(self, system: str, user: str, images: Sequence[str],
+                        *, temperature: Optional[float] = None,
+                        max_tokens: Optional[int] = None,
+                        json_mode: bool = False,
+                        model: Optional[str] = None) -> LLMResponse:
+        """Talk to a model that can look at pictures.
+
+        The images are JPEG files; they are sent as inline data, which is
+        what the OpenAI compatible endpoints expect.
+        """
+        import base64
+        import mimetypes
+
+        content: list[dict] = [{"type": "text", "text": user}]
+        for path in images:
+            p = Path(path)
+            if not p.exists():
+                continue
+            mime = mimetypes.guess_type(str(p))[0] or "image/jpeg"
+            b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+            content.append({"type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{b64}"}})
+        payload: dict = {
+            "model": self._model(model),
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": content},
             ],
             "temperature": self.cfg.temperature if temperature is None else temperature,
             "top_p": self.cfg.top_p,

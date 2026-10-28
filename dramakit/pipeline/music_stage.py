@@ -27,7 +27,7 @@ def run(ctx: Context) -> dict:
             continue
         if not ep.scenes:
             continue
-        duration = build_timeline(ep).duration
+        duration = ctx.timeline(ep).duration
         if duration <= 0:
             continue
         mood = _dominant_mood(ep)

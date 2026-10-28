@@ -24,7 +24,7 @@ def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str]]]:
     are exactly the lines that will be spoken over that shot.
     """
     out: dict[str, list[tuple[str, str]]] = {}
-    tl = build_timeline(ep)
+    tl = ctx.timeline(ep)
     for tsc in tl.scenes:
         for ts in tsc.shots:
             out.setdefault(ts.shot.id, [])
@@ -35,6 +35,35 @@ def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str]]]:
                         (tl_line.line.speaker, tl_line.line.text))
                     break
     return out
+
+
+def _speaker_note(shot: Shot, lines) -> str:
+    """Say who speaks, and who must keep their mouth shut.
+
+    The finished episodes were played back with the woman's voice over the
+    man's close-up, and the model watching it said so: the lips and the
+    speech belonged to different people. The prompt has to name the
+    speaker and tell the others to listen with closed mouths.
+    """
+    speakers: list[str] = []
+    for spk, _ in lines or []:
+        if spk and spk not in speakers:
+            speakers.append(spk)
+    others = [c for c in (shot.characters or []) if c not in speakers]
+    if not speakers:
+        if others:
+            return ("本镜没有人说话：画面里的人只是在听、在反应，"
+                    "**嘴要闭着，不要张嘴、不要出声**。")
+        return ""
+    who = "、".join(speakers)
+    txt = (f"**本镜开口说话的只有：{who}**。{who} 的嘴型要跟后期配音轨对上"
+           f"（mouth shapes synchronized with the post-dub track）。")
+    if others:
+        txt += (f"画面里的 {'、'.join(others)} 只是听和反应："
+                f"**嘴要闭着、不要张嘴、不要说话**"
+                f"（keep their mouths closed, listening silently），"
+                f"只给眼神和表情的反应。")
+    return txt
 
 
 def _numbered_dialogue(lines: list[tuple[str, str]]) -> tuple[str, dict[str, str]]:
@@ -214,7 +243,14 @@ H3_CONSTRAINTS = (
     "画面里不出现除第一帧已有文字以外的新文字，也不加字幕和水印；"
     "不出现多余人物、多余肢体或畸形的手；"
     "镜头不抖动、不跳帧、不慢动作；"
-    "不要切换到别的场景或别的机位。"
+    "不要切换到别的场景或别的机位；"
+    # the face is what drifts: over a long take the model slowly changes
+    # the bone structure, and the last frame is not the person any more
+    "全片人脸的五官比例不变：脸不变长、不变窄、不变胖，"
+    "眼睛和嘴的形状保持一致；"
+    "人物动作幅度小，只做细微的表情、眼神和呼吸，"
+    "不要大幅转身、走动或做剧烈动作；"
+    "镜头运动平缓，不要突然加速或甩动。"
 )
 
 
@@ -263,6 +299,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     """
     ad = ctx.project.art_direction
     try:
+        spk_note = _speaker_note(shot, lines)
         if ctx.cfg.compose.h3_audio == "bed":
             # The dialogue is recorded separately, so the shot only has to
             # show the performance - that is what gives the lip movement. The
@@ -272,11 +309,13 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             note = ("本镜台词由后期配音轨提供，**不要写出台词内容，也不要写 <d> 标签**。"
                     "但要写清楚角色说话时的表演（开口、语气、情绪），用英文写，"
                     "例如 the man speaks to the woman with a stern, restrained tone。"
-                    "overall_soundscape 只写环境声与动作声（脚步、风、车辆、器物），"
+                    + (f"\n{spk_note}" if spk_note else "") +
+                    "\noverall_soundscape 只写环境声与动作声（脚步、风、车辆、器物），"
                     "不要重复对白；non_diegetic_music 写配乐。")
         else:
             dlg_text, _ids = _numbered_dialogue(lines)
-            note = "台词必须原样用 <d>[zh-CN]...</d> 包住，不要改写。"
+            note = ("台词必须原样用 <d>[zh-CN]...</d> 包住，不要改写。"
+                    + (f"\n{spk_note}" if spk_note else ""))
         h3_user = T.render(
             T.H3_VIDEO_USER,
             shot_type=shot.shot_type.value, camera_move=shot.camera_move,

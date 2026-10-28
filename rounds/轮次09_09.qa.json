@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 21.1,
-        "sharp_min": 10.3,
-        "luma_spread": 10.8,
-        "src_luma_spread": 43.6,
-        "graded_luma_spread": 8.0,
-        "sat_spread": 1.7
+        "sharp_median": 25.2,
+        "sharp_min": 9.2,
+        "luma_spread": 10.2,
+        "src_luma_spread": 22.8,
+        "graded_luma_spread": 5.7,
+        "sat_spread": 1.4
       },
       "voice": {
         "lines": 12,
@@ -132,7 +132,7 @@
         "duration": 34.13,
         "timeline": 34.13,
         "lines": 12,
-        "onsets": 16
+        "onsets": 18
       },
       "story": {
         "mismatched": 0,
@@ -184,15 +184,15 @@
         "wrong": 0
       },
       "rhythm": {
-        "shots": 13,
-        "avg_shot": 2.63,
-        "median_shot": 2.5,
+        "shots": 10,
+        "avg_shot": 3.41,
+        "median_shot": 2.87,
         "max_shot": 8.0,
         "opening_shot": 2.2,
-        "cuts_per_min": 21.1
+        "cuts_per_min": 15.8
       },
       "visible_cuts": {
-        "cuts": 12,
+        "cuts": 9,
         "invisible": 0
       },
       "hook": {
@@ -201,9 +201,9 @@
       },
       "mix": {
         "episode": {
-          "i": -17.1,
-          "lra": 4.1,
-          "pk": -1.9
+          "i": -16.8,
+          "lra": 4.3,
+          "pk": -2.0
         },
         "voice": {
           "i": -23.1,
@@ -211,19 +211,19 @@
           "pk": -4.5
         },
         "music": {
-          "i": -37.5,
-          "lra": 4.2,
-          "pk": -26.2
+          "i": -36.9,
+          "lra": 6.4,
+          "pk": -25.8
         },
         "bed": {
-          "i": -11.4,
-          "lra": 4.2,
-          "pk": -0.3
+          "i": -13.2,
+          "lra": 6.4,
+          "pk": -2.1
         },
         "audibility": {
           "speech_lufs": -22.0,
-          "bed_peak_lufs": -33.9,
-          "gap_lu": 11.8
+          "bed_peak_lufs": -34.0,
+          "gap_lu": 12.0
         },
         "black_segments": 0
       },

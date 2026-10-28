@@ -73,16 +73,24 @@ def _line_duration(line: Line) -> float:
 
 def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
                    line_durs: list[float] | None = None,
-                   max_dialogue: float = 0.0) -> dict[str, list[int]] | None:
-    """Which lines each shot carries, and who gets the leftovers.
+                   max_dialogue: float = 0.0,
+                   speakers: list[str] | None = None) -> dict[str, list[int]] | None:
+    """Which lines each shot carries.
 
-    The storyboard says which lines a shot covers. When it does, the shot
-    lasts exactly as long as those lines, so the cut lands on a line boundary
-    and the camera is on the person who is talking.
+    The storyboard says which shot covers which line, and that is the
+    decision: the camera is on the person who is talking. The timeline adds
+    two guards.
 
-    A shot cannot hold more than the longest video the model can make, and
-    it cannot hold more than a few seconds of dialogue either - a short
-    drama cuts fast. A shot that claims too much has to give it back.
+    - A line is never taken away from the shot the storyboard gave it to.
+      Taking one used to shuffle the dialogue along and put one character's
+      words over another character's face.
+    - A line that belongs to no shot is handed to a shot that has the
+      speaker in it, as late as possible, and never in front of the lines
+      that were already placed.
+
+    A shot lasts as long as the lines it carries plus the breaths between
+    them. The length limit only steers a line that has no home yet: how
+    long a storyboard's own shot is, is the storyboard's business.
     """
     if not shots or n_lines <= 0:
         return None
@@ -90,124 +98,70 @@ def _shot_line_map(shots, n_lines: int, max_shot: float = 0.0,
     limit = max_shot if max_shot > 0 else 0.0
     if max_dialogue > 0:
         limit = max_dialogue if limit <= 0 else min(limit, max_dialogue)
+
+    def dur_of(n: int) -> float:
+        return durs[n - 1] if n - 1 < len(durs) else 0.0
+
+    def spk_of(n: int) -> str:
+        if not speakers or n - 1 >= len(speakers):
+            return ""
+        return speakers[n - 1] or ""
+
+    # 1) the storyboard's own assignment - kept as it is
     claimed: dict[str, list[int]] = {}
     used: set[int] = set()
     for sh in shots:
-        idxs = []
-        for n in sh.line_indices:
-            if 1 <= n <= n_lines and n not in used:
-                idxs.append(n)
-                used.add(n)
-        if idxs and limit > 0 and durs:
-            # give back the tail that does not fit into one clip
-            total = 0.0
-            keep = []
-            for n in idxs:
-                d = durs[n - 1] if n - 1 < len(durs) else 0.0
-                if keep and total + d > limit:
-                    break
-                total += d
-                keep.append(n)
-            for n in idxs[len(keep):]:
-                used.discard(n)
-            idxs = keep
-        if len(idxs) > 2:
-            # a short drama cuts fast: a shot carries at most two lines
-            for n in idxs[2:]:
-                used.discard(n)
-            idxs = idxs[:2]
+        idxs = [n for n in sh.line_indices if 1 <= n <= n_lines and n not in used]
         if idxs:
             claimed[sh.id] = idxs
+            used.update(idxs)
     if not claimed:
         return None
 
     def length_of(sid: str) -> float:
-        return sum(durs[n - 1] for n in claimed.get(sid, []) if n - 1 < len(durs))
+        return sum(dur_of(n) for n in claimed.get(sid, []))
 
+    def has_speaker(sh, spk: str) -> bool:
+        """True when the shot can show this person talking."""
+        if not spk or not sh.characters:
+            return True
+        return spk in sh.characters
+
+    # 2) the lines that belong to no shot
     missing = [n for n in range(1, n_lines + 1) if n not in used]
-    if missing:
-        # hand each leftover to the shot that sits closest to it in the list -
-        # a shot with no lines of its own (an establishing shot) takes it
-        # first, so the opening line is not dragged into a later close-up.
-        # The length limit still applies: a shot that cannot take the line
-        # within it is not considered.
-        n_shots = len(shots)
+    for n in missing:
+        d = dur_of(n)
+        spk = spk_of(n)
+        # the shot it belongs after: the last one carrying a smaller line
+        after = -1
+        before = len(shots)
+        for i, sh in enumerate(shots):
+            for ln in claimed.get(sh.id, []):
+                if ln < n:
+                    after = max(after, i)
+                elif ln > n:
+                    before = min(before, i)
+        # a shot may only take the line if it does not already carry a later
+        # one - the dialogue has to come out in order
+        window = [i for i in range(max(0, after), min(len(shots), max(before, after + 1)))
+                  if not any(ln > n for ln in claimed.get(shots[i].id, []))]
+        if not window:
+            window = [max(0, min(after, len(shots) - 1))]
+        cands = [shots[i] for i in window
+                 if has_speaker(shots[i], spk)
+                 and not (limit > 0 and length_of(shots[i].id) + d > limit)]
+        if not cands:
+            cands = [shots[i] for i in window if has_speaker(shots[i], spk)]
+        if not cands:
+            cands = [shots[i] for i in window]
+        # an empty shot first, then the one closest to where the line sits
+        cands.sort(key=lambda sh: (len(claimed.get(sh.id, [])), abs(sh.index - after)))
+        best = cands[0]
+        claimed.setdefault(best.id, []).append(n)
+        used.add(n)
 
-        for n in missing:
-            d = durs[n - 1] if n - 1 < len(durs) else 0.0
-            want = (n - 0.5) / n_lines * n_shots
-            fits = [sh for sh in shots
-                    if not (limit > 0 and length_of(sh.id) + d > limit)]
-            empty = [sh for sh in fits if not claimed.get(sh.id)]
-            if empty:
-                best = min(empty, key=lambda sh: abs(sh.index - want))
-            elif fits:
-                best = min(fits, key=lambda sh: abs(sh.index - want))
-            else:
-                # nothing can take it within the limit: the shot with the
-                # shortest dialogue is the least bad home for it
-                best = min(shots, key=lambda sh: length_of(sh.id))
-            claimed.setdefault(best.id, []).append(n)
-        for sid in claimed:
-            claimed[sid].sort()
-
-    # The lines have to come out in the order they were written. A storyboard
-    # sometimes hands a later line to an earlier shot, and the timeline
-    # places the lines inside their shots - the scene would be played back
-    # with the dialogue out of order, the answer before the question. When
-    # that happens the lines are handed out in order instead, using the
-    # storyboard's counts.
-    seq: list[int] = []
-    for sh in shots:
-        seq += claimed.get(sh.id, [])
-    if seq != sorted(seq):
-        counts = [len(claimed.get(sh.id, [])) for sh in shots]
-        claimed = {}
-        nxt = 1
-        for sh, n in zip(shots, counts):
-            if n <= 0:
-                continue
-            take: list[int] = []
-            total = 0.0
-            for k in range(nxt, min(nxt + n, n_lines + 1)):
-                d = durs[k - 1] if k - 1 < len(durs) else 0.0
-                if take and limit > 0 and total + d > limit:
-                    break
-                take.append(k)
-                total += d
-            if take:
-                claimed[sh.id] = take
-                nxt = take[-1] + 1
-        # anything the storyboard did not place goes to a shot with room, in
-        # order - a line is never dropped, because a line that belongs to no
-        # shot makes the scene longer than its shots and every line is then
-        # stretched to fit
-        placed = {k for v in claimed.values() for k in v}
-        left = [k for k in range(1, n_lines + 1) if k not in placed]
-        last_pos = -1
-        for sh in shots:
-            for k in claimed.get(sh.id, []):
-                last_pos = max(last_pos, k)
-        for k in left:
-            d = durs[k - 1] if k - 1 < len(durs) else 0.0
-            # the line has to go after the ones already placed, or the scene
-            # is played back out of order
-            later = [sh for sh in shots if sh.index > last_pos]
-            free = [sh for sh in later
-                    if len(claimed.get(sh.id, [])) < 2
-                    and not (limit > 0 and length_of(sh.id) + d > limit)]
-            if free:
-                best = free[0]
-            elif later:
-                best = min(later, key=lambda sh: length_of(sh.id))
-            else:
-                # no shot is left to put it in: the last one takes it, so the
-                # lines still come out in order
-                best = max(shots, key=lambda sh: sh.index)
-            claimed.setdefault(best.id, []).append(k)
-            last_pos = max(last_pos, k)
-        for sid in claimed:
-            claimed[sid].sort()
+    for sid in claimed:
+        claimed[sid].sort()
     return claimed
 
 
@@ -282,7 +236,8 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
         #    lands on the dialogue instead of drifting through it.
         line_map = _shot_line_map(sc.shots, len(raw_lines), max_shot=max_shot,
                                    line_durs=[d for d, _ in raw_lines],
-                                   max_dialogue=SHOT_DIALOGUE_MAX)
+                                   max_dialogue=SHOT_DIALOGUE_MAX,
+                                   speakers=[l.speaker for _, l in raw_lines])
         if line_map is None and sc.shots:
             # the storyboard did not say: work it out from who is in frame
             line_map = _assign_by_cast(sc.shots, [d for d, _ in raw_lines],
@@ -396,6 +351,18 @@ class Context:
         if not only:
             return self.project.episodes
         return [e for e in self.project.episodes if e.index in only]
+
+    def timeline(self, ep: Episode) -> Timeline:
+        """The one timeline every stage works from.
+
+        The prompt that asks for the performance, the picture that is cut
+        together, the subtitles and the music all have to agree on where a
+        line falls inside a shot - otherwise the lips belong to the wrong
+        person.
+        """
+        return build_timeline(ep,
+                              max_shot=self.cfg.comfyui.max_video_seconds,
+                              line_gap=self.cfg.compose.line_gap)
 
     def stage_done(self, ep: Episode, stage: str) -> bool:
         return ep.stage_status.get(stage) == Status.DONE

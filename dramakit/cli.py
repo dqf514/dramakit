@@ -408,6 +408,59 @@ def ref_rhythm_cmd(
         console.print(f"[green]已写入 {cfg_path}[/green]")
 
 
+@app.command(name="review")
+def review_cmd(
+    project: str = typer.Argument(..., help="项目目录或名称"),
+    config: Optional[str] = typer.Option(None, "--config", "-c"),
+    frames: int = typer.Option(12, "--frames", help="给模型看几个镜头"),
+):
+    """让多模态模型看片：找出机器测不出来的毛病。"""
+    from .review import review
+    cfg = Config.load(_find_config(config))
+    data = review(project, cfg, limit=frames)
+    if data.get("error"):
+        console.print(f"[red]{data['error']}[/red]")
+        raise typer.Exit(1)
+    console.print(f"[bold]总分 {data.get('总分', '?')}[/bold]  "
+                  + "  ".join(f"{k} {v}" for k, v in (data.get("各维度") or {}).items()))
+    for i, p in enumerate(data.get("最严重的三个问题") or [], 1):
+        console.print(f"\n[bold]{i}. {p.get('问题', '')}[/bold]")
+        console.print(f"   镜头：{p.get('出现在哪个镜头', '')}")
+        console.print(f"   为什么：{p.get('为什么是问题', '')}")
+        console.print(f"   流水线：{p.get('流水线该改哪里', '')}")
+    good = data.get("做得好的地方") or []
+    if good:
+        console.print("\n[green]做得好：[/green]")
+        for g in good:
+            console.print(f"  · {g}")
+    if data.get("和爆款短剧的差距"):
+        console.print(f"\n[yellow]差距：[/yellow] {data['和爆款短剧的差距']}")
+
+
+@app.command(name="drift")
+def drift_cmd(
+    project: str = typer.Argument(..., help="项目目录或名称"),
+    config: Optional[str] = typer.Option(None, "--config", "-c"),
+):
+    """逐镜检查人脸漂移：把每个镜头的首帧和末帧并排给模型看。"""
+    from .drift import drift
+    cfg = Config.load(_find_config(config))
+    data = drift(project, cfg)
+    if data.get("error"):
+        console.print(f"[red]{data['error']}[/red]")
+        raise typer.Exit(1)
+    rows = data.get("逐镜") or []
+    for r in rows:
+        level = r.get("漂移", 0)
+        colour = {0: "green", 1: "yellow"}.get(level, "red")
+        console.print(f"[{colour}]镜{r.get('镜号', '?')}  漂移 {level}[/{colour}]  "
+                      f"{r.get('问题', '')}")
+    if data.get("最严重的镜头"):
+        console.print(f"\n[red]最严重：[/red] {data['最严重的镜头']}")
+    if data.get("总结"):
+        console.print(f"[yellow]{data['总结']}[/yellow]")
+
+
 @app.command(name="nodes")
 def nodes_cmd(
     action: str = typer.Argument("list", help="list | check | sync"),

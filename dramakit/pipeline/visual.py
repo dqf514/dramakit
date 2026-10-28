@@ -335,8 +335,7 @@ def _gen_scores(ctx: Context) -> int:
         return 0
     jobs = []
     for ep in ctx.target_episodes():
-        for tscene in build_timeline(
-                ep, max_shot=ctx.cfg.comfyui.max_video_seconds).scenes:
+        for tscene in ctx.timeline(ep).scenes:
             jobs.append((ep, tscene.scene, tscene.duration))
     if not jobs:
         return 0
@@ -443,9 +442,7 @@ def run(ctx: Context) -> dict:
     # to that length instead of a fixed one
     durations: dict[str, float] = {}
     for ep in ctx.target_episodes():
-        for ts in build_timeline(
-                ep, max_shot=ctx.cfg.comfyui.max_video_seconds,
-                line_gap=ctx.cfg.compose.line_gap).shots:
+        for ts in ctx.timeline(ep).shots:
             durations[ts.shot.id] = ts.duration
     jobs = []
     for ep in ctx.target_episodes():
