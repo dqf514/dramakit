@@ -34,6 +34,13 @@ for ep in proj.episodes:
         for sh in sc.shots:
             sh.video_prompt = ''
             sh.video_path = ''
+            # the still has to be made again too: the reference fitting and
+            # the delivery size may have changed
+            if sh.image_path:
+                p = store.abs(sh.image_path)
+                if p.exists():
+                    p.unlink()
+            sh.image_path = ''
             sh.status = Status.PENDING
 # the music clips are made again too, so they carry the scene's sounds
 music = root / 'music'
