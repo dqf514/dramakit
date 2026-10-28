@@ -61,20 +61,22 @@ def _scene_wav(lines, start: float, total: float, out: Path) -> bool:
     return True
 
 
-def _musetalk(ctx: Context, video: Path, wav: Path, out: Path) -> bool:
-    """One clip through MuseTalk."""
+def _musetalk(ctx: Context, jobs: list[tuple[Path, Path, Path]]) -> dict[Path, bool]:
+    """The clips through MuseTalk, one model load for all of them."""
     root = Path(ctx.cfg.compose.musetalk_root or r"E:\musetalk")
     py = ctx.cfg.compose.musetalk_python or r"E:\ComfyUI\venv\Scripts\python.exe"
     if not root.exists() or not Path(py).exists():
         ctx.log.warning("lipsync: 找不到 MuseTalk（%s），跳过", root)
-        return False
-    work = out.parent / "_mt"
+        return {out: False for _, _, out in jobs}
+    work = root / "results" / "dramakit"
     work.mkdir(parents=True, exist_ok=True)
     cfg = work / "task.yaml"
-    cfg.write_text(
-        f"task_0:\n  video_path: \"{video.as_posix()}\"\n"
-        f"  audio_path: \"{wav.as_posix()}\"\n"
-        f"  result_name: \"{out.name}\"\n", encoding="utf-8")
+    parts = []
+    for i, (video, wav, out) in enumerate(jobs):
+        parts.append(f"task_{i}:\n  video_path: \"{video.as_posix()}\"\n"
+                     f"  audio_path: \"{wav.as_posix()}\"\n"
+                     f"  result_name: \"{out.name}\"\n")
+    cfg.write_text("\n".join(parts), encoding="utf-8")
     cmd = [py, str(root / "scripts" / "inference.py"),
            "--inference_config", str(cfg),
            "--result_dir", str(work),
@@ -87,16 +89,21 @@ def _musetalk(ctx: Context, video: Path, wav: Path, out: Path) -> bool:
                            errors="replace",
                            timeout=float(ctx.cfg.compose.lipsync_timeout))
     except subprocess.TimeoutExpired:
-        ctx.log.warning("lipsync: %s 超时", video.name)
-        return False
-    produced = work / "v15" / out.name
-    if not produced.exists():
-        tail = (r.stderr or r.stdout or "")[-300:].replace("\n", " ")
-        ctx.log.warning("lipsync: %s 失败 %s", video.name, tail)
-        return False
-    out.parent.mkdir(parents=True, exist_ok=True)
-    produced.replace(out)
-    return True
+        ctx.log.warning("lipsync: 超时")
+        return {out: False for _, _, out in jobs}
+    ok: dict[Path, bool] = {}
+    for video, wav, out in jobs:
+        produced = work / "v15" / out.name
+        if produced.exists():
+            out.parent.mkdir(parents=True, exist_ok=True)
+            produced.replace(out)
+            ok[out] = True
+        else:
+            ok[out] = False
+    if not all(ok.values()):
+        tail = (r.stderr or r.stdout or "")[-400:].replace("\n", " ")
+        ctx.log.warning("lipsync: 有一部分失败 %s", tail)
+    return ok
 
 
 def run(ctx: Context) -> dict:
@@ -109,8 +116,9 @@ def run(ctx: Context) -> dict:
         if ctx.stage_done(ep, "lipsync"):
             continue
         tl = ctx.timeline(ep)
+        jobs: list[tuple[Path, Path, Path]] = []
+        keep: list[tuple[Path, Path]] = []
         for tsc in tl.scenes:
-            scene = tsc.scene
             for ts in tsc.shots:
                 shot = ts.shot
                 if not shot.video_path:
@@ -136,12 +144,18 @@ def run(ctx: Context) -> dict:
                 if not _scene_wav(placed, ts.start - tsc.start, dur, wav):
                     continue
                 out = video.parent.parent / "lipsync" / f"{shot.id}.mp4"
-                if _musetalk(ctx, video, wav, out):
+                jobs.append((video, wav, out))
+                keep.append((shot, out))
+        if jobs:
+            results = _musetalk(ctx, jobs)
+            for shot, out in keep:
+                if results.get(out):
                     shot.video_path = ctx.store.rel(out)
                     done += 1
                 else:
                     failed += 1
-                wav.unlink(missing_ok=True)
+        for _, wav, _ in jobs:
+            wav.unlink(missing_ok=True)
         ctx.mark(ep, "lipsync", Status.DONE)
     ctx.save()
     ctx.log.info("lipsync: 对齐了 %d 个镜头（失败 %d）", done, failed)

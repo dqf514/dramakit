@@ -43,7 +43,7 @@ for tsc in tl.scenes:
             continue
         out = video.parent.parent / "lipsync" / f"{shot.id}.mp4"
         print(f"镜头 {shot.id}  {dur:.2f}s  {len(placed)} 句  -> {out.name}")
-        ok = _musetalk(ctx, video, wav, out)
+        ok = _musetalk(ctx, [(video, wav, out)]).get(out, False)
         print("口型对齐:", "成功" if ok else "失败")
         if ok:
             # side by side: before and after, a few frames
