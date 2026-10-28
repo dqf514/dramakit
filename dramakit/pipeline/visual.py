@@ -86,7 +86,8 @@ def _fit_refs(ctx: Context, refs: list[str], shot: Shot) -> list[str]:
     for i, path in enumerate(refs):
         dst = out_dir / f"{shot.id}_{i}.png"
         try:
-            ff.fit_reference(path, dst, iw, ih)            out.append(str(dst))
+            ff.fit_reference(path, dst, iw, ih)
+            out.append(str(dst))
         except Exception as e:  # noqa: BLE001
             ctx.log.warning("参考图适配失败(%s)，用原图: %s", path, str(e)[:120])
             out.append(path)
