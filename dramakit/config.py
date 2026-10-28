@@ -457,7 +457,10 @@ class ComposeConfig(BaseModel):
         "outline_color": "&H00000000",   # black
         "outline": 2,
         "shadow": 0,
-        "margin_v": 220,                 # distance from bottom
+        "margin_v": 1,                      # distance from bottom, in text heights
+        "margin_v_pct": 12.0,               # ... or as a share of the height:
+        #                                   # in a tall frame the bottom is
+        #                                   # where the platform's buttons are
         "bold": True,
         "alignment": 2,                  # bottom-center
         "speaker_color": "&H0000E5FF",   # 角色名 高亮

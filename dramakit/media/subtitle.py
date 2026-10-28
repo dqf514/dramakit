@@ -82,6 +82,11 @@ def _ass_header(style: dict, width: int, height: int) -> str:
     narr_scaled = int(round(narr_size * k))
     heights = float(margin_v or 1)
     margin_v = int(round(scaled * heights))
+    # a share of the height: in a tall frame the bottom is where the
+    # platform's own buttons sit, so the subtitle has to clear them
+    pct = float(style.get("margin_v_pct") or 0)
+    if pct > 0:
+        margin_v = max(margin_v, int(round(height * pct / 100.0)))
     narr_margin = int(round(narr_scaled * 0.8))
     margin_h = int(round(60 * height / 1080))
     return f"""[Script Info]
