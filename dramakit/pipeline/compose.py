@@ -305,7 +305,8 @@ def compose_episode(ctx: Context, ep) -> str:
     target = cc.target_loudness_lufs if cc.loudness_normalize else None
     ff.mix_voice_bgm(voice, music or None, mix,
                      bgm_volume=1.0,
-                     duck=ctx.cfg.music.duck_voice, target_lufs=target)
+                     duck=ctx.cfg.music.duck_voice, target_lufs=target,
+                     room=float(cc.voice_room or 0))
 
     # The mux takes the shorter of the two tracks, so a picture that came out
     # a little short would cut the end of the dialogue off. Both tracks are

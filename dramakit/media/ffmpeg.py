@@ -420,7 +420,8 @@ def bed_gain_for(voice: str | Path, bed: str | Path,
 
 def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path, *,
                   bgm_volume: float = 0.22, duck: bool = True,
-                  target_lufs: Optional[float] = None) -> str:
+                  target_lufs: Optional[float] = None,
+                  room: float = 0.0) -> str:
     """Mix dialogue with background music (optional sidechain ducking) and
     optional EBU loudness normalization.
 
@@ -430,20 +431,27 @@ def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path,
     """
     out = Path(out); out.parent.mkdir(parents=True, exist_ok=True)
     has_bgm = bool(bgm and Path(bgm).exists())
+    # a voice with a little room on it: two short echoes, one for the walls
+    # and one for the floor, well under the direct sound
+    room_af = ""
+    if room and room > 0:
+        wet = min(max(room, 0.0), 0.6)
+        room_af = (f"aecho=1.0:1.0:38|71:{wet:.3f}|{wet * 0.63:.3f},")
     if not has_bgm:
         _run([ffmpeg_bin(), "-y", "-i", str(voice),
-              "-af", "aresample=44100", "-c:a", "libmp3lame", "-q:a", "3", str(out)],
-             quiet=False)
+              "-af", room_af + "aresample=44100",
+              "-c:a", "libmp3lame", "-q:a", "3", str(out)], quiet=False)
         return str(out)
     if duck:
-        fc = (f"[0:a]asplit=2[v][sc];"
+        fc = (f"[0:a]{room_af}asplit=2[v][sc];"
               f"[1:a]volume={bgm_volume}[b];"
               f"[b][sc]sidechaincompress=threshold=0.05:ratio=9:attack=15:release=280[bg];"
               f"[v][bg]amix=inputs=2:duration=first:dropout_transition=0,"
               f"aresample=44100[a]")
     else:
-        fc = (f"[1:a]volume={bgm_volume}[b];"
-              f"[0:a][b]amix=inputs=2:duration=first:dropout_transition=0,"
+        fc = (f"[0:a]{room_af}[v];"
+              f"[1:a]volume={bgm_volume}[b];"
+              f"[v][b]amix=inputs=2:duration=first:dropout_transition=0,"
               f"aresample=44100[a]")
     raw = out.with_suffix(".raw.mp3")
     _run([ffmpeg_bin(), "-y", "-i", str(voice), "-i", str(bgm),

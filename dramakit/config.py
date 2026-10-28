@@ -470,6 +470,8 @@ class ComposeConfig(BaseModel):
     film_grain: int = 4                                    # 胶片颗粒强度（去掉 AI 塑料感，0=关）
     # 口型对齐：画面里的嘴由模型自己动，录好的声音和嘴对不上，
     # 观众就会觉得声音飘在画面外。MuseTalk 用录好的音频重画嘴。
+    # 台词上一点房间混响：干声铺在画面上会像飘在外面
+    voice_room: float = 0.14
     lipsync: bool = False
     musetalk_root: str = r"E:\musetalk"
     musetalk_python: str = r"E:\ComfyUI\venv\Scripts\python.exe"
