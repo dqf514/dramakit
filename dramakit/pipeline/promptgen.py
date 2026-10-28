@@ -61,9 +61,9 @@ def _speaker_note(shot: Shot, lines) -> str:
            f"（mouth shapes synchronized with the post-dub track）。")
     if others:
         txt += (f"画面里的 {'、'.join(others)} 只是听和反应："
-                f"**嘴要闭着、不要张嘴、不要说话**"
-                f"（keep their mouths closed, listening silently），"
-                f"只给眼神和表情的反应。")
+                f"**嘴要完全闭上、不许张开、不要露出牙齿、不要说话**"
+                f"（keep their mouths fully closed, lips together, "
+                f"listening silently），只给眼神和表情的反应。")
     return txt
 
 

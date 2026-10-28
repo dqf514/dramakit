@@ -581,9 +581,12 @@ def mux(video: str | Path, audio: str | Path, out: str | Path, *,
     if watermark:
         text = watermark.replace("\\", "\\\\").replace(":", "\\:").replace("'", "")
         font = _cjk_font()
-        label = (f"drawtext=fontfile='{font}':text='{text}':fontcolor=white@0.6:"
+        # a label, not a title: it belongs in the corner, small enough not
+        # to take the attention the first second needs
+        label = (f"drawtext=fontfile='{font}':text='{text}':fontcolor=white@0.55:"
                  f"fontsize={watermark_size}"
-                 f":x=24:y=20:box=1:boxcolor=black@0.35:boxborderw=6")
+                 f":x=w-text_w-{max(16, width // 40)}:y={max(16, height // 90)}"
+                 f":box=1:boxcolor=black@0.3:boxborderw={max(4, height // 180)}")
         if watermark_seconds and watermark_seconds > 0:
             # the platform asks for the label in the opening, not on every frame
             label += f":enable='between(t,0,{watermark_seconds:.1f})'"

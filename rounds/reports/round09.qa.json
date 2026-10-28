@@ -6,12 +6,12 @@
       "title": "退婚换来三个月赌约",
       "picture": {
         "frames": 16,
-        "sharp_median": 22.9,
-        "sharp_min": 15.0,
-        "luma_spread": 8.2,
-        "src_luma_spread": 15.4,
-        "graded_luma_spread": 2.4,
-        "sat_spread": 1.1
+        "sharp_median": 29.7,
+        "sharp_min": 9.5,
+        "luma_spread": 11.9,
+        "src_luma_spread": 34.1,
+        "graded_luma_spread": 6.1,
+        "sat_spread": 1.4
       },
       "voice": {
         "lines": 12,
@@ -129,8 +129,8 @@
         "rows": []
       },
       "completeness": {
-        "duration": 34.13,
-        "timeline": 34.13,
+        "duration": 38.53,
+        "timeline": 38.53,
         "lines": 12,
         "onsets": 18
       },
@@ -151,11 +151,11 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.1,
+        "average": 2.96,
         "long": 1,
         "rows": [
           {
-            "shot": "sh-9113abe0",
+            "shot": "sh-71c73a19",
             "duration": 4.02,
             "lines": 1
           }
@@ -166,41 +166,22 @@
         "opens": 0
       },
       "line_stretch": {
-        "stretched": 3,
-        "rows": [
-          {
-            "line": "ln-0cd51ee0",
-            "text": "我想清楚了。",
-            "voice": 1.84,
-            "timeline": 2.19
-          },
-          {
-            "line": "ln-702c5ece",
-            "text": "想清楚退婚？",
-            "voice": 1.8,
-            "timeline": 2.15
-          },
-          {
-            "line": "ln-34289f88",
-            "text": "婚约是我爷爷定的。",
-            "voice": 2.16,
-            "timeline": 2.51
-          }
-        ]
+        "stretched": 0,
+        "rows": []
       },
       "shot_shape": {
         "wrong": 0
       },
       "rhythm": {
-        "shots": 11,
-        "avg_shot": 3.1,
-        "median_shot": 2.87,
+        "shots": 14,
+        "avg_shot": 2.75,
+        "median_shot": 2.7,
         "max_shot": 4.26,
         "opening_shot": 2.2,
-        "cuts_per_min": 17.6
+        "cuts_per_min": 20.2
       },
       "visible_cuts": {
-        "cuts": 10,
+        "cuts": 13,
         "invisible": 0
       },
       "hook": {
@@ -209,9 +190,9 @@
       },
       "mix": {
         "episode": {
-          "i": -16.8,
-          "lra": 4.3,
-          "pk": -2.0
+          "i": -17.2,
+          "lra": 14.3,
+          "pk": -1.9
         },
         "voice": {
           "i": -23.1,
@@ -219,18 +200,18 @@
           "pk": -4.5
         },
         "music": {
-          "i": -36.9,
-          "lra": 6.4,
-          "pk": -25.8
+          "i": -36.7,
+          "lra": 6.5,
+          "pk": -25.6
         },
         "bed": {
           "i": -13.2,
-          "lra": 6.4,
+          "lra": 6.5,
           "pk": -2.1
         },
         "audibility": {
           "speech_lufs": -22.0,
-          "bed_peak_lufs": -34.0,
+          "bed_peak_lufs": -34.1,
           "gap_lu": 12.0
         },
         "black_segments": 0
@@ -245,18 +226,18 @@
         "max_rows": 1
       },
       "subtitle_place": {
-        "margin_v": 30,
-        "height": 544
+        "margin_v": 107,
+        "height": 1920
       },
       "nle": {
-        "spine": 11,
+        "spine": 13,
         "lanes": [
           "Dialogue",
           "Music"
         ],
         "missing_media": 0,
         "spine_gaps": 0,
-        "spine_length": 34.13
+        "spine_length": 38.53
       }
     }
   ],
@@ -265,15 +246,51 @@
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "1 个镜头太长（短剧要切得快）：sh-9113abe0 4.02s（1 句）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-71c73a19 4.02s（1 句）"
     },
     {
-      "area": "sync",
-      "kind": "line_stretched",
+      "area": "subtitle",
+      "kind": "overflow",
       "where": "-",
-      "detail": "3 句台词在时间线上被拉长了（配音比画面短，嘴和声音对不上）：「我想清楚了。」1.84s→2.19s、「想清楚退婚？」1.8s→2.15s、「婚约是我爷爷定的。」2.16s→2.51s"
+      "detail": "字幕超宽（估 1023px / 画面 1080px）：苏念摘下戒指，放上桌。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "overflow",
+      "where": "-",
+      "detail": "字幕超宽（估 1177px / 画面 1080px）：我腿好了，你却要退婚。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "overflow",
+      "where": "-",
+      "detail": "字幕超宽（估 1177px / 画面 1080px）：他说，只有我配得上你。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "overflow",
+      "where": "-",
+      "detail": "字幕超宽（估 1498px / 画面 1080px）：爷爷说的是，交给能撑住的人。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "overflow",
+      "where": "-",
+      "detail": "字幕超宽（估 1070px / 画面 1080px）：我来，就是撑给你看。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "overflow",
+      "where": "-",
+      "detail": "字幕超宽（估 1177px / 画面 1080px）：你还觉得我不行，我滚。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "overflow",
+      "where": "-",
+      "detail": "字幕超宽（估 1605px / 画面 1080px）：你改主意，苏家三成股份全送你。"
     }
   ],
-  "issue_count": 2,
+  "issue_count": 8,
   "verdict": "ISSUES"
 }

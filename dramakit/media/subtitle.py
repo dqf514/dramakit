@@ -56,7 +56,16 @@ def write_srt(cues: list[SubtitleCue], out_path: str | Path) -> str:
     return str(out_path)
 
 
-def _ass_header(style: dict, width: int, height: int) -> str:
+def _text_width(text: str) -> float:
+    """How wide a line is, in characters: a Chinese one is a full width."""
+    total = 0.0
+    for ch in text or "":
+        total += 1.0 if ord(ch) > 0x2E80 else 0.55
+    return total
+
+
+def _ass_header(style: dict, width: int, height: int,
+                longest: float = 0.0) -> str:
     font = style.get("font", "Microsoft YaHei")
     size = style.get("font_size", 16)
     primary = style.get("primary_color", "&H00FFFFFF")
@@ -77,8 +86,14 @@ def _ass_header(style: dict, width: int, height: int) -> str:
     # text heights above the bottom of the picture, so the subtitle sits just
     # above the edge whatever the frame is - a margin written in pixels for
     # another frame lands across the actors' faces.
-    k = height / 288
+    # The size follows the width of the picture: a line has to fit
+    # sideways, and in a tall frame a size taken from the height runs off
+    # both edges.
+    k = width / 960.0
     scaled = int(round(size * k))
+    if longest > 0:
+        room = (width - 2 * int(round(60 * height / 1080))) / longest
+        scaled = max(12, min(scaled, int(room * 0.95)))
     narr_scaled = int(round(narr_size * k))
     heights = float(margin_v or 1)
     margin_v = int(round(scaled * heights))
@@ -110,7 +125,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 def write_ass(cues: list[SubtitleCue], out_path: str | Path, *, style: dict,
               width: int = 1080, height: int = 1920, show_speaker: bool = True) -> str:
     out_path = Path(out_path); out_path.parent.mkdir(parents=True, exist_ok=True)
-    parts = [_ass_header(style, width, height)]
+    longest = 0.0
+    for c in cues:
+        if c.kind in (LineKind.NARRATION, LineKind.CAPTION):
+            continue
+        longest = max(longest, _text_width(_clean(c.text)))
+    parts = [_ass_header(style, width, height, longest)]
     for c in cues:
         start, end = _ass_time(c.start), _ass_time(c.end)
         text = _clean(c.text).replace(":", "：")

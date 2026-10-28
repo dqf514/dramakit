@@ -441,14 +441,14 @@ compose:
   # 口型对齐：画面里的嘴由模型自己动，录好的声音和嘴对不上，
   # 观众就会觉得声音飘在画面外。MuseTalk 用录好的音频重画嘴。
   voice_room: 0.14                         # 台词上的房间混响（0=干声）
-  lipsync: false                           # 打开后每个有台词的镜头都会过一遍 MuseTalk
+  lipsync: true                            # 打开后每个有台词的镜头都会过一遍 MuseTalk
   musetalk_root: "E:/musetalk"            # MuseTalk 的代码与权重
   musetalk_python: "E:/ComfyUI/venv/Scripts/python.exe"
   lipsync_timeout: 900                     # 一个镜头的口型对齐最多等多久（秒）
   line_gap: 0.35                            # 每句台词之间的留白（秒）
   subtitle_style:
     font: Microsoft YaHei
-    font_size: 16                           # 内部按分辨率放大
+    font_size: 30                           # 以 960 宽为基准，按画面宽度放大
     primary_color: "&H00FFFFFF"             # 白字（&HAABBGGRR）
     outline_color: "&H00000000"             # 黑边
     outline: 2
@@ -460,7 +460,7 @@ compose:
     speaker_color: "&H0000E5FF"             # 角色名高亮色
     # 旁白专用样式：顶部居中 + 半透明底板 + 斜体暖色，不占用底部对白区
     narration_font: Microsoft YaHei
-    narration_font_size: 14
+    narration_font_size: 26
     narration_color: "&H00A0DCFA"           # 暖米色
     narration_back_color: "&H66000000"      # 40% 透明黑底板
     narration_margin_v: 40                  # 距顶部距离

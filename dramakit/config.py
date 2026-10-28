@@ -452,7 +452,7 @@ class ComposeConfig(BaseModel):
     also_write_srt: bool = True
     subtitle_style: dict = Field(default_factory=lambda: {
         "font": "Microsoft YaHei",
-        "font_size": 16,
+        "font_size": 30,          # 以 960 宽为基准，按画面宽度放大
         "primary_color": "&H00FFFFFF",   # white
         "outline_color": "&H00000000",   # black
         "outline": 2,
