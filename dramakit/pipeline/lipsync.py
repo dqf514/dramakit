@@ -77,7 +77,10 @@ def _musetalk(ctx: Context, jobs: list[tuple[Path, Path, Path]]) -> dict[Path, b
                      f"  audio_path: \"{wav.as_posix()}\"\n"
                      f"  result_name: \"{out.name}\"\n")
     cfg.write_text("\n".join(parts), encoding="utf-8")
-    cmd = [py, str(root / "scripts" / "inference.py"),
+    # MuseTalk has to be run as a module: its own imports are relative to the
+    # repository, and running the file directly puts the scripts folder on the
+    # path instead of the repository
+    cmd = [py, "-m", "scripts.inference",
            "--inference_config", str(cfg),
            "--result_dir", str(work),
            "--unet_config", str(root / "models" / "musetalkV15" / "musetalk.json"),
