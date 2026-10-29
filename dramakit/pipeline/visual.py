@@ -502,10 +502,12 @@ def run(ctx: Context) -> dict:
     # one GPU at once, so alternating per shot makes ComfyUI swap 15GB of
     # weights in and out for every single shot. Doing all the stills first and
     # all the videos after keeps one model resident and the swap happens once.
-    def _run_phase(label: str, fn, total: int, offset: int) -> int:
+    def _run_phase(label: str, fn, total: int, offset: int,
+                   workers: int = 0) -> int:
         nonlocal ok_count
         done = 0
-        with ThreadPoolExecutor(max_workers=max(1, c.concurrency)) as ex:
+        n = workers or c.concurrency
+        with ThreadPoolExecutor(max_workers=max(1, n)) as ex:
             futs = [ex.submit(fn, ctx, sc, shot, durations.get(shot.id, 0.0))
                     if fn is _gen_video else ex.submit(fn, ctx, sc, shot)
                     for (_ep, sc, shot) in jobs]
@@ -527,7 +529,9 @@ def run(ctx: Context) -> dict:
         ctx.save()
     if do_video:
         ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(jobs))
-        offset += _run_phase("出视频", _gen_video, total, offset)
+        offset += _run_phase("出视频", _gen_video, total, offset,
+                             workers=max(1, int(c.video_concurrency or 0)
+                                          or c.concurrency))
         ctx.save()
     elif do_image:
         for (_ep, _sc, shot) in jobs:

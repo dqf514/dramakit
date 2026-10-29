@@ -279,7 +279,8 @@ class ComfyUIConfig(BaseModel):
     timeout: float = 600.0                            # 单张图/单段视频生成上限
     request_timeout: float = 60.0                     # 短HTTP调用(提交/查询/下载)超时
     poll_interval: float = 1.0
-    concurrency: int = 1                              # GPU-bound; keep low
+    concurrency: int = 1                              # 出图并发（本机一张卡，一次一个）
+    video_concurrency: int = 2                        # 出视频并发（每个远端节点一个）                              # GPU-bound; keep low
     max_retries: int = 3                              # 远程网络抖动重试次数
     # --- 远程鉴权（对接另一台机器 + Nginx 反代时常用）---
     auth: Literal["none", "basic", "token", "header"] = "none"
