@@ -9,8 +9,8 @@
         "sharp_median": 18.0,
         "sharp_min": 12.3,
         "luma_spread": 13.3,
-        "src_luma_spread": 32.2,
-        "graded_luma_spread": 5.6,
+        "src_luma_spread": 32.4,
+        "graded_luma_spread": 7.6,
         "sat_spread": 2.6
       },
       "voice": {
@@ -130,7 +130,7 @@
       },
       "completeness": {
         "duration": 36.13,
-        "timeline": 36.13,
+        "timeline": 34.13,
         "lines": 12,
         "onsets": 18
       },
@@ -151,16 +151,11 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.28,
-        "long": 2,
+        "average": 3.1,
+        "long": 1,
         "rows": [
           {
-            "shot": "sh-b4c96b0a",
-            "duration": 5.88,
-            "lines": 2
-          },
-          {
-            "shot": "sh-452237ff",
+            "shot": "sh-ffcc9aef",
             "duration": 4.02,
             "lines": 1
           }
@@ -187,7 +182,7 @@
       },
       "visible_cuts": {
         "cuts": 11,
-        "invisible": 0
+        "invisible": 6
       },
       "hook": {
         "first_line_at": 0.0,
@@ -222,7 +217,7 @@
         "black_segments": 0
       },
       "subtitle": {
-        "cues": 13,
+        "cues": 12,
         "styles": [
           "Default",
           "Speaker",
@@ -248,12 +243,30 @@
   ],
   "issues": [
     {
+      "area": "completeness",
+      "kind": "duration_mismatch",
+      "where": "-",
+      "detail": "成片 36.13s，时间线 34.13s，差了 +2.01s（有内容被截断）"
+    },
+    {
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "2 个镜头太长（短剧要切得快）：sh-b4c96b0a 5.88s（2 句）、sh-452237ff 4.02s（1 句）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-ffcc9aef 4.02s（1 句）"
+    },
+    {
+      "area": "rhythm",
+      "kind": "invisible_cut",
+      "where": "-",
+      "detail": "6 个切点观众看不出来（前后两个镜头太像）：4.3s、13.6s、16.1s、23.4s"
+    },
+    {
+      "area": "subtitle",
+      "kind": "missing_cues",
+      "where": "-",
+      "detail": "13 句台词只有 12 条字幕"
     }
   ],
-  "issue_count": 1,
+  "issue_count": 4,
   "verdict": "ISSUES"
 }

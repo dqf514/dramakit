@@ -438,17 +438,27 @@ def mix_shot_audio(clips: Sequence[tuple[str, float, float]], out: str | Path,
     mixin = []
     for i, (_c, st, ln) in enumerate(usable):
         ms = int(max(0.0, st) * 1000)
-        # only the part that belongs to this slot
-        trim = (f"[{i}:a]atrim=0:{max(0.05, ln):.3f},asetpts=N/SR/TB,"
-                f"adelay={ms}|{ms}[a{i}]")
+        # only the part that belongs to this slot, and one channel so the
+        # delay and the mix always line up
+        trim = (f"[{i}:a]aformat=sample_fmts=fltp:sample_rates={rate}:"
+                f"channel_layouts=mono,atrim=0:{max(0.05, ln):.3f},"
+                f"asetpts=N/SR/TB,adelay={ms}[a{i}]")
         parts.append(trim)
         mixin.append(f"[a{i}]")
-    fc = ";".join(parts) + ";" + "".join(mixin) +         f"amix=inputs={len(mixin)}:duration=longest:normalize=0[a]"
+    fc = ";".join(parts) + ";" + "".join(mixin) + \
+        f"amix=inputs={len(mixin)}:duration=longest:normalize=0[a]"
     args += ["-filter_complex", fc, "-map", "[a]", "-ac", "1", "-ar", str(rate),
              "-c:a", "libmp3lame", "-q:a", "3", str(out)]
     _run(args, quiet=False)
     if duration > 0:
-        return pad_audio(out, out.with_name(out.stem + "_pad.mp3"), duration)
+        # exactly the length of the scene: a clip that is a frame longer than
+        # its slot would otherwise stretch the whole episode
+        trimmed = out.with_name(out.stem + "_cut.mp3")
+        _run([ffmpeg_bin(), "-y", "-i", str(out), "-af",
+              f"atrim=0:{duration:.3f},asetpts=N/SR/TB,apad=whole_dur={duration:.3f}",
+              "-ar", str(rate), "-ac", "1", "-c:a", "libmp3lame", "-q:a", "3",
+              str(trimmed)], quiet=False)
+        trimmed.replace(out)
     return str(out)
 
 

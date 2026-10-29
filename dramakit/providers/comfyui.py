@@ -374,10 +374,14 @@ class ComfyUIClient(BaseImageVideo):
         return r.json().get("name", p.name)
 
     def upload_audio(self, audio_path: str | Path) -> str:
-        """Upload a local audio file to ComfyUI /input; returns the name."""
+        """Upload a local audio file to ComfyUI /input; returns the name.
+
+        The endpoint is the image one and the form field is called
+        "image" - that is how ComfyUI takes any file.
+        """
         p = Path(audio_path)
         with open(p, "rb") as fh:
-            files = {"audio": (p.name, fh, "audio/mpeg")}
+            files = {"image": (p.name, fh, "audio/mpeg")}
             data = {"overwrite": "true", "type": "input"}
             r = self._post("/upload/image", files=files, data=data, timeout=180)
         if r.status_code >= 400:
