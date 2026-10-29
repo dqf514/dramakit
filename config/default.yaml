@@ -437,7 +437,7 @@ storyboard:
   min_shots_per_scene: 2
   max_shots_per_episode: 14
   max_shots_per_scene: 10
-  shot_duration_range: [2.0, 4.0]
+  shot_duration_range: [2.5, 6.0]
   prefer_dynamic: true                      # 多用推拉摇移增强节奏
   include_insert_shots: true                # 允许空镜/特写插入
   language: bilingual                       # 提示词语言 zh | en | bilingual
@@ -479,7 +479,7 @@ compose:
   musetalk_root: "E:/musetalk"            # MuseTalk 的代码与权重
   musetalk_python: "E:/ComfyUI/venv/Scripts/python.exe"
   lipsync_timeout: 900                     # 一个镜头的口型对齐最多等多久（秒）
-  line_gap: 0.35                            # 每句台词之间的留白（秒）
+  line_gap: 0.5                             # 每句台词之间的留白（秒）
   subtitle_style:
     font: Microsoft YaHei
     font_size: 30                           # 以 960 宽为基准，按画面宽度放大

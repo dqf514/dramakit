@@ -374,10 +374,15 @@ def _shot_timeline(shot, lines) -> str:
         length = float(d) if d and d > 0 else 0.0
         if length <= 0:
             length = dur / len(lines)
-        out.append(f"{at:.1f}-{at + length:.1f}秒：{spk} 开口说这句台词")
-        at += length
+        # the model speaks slower than the recording, so the line gets a
+        # little more room than it needs, and it is told to finish in it
+        window = length * 1.15 + 0.15
+        out.append(f"{at:.1f}-{at + window:.1f}秒：{spk} 开口说这句台词"
+                   f"（**在这段时间里说完，不要拖到后面**）")
+        at += window
     if at < dur - 0.05:
-        out.append(f"{at:.1f}-{dur:.1f}秒：保持情绪与姿态")
+        out.append(f"{at:.1f}-{dur:.1f}秒：说完后保持情绪与姿态，"
+                   f"给对方一点反应的时间")
     return "；".join(out)
 
 

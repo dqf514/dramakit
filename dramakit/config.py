@@ -415,7 +415,7 @@ class StoryboardConfig(BaseModel):
     # 一集最多几个镜头：短剧靠快切留人，平均 2~3 秒一刀，
     # 三十多秒的一集要十几个镜头才切得起来
     max_shots_per_episode: int = 14
-    shot_duration_range: list[float] = Field(default_factory=lambda: [2.0, 4.0])
+    shot_duration_range: list[float] = Field(default_factory=lambda: [2.5, 6.0])
     prefer_dynamic: bool = True                       # 多用推拉摇移
     include_insert_shots: bool = True                 # 空镜/特写插入
     language: Literal["zh", "en", "bilingual"] = "bilingual"  # prompt language
@@ -494,7 +494,7 @@ class ComposeConfig(BaseModel):
     lipsync_timeout: float = 900.0
     # 每句台词之间的留白（秒）。背靠背的台词听起来像在念清单，
     # 留半秒让对方接住，这是短剧的戏在的地方。
-    line_gap: float = 0.35
+    line_gap: float = 0.5
     # cover
     generate_cover: bool = True
     cover_from_shot: Literal["first", "best", "last"] = "first"
