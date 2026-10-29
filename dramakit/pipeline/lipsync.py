@@ -113,6 +113,11 @@ def run(ctx: Context) -> dict:
     cfg = ctx.cfg.compose
     if not cfg.lipsync:
         return {"skipped": True}
+    if ctx.cfg.comfyui.native_audio:
+        # the mouth already moves with the voice the model generated; a
+        # second pass would put the lips out of step with the sound
+        ctx.log.info("lipsync: 跳过（画面里的人声是 H3 自己说的，嘴本来就对上了）")
+        return {"skipped": True}
     done = 0
     failed = 0
     for ep in ctx.target_episodes():

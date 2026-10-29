@@ -417,8 +417,10 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         music = str(h3.get("non_diegetic_music") or "").strip()
         if desc:
             if ctx.cfg.comfyui.native_audio:
+                # the score has its own music-only clip; the shot clip
+                # carries the voice and the room
                 shot.video_prompt = _assemble_r2v_prompt(
-                    desc, soundscape or "N/A", music or "N/A")
+                    desc, soundscape or "N/A", "N/A")
             else:
                 shot.video_prompt = _assemble_h3_prompt(
                     desc, soundscape or "N/A", music or "N/A")

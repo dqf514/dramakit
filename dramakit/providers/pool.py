@@ -69,24 +69,36 @@ class ComfyUIPool(BaseImageVideo):
 
     def __init__(self, nodes: list[_Node]):
         self.nodes = nodes
+        # jobs we have sent and not yet got back
+        self._inflight: dict[str, int] = {}
 
     # ------------------------------------------------------------- selection
     def candidates(self, role: str) -> list[_Node]:
         """Nodes that can take this role, least busy first."""
         ok = [n for n in self.nodes if n.takes(role)]
-        return sorted(ok, key=lambda n: (n.depth(), n.name))
+        return sorted(ok, key=lambda n: (self.busy(n), n.name))
+
+    def busy(self, node: _Node) -> int:
+        """How much this node has on: what it says plus what we sent it."""
+        return node.depth() + self._inflight.get(node.name, 0)
 
     def _dispatch(self, role: str, fn) -> str:
         tried: list[str] = []
         last: Optional[Exception] = None
         for node in self.candidates(role):
             tried.append(node.name)
+            # the job counts as busy from the moment it is sent, not from
+            # the moment the node says so
+            self._inflight[node.name] = self._inflight.get(node.name, 0) + 1
             try:
                 return fn(node.client)
             except Exception as e:  # noqa: BLE001
                 last = e
                 log.warning("节点 %s 渲染失败，转移: %s", node.name, str(e)[:160])
                 node.forget_queue()
+            finally:
+                self._inflight[node.name] = max(
+                    0, self._inflight.get(node.name, 0) - 1)
         raise ComfyUIError(
             f"没有可用的渲染节点（任务={role}，尝试过 {', '.join(tried) or '无'}）"
             + (f"：{last}" if last else ""))
