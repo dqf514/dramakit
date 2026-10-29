@@ -562,6 +562,8 @@ const attr = s => esc(s).replace(/'/g,"&#39;");
 
 const STAGES=["ingest","analyze","character","segment","script","storyboard","promptgen","voice","visual","subtitle","music","precheck","compose","qc"];
 const STAGE_ZH={ingest:"导入",analyze:"分析",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",voice:"配音",visual:"画面",subtitle:"字幕",music:"配乐",precheck:"预检",compose:"合成",qc:"质检"};
+function ago(ts){if(!ts)return "";const s=(Date.now()/1000-ts);if(s<60)return "刚刚";if(s<3600)return Math.floor(s/60)+" 分钟前";if(s<86400)return Math.floor(s/3600)+" 小时前";if(s<86400*7)return Math.floor(s/86400)+" 天前";return new Date(ts*1000).toLocaleDateString();}
+function whenStr(ts){if(!ts)return "";const d=new Date(ts*1000);const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
 const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",character:"锚点 · 三视图",segment:"按钩子切集",script:"台词 · 旁白",storyboard:"场次 · 镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"逐句 TTS",subtitle:"跟着配音走",music:"情绪匹配 BGM",precheck:"成片前校验",compose:"ffmpeg 成片",qc:"成片质检"};
 
 const S = {
@@ -1314,6 +1316,7 @@ function renderWorkbench(){
       <div class="ef">
         <span class="mini">${epProgress(ep)}% 完成</span>
         ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ↗</a>':""}
+      ${ep.video_mtime?`<span class="muted" style="font-size:10.5px">${ago(ep.video_mtime)}</span>`:""}
         ${ep.nle?'<a class="mini" href="'+ep.nle+'" target="_blank">FCPXML ↗</a>':""}
         ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ↗</a>':""}
         ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:var(--go2)">有视频</span>':""}
@@ -1416,6 +1419,7 @@ function renderBoard(){
     </div>
     <div class="muted" style="font-size:11.5px;margin-bottom:10px">第 ${ep.index} 集 · ${ep.scenes.length} 场 · ${shotCount} 镜
       ${ep.video?`<a class="mini" href="${ep.video}" target="_blank" style="margin-left:6px">▶ 成片</a>`:""}
+      ${ep.video_mtime?`<span class="muted" style="font-size:11px;margin-left:6px">${ep.video_seconds?ep.video_seconds+"s · ":""}最后生成 ${ago(ep.video_mtime)}（${whenStr(ep.video_mtime)}）</span>`:""}
       ${ep.nle?`<a class="mini" href="${ep.nle}" target="_blank" style="margin-left:6px">FCPXML ↗</a>`:""}
       ${qcBadge(ep.qc)}</div>
     <div id="boardBlocks">${blocks||'<div class="empty">本集还没有分镜</div>'}</div>`;

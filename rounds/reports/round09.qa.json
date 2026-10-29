@@ -9,8 +9,8 @@
         "sharp_median": 18.0,
         "sharp_min": 12.3,
         "luma_spread": 13.3,
-        "src_luma_spread": 32.4,
-        "graded_luma_spread": 7.6,
+        "src_luma_spread": 18.5,
+        "graded_luma_spread": 4.4,
         "sat_spread": 2.6
       },
       "voice": {
@@ -151,19 +151,23 @@
         "rows": []
       },
       "pacing": {
-        "average": 3.1,
+        "average": 2.84,
         "long": 1,
         "rows": [
           {
-            "shot": "sh-ffcc9aef",
+            "shot": "sh-2fecb5b5",
             "duration": 4.02,
             "lines": 1
           }
         ]
       },
       "framing": {
-        "same_size": 0,
+        "same_size": 1,
         "opens": 0
+      },
+      "prompt_line": {
+        "missing": 0,
+        "rows": []
       },
       "line_stretch": {
         "stretched": 0,
@@ -182,7 +186,7 @@
       },
       "visible_cuts": {
         "cuts": 11,
-        "invisible": 6
+        "invisible": 7
       },
       "hook": {
         "first_line_at": 0.0,
@@ -252,19 +256,19 @@
       "area": "pacing",
       "kind": "slow_shot",
       "where": "-",
-      "detail": "1 个镜头太长（短剧要切得快）：sh-ffcc9aef 4.02s（1 句）"
+      "detail": "1 个镜头太长（短剧要切得快）：sh-2fecb5b5 4.02s（1 句）"
+    },
+    {
+      "area": "framing",
+      "kind": "same_size_run",
+      "where": "-",
+      "detail": "1 处连续三个以上镜头景别相同（看起来像证件照连播）：场景1 特写"
     },
     {
       "area": "rhythm",
       "kind": "invisible_cut",
       "where": "-",
-      "detail": "6 个切点观众看不出来（前后两个镜头太像）：4.3s、13.6s、16.1s、23.4s"
-    },
-    {
-      "area": "subtitle",
-      "kind": "missing_cues",
-      "where": "-",
-      "detail": "13 句台词只有 12 条字幕"
+      "detail": "7 个切点观众看不出来（前后两个镜头太像）：4.3s、13.6s、16.1s、23.4s"
     }
   ],
   "issue_count": 4,

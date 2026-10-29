@@ -387,6 +387,26 @@ def _make_handler(state: State):
             def _sv(s):
                 return s.value if hasattr(s, "value") else str(s or "")
 
+            def _mtime(rel: str) -> float:
+                """When the file was written (0 when there is none)."""
+                if not rel:
+                    return 0.0
+                try:
+                    f = store.abs(rel)
+                    return round(f.stat().st_mtime, 1) if f.exists() else 0.0
+                except Exception:  # noqa: BLE001
+                    return 0.0
+
+            def _duration(rel: str) -> float:
+                """How long the finished film is."""
+                if not rel:
+                    return 0.0
+                try:
+                    from ..media.ffmpeg import probe_duration
+                    return round(float(probe_duration(store.abs(rel))), 2)
+                except Exception:  # noqa: BLE001
+                    return 0.0
+
             def _char(c):
                 d = c.model_dump()
                 d["ref_urls"] = [_media_url(slug, r) for r in c.refs()]
@@ -424,6 +444,8 @@ def _make_handler(state: State):
                     })
                 episodes.append({
                     "id": ep.id, "index": ep.index, "title": ep.title,
+                    "video_mtime": _mtime(ep.video_path),
+                    "video_seconds": _duration(ep.video_path),
                     "logline": ep.logline, "hook": ep.hook,
                     "status": _sv(ep.status), "stage_status": {k: _sv(v) for k, v in ep.stage_status.items()},
                     "estimated_seconds": ep.estimated_seconds,

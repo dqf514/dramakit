@@ -160,11 +160,18 @@ def _export_nle(ctx: Context, ep, tl, shot_clips: list[tuple[str, object]],
 def _scene_voice(ctx: Context, tscene, tmp: Path, idx: int = 0,
                  clips=None) -> str:
     if ctx.cfg.comfyui.native_audio and clips:
-        # the voice was generated with the picture: take it from the clips
+        # the voice was generated with the picture: take it from the clips.
+        # The graded clips are picture only, so the sound comes from the
+        # original ones.
         items = []
-        for path, tshot in clips:
-            items.append((str(path), tshot.start - tscene.start,
-                          tshot.duration))
+        for _path, tshot in clips:
+            src = tshot.shot.video_path
+            if not src:
+                continue
+            ap = ctx.store.abs(src)
+            if not ap.exists():
+                continue
+            items.append((str(ap), tshot.start - tscene.start, tshot.duration))
         out = tmp / f"scene_voice_{idx:03d}.mp3"
         return ff.mix_shot_audio(items, out, duration=tscene.duration)
     parts: list[str] = []
