@@ -398,6 +398,9 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     "声音参考 <Audio 1>：角色的音色、用词习惯和情绪照着它，"
                     "但不要把录音里的原话重复进 <d>。"
                     "说话的人要开口，嘴型跟声音对上；其他人闭嘴只听。"
+                    "**画面里能看见的动作不要用画外音念出来**"
+                    "（no narration, no voice over）：只有 <d> 里的那句是人话，"
+                    "其余全是画面和声音，不要念动作、不要念环境。"
                     "overall_soundscape 写环境声和动作声，不要写人声。")
         elif ctx.cfg.compose.h3_audio == "bed":
             # The dialogue is recorded separately, so the shot only has to
