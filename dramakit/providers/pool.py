@@ -11,6 +11,7 @@ If a node fails mid-render the job moves to the next candidate.
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -71,6 +72,7 @@ class ComfyUIPool(BaseImageVideo):
         self.nodes = nodes
         # jobs we have sent and not yet got back
         self._inflight: dict[str, int] = {}
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------- selection
     def candidates(self, role: str) -> list[_Node]:
@@ -82,14 +84,24 @@ class ComfyUIPool(BaseImageVideo):
         """How much this node has on: what it says plus what we sent it."""
         return node.depth() + self._inflight.get(node.name, 0)
 
+    def _take(self, role: str, skip: set[str]) -> Optional[_Node]:
+        """Pick the least busy node and count the job on it, together."""
+        ok = [n for n in self.nodes if n.takes(role) and n.name not in skip]
+        if not ok:
+            return None
+        node = min(ok, key=lambda n: (self.busy(n), n.name))
+        self._inflight[node.name] = self._inflight.get(node.name, 0) + 1
+        return node
+
     def _dispatch(self, role: str, fn) -> str:
         tried: list[str] = []
         last: Optional[Exception] = None
-        for node in self.candidates(role):
+        while True:
+            with self._lock:
+                node = self._take(role, set(tried))
+            if node is None:
+                break
             tried.append(node.name)
-            # the job counts as busy from the moment it is sent, not from
-            # the moment the node says so
-            self._inflight[node.name] = self._inflight.get(node.name, 0) + 1
             try:
                 return fn(node.client)
             except Exception as e:  # noqa: BLE001
@@ -97,8 +109,9 @@ class ComfyUIPool(BaseImageVideo):
                 log.warning("节点 %s 渲染失败，转移: %s", node.name, str(e)[:160])
                 node.forget_queue()
             finally:
-                self._inflight[node.name] = max(
-                    0, self._inflight.get(node.name, 0) - 1)
+                with self._lock:
+                    self._inflight[node.name] = max(
+                        0, self._inflight.get(node.name, 0) - 1)
         raise ComfyUIError(
             f"没有可用的渲染节点（任务={role}，尝试过 {', '.join(tried) or '无'}）"
             + (f"：{last}" if last else ""))

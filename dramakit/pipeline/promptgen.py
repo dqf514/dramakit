@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from ..models import Shot, Status
 from ..prompts import templates as T
@@ -222,13 +223,32 @@ def _fallback_prompt(ctx: Context, shot: Shot, scene) -> str:
 
 
 def _h3_needed(ctx: Context) -> bool:
-    """True when the configured video workflow uses the native MiniMax H3 nodes."""
-    try:
-        wf = ctx.providers.visual._load_workflow(  # noqa: SLF001
-            ctx.cfg.comfyui.i2v_workflow)
-    except Exception:  # noqa: BLE001
+    """True when the configured video workflow uses the native MiniMax H3 nodes.
+
+    The workflow file is read straight from disk: the provider may be a
+    pool of machines now, and a pool has no workflow of its own.
+    """
+    rel = ctx.cfg.comfyui.i2v_workflow
+    if not rel:
         return False
-    return any("MiniMaxH3" in str(n.get("class_type", "")) for n in wf.values())
+    roots: list[Path] = []
+    vis = ctx.providers.visual
+    for node in (getattr(vis, "nodes", None) or []):
+        root = getattr(getattr(node, "client", None), "root", None)
+        if root:
+            roots.append(Path(root))
+    roots.append(Path("."))
+    for root in roots:
+        p = Path(rel) if Path(rel).is_absolute() else root / rel
+        if not p.exists():
+            continue
+        try:
+            import json as _json
+            wf = _json.loads(p.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        return any("MiniMaxH3" in str(n.get("class_type", "")) for n in wf.values())
+    return False
 
 
 def _aspect(ctx: Context) -> tuple[str, str]:
