@@ -266,6 +266,10 @@ class NodeConfig(BaseModel):
     auth_token: str = ""
     extra_headers: dict = Field(default_factory=dict)
     verify_tls: bool = True
+    # This node's own weights: {"6": {"unet_name": "..."}} - the loader
+    # nodes of the workflow. The 5080 takes the nvfp4 files, the 3090 the
+    # int8/convrot ones.
+    graph_overrides: dict = Field(default_factory=dict)
 
 
 class ComfyUIConfig(BaseModel):
@@ -330,6 +334,10 @@ class ComfyUIConfig(BaseModel):
     # 节点池：额外的 ComfyUI 机器（方案B 的调度对象）。本地主节点不在此列。
     # 每个节点都需要工作流里引用的模型文件，可用 `dj nodes sync` 自动补齐。
     nodes: list[NodeConfig] = Field(default_factory=list)
+    # What the local machine is for: [] = anything, ["t2i"] = only the stills
+    local_roles: list[str] = Field(default_factory=list)
+    # This machine's own weights for the loader nodes of the workflow
+    graph_overrides: dict = Field(default_factory=dict)
     # 本机 ComfyUI 的 models 目录（模型文件的存放处，也是同步时的来源）。
     # 留空则默认用项目根目录下的 models/。
     models_dir: str = ""

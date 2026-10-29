@@ -152,6 +152,7 @@ def build_pool(cfg: Config, root: Optional[Path] = None) -> Optional[ComfyUIPool
                        extra_headers=base.extra_headers,
                        verify_tls=base.verify_tls)
     local_cfg = base.model_copy()
+    local.roles = list(getattr(base, "local_roles", None) or [])
     nodes.append(_Node(local, local_cfg, root))
 
     for spec in (base.nodes or []):
@@ -166,6 +167,7 @@ def build_pool(cfg: Config, root: Optional[Path] = None) -> Optional[ComfyUIPool
         node_cfg.auth_token = spec.auth_token
         node_cfg.extra_headers = spec.extra_headers or {}
         node_cfg.verify_tls = spec.verify_tls
+        node_cfg.graph_overrides = dict(spec.graph_overrides or {})
         nodes.append(_Node(spec, node_cfg, root))
 
     if not nodes:

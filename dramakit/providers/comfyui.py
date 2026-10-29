@@ -46,6 +46,8 @@ class ComfyUIClient(BaseImageVideo):
         self.cfg = cfg
         self.root = Path(root) if root else Path(".")
         self.base = cfg.base_url.rstrip("/")
+        # this node's own weights (the loader nodes of the workflow)
+        self.graph_overrides: dict = getattr(cfg, "graph_overrides", None) or {}
         # unique-ish client id so multiple machines don't cross-talk on the WS
         self.client_id = f"{cfg.client_id}-{random.randint(1000, 9999)}"
         self._infer_cache: dict[str, tuple[float, dict]] = {}
@@ -596,6 +598,9 @@ class ComfyUIClient(BaseImageVideo):
         for nid, fields in (extra.get("graph_overrides") or {}).items():
             if nid in graph:
                 graph[nid].setdefault("inputs", {}).update(fields)
+        for nid, fields in (self.graph_overrides or {}).items():
+            if nid in graph:
+                graph[nid].setdefault("inputs", {}).update(fields)
 
         pid = self._queue(graph)
         log.info("ComfyUI t2i 已提交 pid=%s seed=%s @ %s", pid, real_seed, self.base)
@@ -662,6 +667,10 @@ class ComfyUIClient(BaseImageVideo):
             self._set(graph, nm, "width", "width", self.cfg.video_width)
             self._set(graph, nm, "height", "height", self.cfg.video_height)
         for nid, fields in (extra.get("graph_overrides") or {}).items():
+            if nid in graph:
+                graph[nid].setdefault("inputs", {}).update(fields)
+        # this node's own weights
+        for nid, fields in (self.graph_overrides or {}).items():
             if nid in graph:
                 graph[nid].setdefault("inputs", {}).update(fields)
 
