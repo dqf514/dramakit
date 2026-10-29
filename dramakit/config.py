@@ -318,6 +318,10 @@ class ComfyUIConfig(BaseModel):
         "checkpoint": "4", "sampler": "3",
         "ref_image": "",                              # 可选：角色参考图 LoadImage 节点
     })
+    # 让 H3 自己说话：画面、嘴型、人声、音效一次出。
+    # 这条路只有 ref2va 模型走得通——fl2va 生成的人声是乱码。
+    native_audio: bool = False
+    ref_audio_node: str = "900"          # 工作流里装载参考音频的节点
     i2v_nodes: dict = Field(default_factory=lambda: {
         "image": "10", "positive": "6", "negative": "7",
         "seed": "3", "frames": "14", "fps": "15",

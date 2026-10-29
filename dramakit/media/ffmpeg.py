@@ -418,6 +418,40 @@ def bed_gain_for(voice: str | Path, bed: str | Path,
     return max(0.05, min(1.5, 10 ** (gain_db / 20.0)))
 
 
+def mix_shot_audio(clips: Sequence[tuple[str, float, float]], out: str | Path,
+                   *, duration: float = 0.0, rate: int = 44100) -> str:
+    """Lay the audio of the shots on the timeline.
+
+    `clips` is (path, start, length) per shot: where the clip begins and
+    how much of it belongs there. The voice of the episode is then the
+    voice that was generated with the picture.
+    """
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    usable = [(c, st, ln) for c, st, ln in clips if Path(c).exists()]
+    if not usable:
+        return make_silence(out, duration or 1.0, rate=rate)
+    args: list[str] = [ffmpeg_bin(), "-y"]
+    for c, _st, _ln in usable:
+        args += ["-i", str(c)]
+    parts = []
+    mixin = []
+    for i, (_c, st, ln) in enumerate(usable):
+        ms = int(max(0.0, st) * 1000)
+        # only the part that belongs to this slot
+        trim = (f"[{i}:a]atrim=0:{max(0.05, ln):.3f},asetpts=N/SR/TB,"
+                f"adelay={ms}|{ms}[a{i}]")
+        parts.append(trim)
+        mixin.append(f"[a{i}]")
+    fc = ";".join(parts) + ";" + "".join(mixin) +         f"amix=inputs={len(mixin)}:duration=longest:normalize=0[a]"
+    args += ["-filter_complex", fc, "-map", "[a]", "-ac", "1", "-ar", str(rate),
+             "-c:a", "libmp3lame", "-q:a", "3", str(out)]
+    _run(args, quiet=False)
+    if duration > 0:
+        return pad_audio(out, out.with_name(out.stem + "_pad.mp3"), duration)
+    return str(out)
+
+
 def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path, *,
                   bgm_volume: float = 0.22, duck: bool = True,
                   target_lufs: Optional[float] = None,

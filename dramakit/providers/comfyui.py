@@ -373,6 +373,17 @@ class ComfyUIClient(BaseImageVideo):
             raise ComfyUIError(f"上传图片失败 {r.status_code}: {r.text[:200]}")
         return r.json().get("name", p.name)
 
+    def upload_audio(self, audio_path: str | Path) -> str:
+        """Upload a local audio file to ComfyUI /input; returns the name."""
+        p = Path(audio_path)
+        with open(p, "rb") as fh:
+            files = {"audio": (p.name, fh, "audio/mpeg")}
+            data = {"overwrite": "true", "type": "input"}
+            r = self._post("/upload/image", files=files, data=data, timeout=180)
+        if r.status_code >= 400:
+            raise ComfyUIError(f"上传音频失败 {r.status_code}: {r.text[:200]}")
+        return r.json().get("name", p.name)
+
     # ------------------------------------------------------------- submit
     def _queue(self, graph: dict) -> str:
         payload = {"prompt": graph, "client_id": self.client_id}
@@ -619,6 +630,14 @@ class ComfyUIClient(BaseImageVideo):
             server_name = extra.get("uploaded_image") or self.upload_image(image_path)
             extra["uploaded_image"] = server_name
             self._set(graph, nm, "image", "image", server_name)
+        # the voice reference: the recording of the line goes in as the
+        # timbre the character speaks with
+        ref_audio = extra.get("ref_audio_path")
+        slot = str(extra.get("ref_audio_node") or "")
+        if ref_audio and slot and Path(ref_audio).exists():
+            server_audio = extra.get("uploaded_audio") or self.upload_audio(ref_audio)
+            extra["uploaded_audio"] = server_audio
+            graph.setdefault(slot, {}).setdefault("inputs", {})["audio"] = server_audio
         if use_flf:
             last_name = (extra.get("uploaded_last_image")
                          or self.upload_image(last_image_path))

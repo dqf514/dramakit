@@ -285,6 +285,36 @@ def _shot_frames(ctx: Context, shot: Shot, duration: float) -> int:
     return max(5, min(17 * k + 5, longest))
 
 
+def _reference_audio(ctx: Context, shot: Shot) -> str:
+    """The recording of this shot's line, as the voice reference.
+
+    H3 speaks the words itself, but it takes the timbre from this
+    recording - so the character sounds the same in every shot.
+    """
+    from .lipsync import _scene_wav
+    tl = ctx.timeline(ctx.target_episodes()[0])
+    for tsc in tl.scenes:
+        for ts in tsc.shots:
+            if ts.shot.id != shot.id:
+                continue
+            placed = []
+            for t in tsc.lines:
+                if t.line.kind.value != "dialogue":
+                    continue
+                if not (ts.start - 0.02 <= t.start < ts.start + ts.duration):
+                    continue
+                if not t.line.audio_path:
+                    continue
+                placed.append((t.start - tsc.start,
+                               ctx.store.abs(t.line.audio_path)))
+            if not placed:
+                return ""
+            out = ctx.store.root / "tmp" / f"refaudio_{shot.id}.wav"
+            if _scene_wav(placed, ts.start - tsc.start, ts.duration, out):
+                return str(out)
+    return ""
+
+
 def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str, bool, str]:
     """Render only the video for one shot."""
     vis = ctx.providers.visual
@@ -300,12 +330,18 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
         use_flf = flf_enabled(ctx, shot) and end_out.exists()
         last = str(end_out) if use_flf else ""
         vprompt = shot.video_prompt or shot.prompt
+        extra = _extra(ctx)
+        if c.native_audio:
+            ref = _reference_audio(ctx, shot)
+            if ref:
+                extra["ref_audio_path"] = ref
+                extra["ref_audio_node"] = c.ref_audio_node
         try:
             _render(ctx, "出视频", shot.id, lambda: vis.generate_video(
                 prompt=vprompt, negative=shot.negative_prompt,
                 image_path=str(img_out) if img_out.exists() else "",
                 frames=frames, fps=c.fps, seed=seed, out_path=str(vid_out),
-                extra=_extra(ctx), last_image_path=last))
+                extra=extra, last_image_path=last))
         except Exception as e:  # noqa: BLE001
             if not last:
                 raise
@@ -316,7 +352,7 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
                 prompt=vprompt, negative=shot.negative_prompt,
                 image_path=str(img_out) if img_out.exists() else "",
                 frames=frames, fps=c.fps, seed=seed, out_path=str(vid_out),
-                extra=_extra(ctx)))
+                extra=extra))
         shot.video_path = ctx.store.rel(vid_out)
         meta["flf"] = use_flf
         shot.gen_meta = meta

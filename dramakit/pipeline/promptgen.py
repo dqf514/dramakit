@@ -107,6 +107,38 @@ def _numbered_dialogue(lines: list[tuple]) -> tuple[str, dict[str, str]]:
     return ("\n".join(parts) if parts else "无", ids)
 
 
+R2V_HEADER = ("subject_definitions:\n"
+              "<Subject 1> is the person in <Picture 1>, with the face, hair, "
+              "clothes and the surroundings exactly as shown there.\n"
+              "<Audio 1> is the voice-timbre reference for <Subject 1> (S1), "
+              "containing a spoken Mandarin vocal layer.\n\n"
+              "summary:\n"
+              "[reference generation + audio reference] The target video is a "
+              "single shot in the style and place of <Picture 1>, in which "
+              "<Subject 1> speaks, using the voice timbre referenced from "
+              "<Audio 1>.\n\n"
+              "retention_analysis:\n"
+              "<Subject 1> (appears in [Shot 1]): fully_preserved - the face, "
+              "hair, clothes, the room and the light of <Picture 1> are kept.\n"
+              "<Picture 1> ([Shot 1] composition): fully_preserved - the "
+              "framing and the blocking of <Picture 1> are kept.\n"
+              "<Audio 1>: reference - the vocal timbre of <Audio 1> guides how "
+              "<Subject 1> speaks, without copying the original signal.\n\n"
+              "detailed_description:\n")
+
+
+def _assemble_r2v_prompt(desc: str, soundscape: str, music: str) -> str:
+    """The full-reference format, for the model that speaks."""
+    return "\n".join([
+        R2V_HEADER,
+        desc.strip(),
+        "",
+        f"overall_soundscape: {soundscape or 'N/A'}",
+        "",
+        f"non_diegetic_music: {music or 'N/A'}",
+    ])
+
+
 def _assemble_h3_prompt(desc: str, soundscape: str, music: str) -> str:
     """Official H3 three-field prompt: alignment line + three core fields."""
     return "\n".join([
@@ -337,7 +369,17 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     ad = ctx.project.art_direction
     try:
         spk_note = _speaker_note(shot, lines)
-        if ctx.cfg.compose.h3_audio == "bed":
+        if ctx.cfg.comfyui.native_audio:
+            # the model says the line itself: the words go in the prompt and
+            # the voice comes from the reference recording
+            dlg_text, _ids = _numbered_dialogue(lines)
+            note = ("本镜的台词**由 H3 自己在这一镜里说出来**：台词原样用 "
+                    "<d>[zh-CN]...</d> 包住，放在描述里角色说话的那一句后面。"
+                    "声音参考 <Audio 1>：角色的音色、用词习惯和情绪照着它，"
+                    "但不要把录音里的原话重复进 <d>。"
+                    "说话的人要开口，嘴型跟声音对上；其他人闭嘴只听。"
+                    "overall_soundscape 写环境声和动作声，不要写人声。")
+        elif ctx.cfg.compose.h3_audio == "bed":
             # The dialogue is recorded separately, so the shot only has to
             # show the performance - that is what gives the lip movement. The
             # clip's own sound is thrown away: the score comes from a separate
@@ -373,8 +415,15 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         desc = str(h3.get("integrated_multimodal_description") or "").strip()
         soundscape = str(h3.get("overall_soundscape") or "").strip()
         music = str(h3.get("non_diegetic_music") or "").strip()
-        shot.video_prompt = (_assemble_h3_prompt(desc, soundscape or "N/A", music or "N/A")
-                             if desc else _fallback_h3_prompt(ctx, shot, sc, lines))
+        if desc:
+            if ctx.cfg.comfyui.native_audio:
+                shot.video_prompt = _assemble_r2v_prompt(
+                    desc, soundscape or "N/A", music or "N/A")
+            else:
+                shot.video_prompt = _assemble_h3_prompt(
+                    desc, soundscape or "N/A", music or "N/A")
+        else:
+            shot.video_prompt = _fallback_h3_prompt(ctx, shot, sc, lines)
     except Exception as e:  # noqa: BLE001
         ctx.log.warning("promptgen: 镜 %s H3提示词失败(%s)，用模板兜底",
                         shot.id, str(e)[:120])

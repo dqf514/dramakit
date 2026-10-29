@@ -157,7 +157,16 @@ def _export_nle(ctx: Context, ep, tl, shot_clips: list[tuple[str, object]],
     return str(out)
 
 
-def _scene_voice(ctx: Context, tscene, tmp: Path, idx: int = 0) -> str:
+def _scene_voice(ctx: Context, tscene, tmp: Path, idx: int = 0,
+                 clips=None) -> str:
+    if ctx.cfg.comfyui.native_audio and clips:
+        # the voice was generated with the picture: take it from the clips
+        items = []
+        for path, tshot in clips:
+            items.append((str(path), tshot.start - tscene.start,
+                          tshot.duration))
+        out = tmp / f"scene_voice_{idx:03d}.mp3"
+        return ff.mix_shot_audio(items, out, duration=tscene.duration)
     parts: list[str] = []
     for i, tl_line in enumerate(tscene.lines):
         l = tl_line.line
@@ -222,7 +231,8 @@ def compose_episode(ctx: Context, ep) -> str:
                                      tscene.duration, fade_in=fd, fade_out=fd,
                                      crf=cc.crf, preset=cc.preset)
         scene_videos.append(sv_path)
-        scene_voices.append(_scene_voice(ctx, tscene, tmp, si))
+        scene_voices.append(_scene_voice(ctx, tscene, tmp, si,
+                                         shot_clips[begin:end]))
 
     picture = tmp / "picture.mp4"
     ff.concat_videos(scene_videos, picture)

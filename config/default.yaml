@@ -274,7 +274,11 @@ comfyui:
   # 没有参考图的空镜用普通版（多参考版无参考时会退化成正方形空潜空间）。
   t2i_workflow: config/comfyui/t2i_flux3_klein.json
   t2i_workflow_ref: config/comfyui/t2i_flux3_klein_ref.json
-  i2v_workflow: config/comfyui/i2v_minimax_h3.json
+  i2v_workflow: config/comfyui/i2v_minimax_h3_ref2v_audio.json
+  # 让 H3 自己说话（画面+嘴型+人声+音效一次出）。
+  # 只有 ref2va 模型走得通：fl2va 生成的人声是乱码，我们才不得不改用画外音。
+  native_audio: true
+  ref_audio_node: "900"                   # 工作流里装载参考音频的节点
   auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
   auto_map: true       # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
   upscale_workflow: ""                      # 可选：放大工作流
