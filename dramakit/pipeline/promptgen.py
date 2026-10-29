@@ -31,6 +31,10 @@ def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str, float]
         for ts in tsc.shots:
             out.setdefault(ts.shot.id, [])
         for tl_line in tsc.lines:
+            # a voice over is a caption card, not something the actor says:
+            # it must not end up in the dialogue tags
+            if tl_line.line.kind.value == "narration":
+                continue
             for ts in tsc.shots:
                 if ts.start <= tl_line.start < ts.start + ts.duration:
                     out.setdefault(ts.shot.id, []).append(
