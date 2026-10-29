@@ -326,11 +326,26 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
     frames = _shot_frames(ctx, shot, duration)
     meta: dict = dict(shot.gen_meta or {})
     meta.update({"seed": seed, "mode": c.mode, "frames": frames})
+    # The references have to be there before a card is spent: the character's
+    # views, the room, and the frame this shot continues from.
+    plan: list[str] = []
+    if c.native_audio or c.video_references:
+        from .refs import missing_references, picture_plan
+        missing = missing_references(ctx, shot, sc)
+        if missing:
+            msg = "参考图不齐: " + "、".join(missing)
+            ctx.log.error("visual: 镜 %s %s（不抽卡）", shot.id, msg)
+            shot.status = Status.FAILED
+            return shot.id, False, msg
+        plan = [p for p, _role in picture_plan(ctx, shot, sc)]
+        meta["references"] = len(plan)
     try:
         use_flf = flf_enabled(ctx, shot) and end_out.exists()
         last = str(end_out) if use_flf else ""
         vprompt = shot.video_prompt or shot.prompt
         extra = _extra(ctx)
+        if plan:
+            extra["ref_pictures"] = plan
         if c.native_audio:
             ref = _reference_audio(ctx, shot)
             if ref:

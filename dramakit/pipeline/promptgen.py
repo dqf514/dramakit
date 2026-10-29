@@ -112,30 +112,65 @@ def _numbered_dialogue(lines: list[tuple]) -> tuple[str, dict[str, str]]:
     return ("\n".join(parts) if parts else "无", ids)
 
 
-R2V_HEADER = ("subject_definitions:\n"
-              "<Subject 1> is the person in <Picture 1>, with the face, hair, "
-              "clothes and the surroundings exactly as shown there.\n"
-              "<Audio 1> is the voice-timbre reference for <Subject 1> (S1), "
-              "containing a spoken Mandarin vocal layer.\n\n"
-              "summary:\n"
-              "[reference generation + audio reference] The target video is a "
-              "single shot in the style and place of <Picture 1>, in which "
-              "<Subject 1> speaks, using the voice timbre referenced from "
-              "<Audio 1>.\n\n"
-              "retention_analysis:\n"
-              "<Subject 1> (appears in [Shot 1]): fully_preserved - the face, "
-              "hair, clothes, the room and the light of <Picture 1> are kept.\n"
-              "<Picture 1> ([Shot 1] composition): fully_preserved - the "
-              "framing and the blocking of <Picture 1> are kept.\n"
-              "<Audio 1>: reference - the vocal timbre of <Audio 1> guides how "
-              "<Subject 1> speaks, without copying the original signal.\n\n"
-              "detailed_description:\n")
+def _r2v_header(plan: list[tuple[str, str, str]]) -> str:
+    """The six sections of the full-reference format, with the pictures named.
+
+    `plan` is the picture list: (path, what it is, kind). The prompt has to
+    say which picture carries the identity, which is the room and which is
+    the frame the shot continues from - otherwise the model spreads the
+    references over the whole description and the person drifts.
+    """
+    subject = ""
+    keep = []
+    first_char = ""
+    room = ""
+    frame = ""
+    for i, (_path, role, kind) in enumerate(plan, 1):
+        if kind == "character":
+            if not first_char:
+                first_char = str(i)
+                subject += (f"<Picture {i}> is {role}; <Subject 1> is the person "
+                            f"in <Picture {i}>, and keeps this face, this hair "
+                            f"and this outfit in every single shot.\n")
+            else:
+                subject += f"<Picture {i}> is {role}.\n"
+            keep.append(f"<Picture {i}> (the person): fully_preserved - "
+                        f"the face, the hair and the clothes are kept exactly.")
+        elif kind == "room":
+            room = str(i)
+            keep.append(f"<Picture {i}> (the room): fully_preserved - the "
+                        f"furniture, the light and the layout are kept.")
+        else:
+            frame = str(i)
+            keep.append(f"<Picture {i}> (the frame this shot continues from): "
+                        f"fully_preserved - the framing and the blocking are kept.")
+    if not subject:
+        subject = "<Subject 1> is the person in <Picture 1>.\n"
+    anchor = frame or room or first_char or "1"
+    return ("subject_definitions:\n"
+            f"{subject}"
+            "<Audio 1> is the voice-timbre reference for <Subject 1> (S1), "
+            "containing a spoken Mandarin vocal layer.\n\n"
+            "summary:\n"
+            f"[reference generation + audio reference] The target video is a "
+            f"single shot in the style and place of <Picture {anchor}>, in which "
+            "<Subject 1> speaks, using the voice timbre referenced from "
+            "<Audio 1>. The person is the one in the reference sheet, not "
+            "somebody who looks like them.\n\n"
+            "retention_analysis:\n"
+            "<Subject 1> (appears in [Shot 1]): fully_preserved - the same "
+            "person as in the reference sheet.\n"
+            + "\n".join(keep) + "\n"
+            "<Audio 1>: reference - the vocal timbre of <Audio 1> guides how "
+            "<Subject 1> speaks, without copying the original signal.\n\n"
+            "detailed_description:\n")
 
 
-def _assemble_r2v_prompt(desc: str, soundscape: str, music: str) -> str:
+def _assemble_r2v_prompt(desc: str, soundscape: str, music: str,
+                         plan: list[tuple[str, str, str]]) -> str:
     """The full-reference format, for the model that speaks."""
     return "\n".join([
-        R2V_HEADER,
+        _r2v_header(plan),
         desc.strip(),
         "",
         f"overall_soundscape: {soundscape or 'N/A'}",
@@ -410,7 +445,10 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     "**画面里能看见的动作不要用画外音念出来**"
                     "（no narration, no voice over）：只有 <d> 里的那句是人话，"
                     "其余全是画面和声音，不要念动作、不要念环境。"
-                    "overall_soundscape 写环境声和动作声，不要写人声。")
+                    "overall_soundscape 写环境声和动作声，不要写人声。"
+                    "**这一段里可以有好几个镜头**：用 [Shot 1]、[Shot 2] 写，"
+                    "后面的镜头用 `At 00:0X.000, the camera cuts to ...` 标出切点；"
+                    "每个镜头要有自己的景别和机位，不要整段一个景别。")
         elif ctx.cfg.compose.h3_audio == "bed":
             # The dialogue is recorded separately, so the shot only has to
             # show the performance - that is what gives the lip movement. The
@@ -451,8 +489,10 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             if ctx.cfg.comfyui.native_audio:
                 # the score has its own music-only clip; the shot clip
                 # carries the voice and the room
+                from .refs import picture_plan
+                plan = picture_plan(ctx, shot, sc)
                 shot.video_prompt = _assemble_r2v_prompt(
-                    desc, soundscape or "N/A", "N/A")
+                    desc, soundscape or "N/A", "N/A", plan)
             else:
                 shot.video_prompt = _assemble_h3_prompt(
                     desc, soundscape or "N/A", music or "N/A")

@@ -169,7 +169,9 @@ class CharacterConfig(BaseModel):
     generate_refs: bool = True                        # 用 ComfyUI 生成三视图
     generate_location_refs: bool = True               # 自动为每个场景出参考图
     auto_cast: bool = True                            # 自动给角色分配 TTS 音色
-    ref_views: list[str] = Field(default_factory=lambda: ["front", "side", "three_quarter"])
+    # 正面、侧面、四分之三、背面：一张资产图上拼起来，人物全程不变
+    ref_views: list[str] = Field(
+        default_factory=lambda: ["front", "side", "three_quarter", "back"])
     ref_width: int = 768
     ref_height: int = 1024
     # prompt = 只靠文字锚点；ref = 出图时附带角色/场景参考图（需工作流支持）
@@ -326,6 +328,8 @@ class ComfyUIConfig(BaseModel):
     # 让 H3 自己说话：画面、嘴型、人声、音效一次出。
     # 这条路只有 ref2va 模型走得通——fl2va 生成的人声是乱码。
     native_audio: bool = False
+    # 每个视频都带上参考图（角色资产图、场景图、本镜首帧），参考图不齐就不抽卡
+    video_references: bool = True
     ref_audio_node: str = "900"          # 工作流里装载参考音频的节点
     i2v_nodes: dict = Field(default_factory=lambda: {
         "image": "10", "positive": "6", "negative": "7",
@@ -392,12 +396,12 @@ class MusicConfig(BaseModel):
 class SegmentConfig(BaseModel):
     strategy: Literal["auto", "fixed_count", "fixed_duration", "by_chapter"] = "auto"
     episode_count: int = 0                            # for fixed_count
-    episode_duration: float = 90.0                    # seconds, for fixed_duration/auto
-    min_episode_duration: float = 45.0
-    max_episode_duration: float = 180.0
+    episode_duration: float = 300.0                   # 一集的目标时长（5 分钟）
+    min_episode_duration: float = 180.0
+    max_episode_duration: float = 360.0
     # a short drama episode is a minute: the script is written to this budget
     # however long the source text would take to read
-    max_episode_seconds: float = 60.0
+    max_episode_seconds: float = 330.0
     respect_chapters: bool = True                     # align cuts to 章节 when possible
     hook_style: str = "强悬念反转"                     # 每集结尾钩子风格
     max_chars_per_episode: int = 0                    # 0 = let LLM decide by duration
@@ -411,11 +415,12 @@ class SegmentConfig(BaseModel):
 class StoryboardConfig(BaseModel):
     shots_per_scene: Literal["auto"] = "auto"
     min_shots_per_scene: int = 2
-    max_shots_per_scene: int = 10
-    # 一集最多几个镜头：短剧靠快切留人，平均 2~3 秒一刀，
-    # 三十多秒的一集要十几个镜头才切得起来
-    max_shots_per_episode: int = 14
-    shot_duration_range: list[float] = Field(default_factory=lambda: [2.5, 6.0])
+    max_shots_per_scene: int = 26
+    # 一集最多几个镜头：一集五分钟，按镜头三到五秒算要六七十个
+    max_shots_per_episode: int = 90
+    # 一个片段的长度：视频模型一次出一段，段里可以有好几个镜头，
+    # 切点由提示词里的时间戳决定。2 秒一切看着晕，所以片段要长。
+    shot_duration_range: list[float] = Field(default_factory=lambda: [6.0, 15.0])
     prefer_dynamic: bool = True                       # 多用推拉摇移
     include_insert_shots: bool = True                 # 空镜/特写插入
     language: Literal["zh", "en", "bilingual"] = "bilingual"  # prompt language

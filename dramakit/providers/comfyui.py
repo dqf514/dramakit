@@ -639,6 +639,25 @@ class ComfyUIClient(BaseImageVideo):
             server_name = extra.get("uploaded_image") or self.upload_image(image_path)
             extra["uploaded_image"] = server_name
             self._set(graph, nm, "image", "image", server_name)
+        # the pictures: the character sheets, the room and the frame the
+        # shot continues from. The workflow says which load node is which
+        # slot, so the order is the one both sides agreed on.
+        pictures = list(extra.get("ref_pictures") or [])
+        if pictures:
+            slots: list[tuple[str, str]] = []
+            for nid, node in graph.items():
+                if not isinstance(node, dict):
+                    continue
+                if "ReferenceToVideo" in str(node.get("class_type", "")):
+                    for slot, link in sorted(
+                            (node.get("inputs", {}).get("ref_images") or {}).items()):
+                        if isinstance(link, list) and link:
+                            slots.append((str(link[0]), slot))
+                    break
+            for (load_id, _slot), path in zip(slots, pictures):
+                if load_id not in graph or not Path(path).exists():
+                    continue
+                graph[load_id].setdefault("inputs", {})["image"] = self.upload_image(path)
         # the voice reference: the recording of the line goes in as the
         # timbre the character speaks with
         ref_audio = extra.get("ref_audio_path")

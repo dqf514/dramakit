@@ -112,7 +112,7 @@ characters:
   generate_refs: true # 用 ComfyUI 生成三视图
   generate_location_refs: true # 每个场景生成一张无人的环境参考图（注入镜头）
   auto_cast: true           # 由 AI 从可用音色里给角色分配声音（失败按性别回退）
-  ref_views: [front, side, three_quarter]
+  ref_views: [front, side, three_quarter, back]   # 角色资产图：正面/侧面/四分之三/背面
   ref_width: 768
   ref_height: 1024
   consistency: ref   # prompt=只靠文字锚点 | ref=附带参考图（推荐） | lora
@@ -279,6 +279,7 @@ comfyui:
   # 让 H3 自己说话（画面+嘴型+人声+音效一次出）。
   # 只有 ref2va 模型走得通：fl2va 生成的人声是乱码，我们才不得不改用画外音。
   native_audio: true
+  video_references: true                    # 每个视频都带参考图；不齐就不抽卡
   ref_audio_node: "900"                   # 工作流里装载参考音频的节点
   auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
   auto_map: true       # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
@@ -422,9 +423,9 @@ music:
 segment:
   strategy: auto                            # auto | fixed_count | fixed_duration | by_chapter
   episode_count: 0                          # fixed_count 时用
-  episode_duration: 90.0                    # 目标每集秒数（红果常见 60~120s）
-  min_episode_duration: 45.0
-  max_episode_duration: 180.0
+  episode_duration: 300.0                    # 一集的目标时长（5 分钟）
+  min_episode_duration: 180.0
+  max_episode_duration: 360.0
   respect_chapters: true                    # 尽量沿章节边界切
   hook_style: 强悬念反转                     # 每集结尾钩子风格
   max_chars_per_episode: 0                  # 0=按秒数让系统估算
@@ -435,9 +436,9 @@ segment:
 storyboard:
   shots_per_scene: auto
   min_shots_per_scene: 2
-  max_shots_per_episode: 14
-  max_shots_per_scene: 10
-  shot_duration_range: [2.5, 6.0]
+  max_shots_per_episode: 90
+  max_shots_per_scene: 26
+  shot_duration_range: [6.0, 15.0]            # 一个片段 6~15 秒，段里有多个镜头
   prefer_dynamic: true                      # 多用推拉摇移增强节奏
   include_insert_shots: true                # 允许空镜/特写插入
   language: bilingual                       # 提示词语言 zh | en | bilingual

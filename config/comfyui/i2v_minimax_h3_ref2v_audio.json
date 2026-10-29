@@ -67,6 +67,22 @@
         "ref_image_0": [
           "1",
           0
+        ],
+        "ref_image_1": [
+          "901",
+          0
+        ],
+        "ref_image_2": [
+          "902",
+          0
+        ],
+        "ref_image_3": [
+          "903",
+          0
+        ],
+        "ref_image_4": [
+          "904",
+          0
         ]
       },
       "ref_audios": {
@@ -196,6 +212,34 @@
     "inputs": {
       "audio": "placeholder.mp3",
       "upload": "audio"
+    }
+  },
+  "901": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
+    }
+  },
+  "902": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
+    }
+  },
+  "903": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
+    }
+  },
+  "904": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
     }
   }
 }

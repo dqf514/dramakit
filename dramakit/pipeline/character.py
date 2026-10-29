@@ -24,6 +24,7 @@ VIEW_TEXT = {
     "front": "front view, facing the camera, neutral standing pose",
     "side": "side profile view, facing left, neutral standing pose",
     "three_quarter": "three-quarter view, slight body angle, neutral standing pose",
+    "back": "back view, seen from behind, neutral standing pose",
 }
 
 # FLUX 3 reads a scene caption, not a tag list, and it takes "reference
@@ -32,6 +33,7 @@ FLUX3_VIEW = {
     "front": "seen from the front, facing the camera, standing at ease",
     "side": "seen from the side in profile, facing left, standing at ease",
     "three_quarter": "seen from a three-quarter angle, body slightly turned, standing at ease",
+    "back": "seen from behind, back turned to the camera, standing at ease",
 }
 
 
@@ -88,9 +90,22 @@ def build_anchors(ctx: Context, chars: list[Character]) -> int:
     return max(made, sum(1 for c in chars if c.anchor_prompt) - before)
 
 
-def _ref_prompt(ctx: Context, c: Character, view: str) -> str:
+def _ref_prompt(ctx: Context, c: Character, view: str,
+                derived: bool = False) -> str:
     ad = ctx.project.art_direction
     style = ad.style_prompt_prefix or ad.style or "cinematic realistic"
+    if derived:
+        # the same person as in the reference picture, only turned
+        return (
+            f"Full-color studio photograph, the same person as in the "
+            f"reference picture - identical face, identical hair, identical "
+            f"clothes - now {FLUX3_VIEW.get(view, FLUX3_VIEW['front'])}. "
+            f"The whole body is visible from head to feet, centered in the "
+            f"frame with a little space around it, photographed against a plain "
+            f"light gray seamless backdrop, soft even light from the front, "
+            f"natural skin texture and fabric detail, a neutral expression, "
+            f"no props, no text, no watermark, {style}."
+        )
     if ctx.cfg.comfyui.prompt_format == "flux3":
         return (
             f"Full-color studio photograph, full-body portrait of {c.anchor()}, "
@@ -179,21 +194,29 @@ def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) ->
                                      "different person, inconsistent face, extra limbs, text, watermark")
                          if x)
     made = 0
+    master = ""
     for view in views:
         out = ctx.store.character_ref_path(c.name, view, "png")
         try:
+            # the first view is the master; the other views are made from
+            # it, so the four panels are one person
+            refs = [master] if master else []
             vis.generate_image(
-                prompt=_ref_prompt(ctx, c, view), negative=negative,
+                prompt=_ref_prompt(ctx, c, view, derived=bool(master)),
+                negative=negative,
                 width=cfg.ref_width, height=cfg.ref_height,
                 seed=_seed(c.name, view), steps=ccfg.steps, cfg=ccfg.cfg,
                 out_path=str(out),
                 extra={"sampler": ccfg.sampler, "scheduler": ccfg.scheduler,
-                       "checkpoint": ccfg.checkpoint})
+                       "checkpoint": ccfg.checkpoint},
+                ref_images=refs)
             rel = ctx.store.rel(out)
             if rel not in c.ref_images:
                 c.ref_images.append(rel)
             if not c.ref_sheet:
                 c.ref_sheet = rel
+            if not master:
+                master = str(out)
             made += 1
             ctx.log.info("character: %s %s 参考图已生成", c.name, view)
         except Exception as e:  # noqa: BLE001
