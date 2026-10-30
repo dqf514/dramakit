@@ -130,6 +130,15 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
     out: list[tuple[str, str, str]] = []
     seen: set[str] = set()
 
+    # The frame comes first: it is the picture the shot continues from, and
+    # the model takes the first picture as the one it follows.
+    if with_frame:
+        rel = shot.image_path or ctx.store.rel(ctx.store.image_path(shot.id))
+        p = ctx.store.abs(rel)
+        if str(p) not in seen:
+            seen.add(str(p))
+            out.append((str(p), "the frame this shot continues from", "frame"))
+
     for name in shot.characters or []:
         c = ctx.project.character(name)
         if c is None:
@@ -172,15 +181,6 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
                 seen.add(str(pp))
                 out.append((str(pp), f"the prop: {prop.name}", "prop"))
 
-    if with_frame:
-        # The slot is reserved even before the still is on disk: the prompt
-        # names its references by number, and the number has to be the same
-        # in the prompt and in the job that uploads them.
-        rel = shot.image_path or ctx.store.rel(ctx.store.image_path(shot.id))
-        p = ctx.store.abs(rel)
-        if str(p) not in seen:
-            seen.add(str(p))
-            out.append((str(p), "the frame this shot continues from", "frame"))
     return out
 
 

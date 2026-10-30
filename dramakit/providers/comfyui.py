@@ -365,15 +365,37 @@ class ComfyUIClient(BaseImageVideo):
 
     # ------------------------------------------------------------- upload
     def upload_image(self, image_path: str | Path) -> str:
-        """Upload a local image to ComfyUI /input; returns the server-side name."""
+        """Upload a local image to ComfyUI /input; returns the server-side name.
+
+        The name on the server has to say which picture this is.  Every
+        character's sheet is called sheet.jpg, and a name taken from the
+        file would put all of them at the same address on the server - the
+        last upload overwrites the others and two slots of the same job end
+        up holding the same face.  The name carries the picture's own
+        fingerprint, so a picture that was drawn again gets a new address
+        and a picture that did not change keeps the one it had.
+        """
         p = Path(image_path)
+        name = self._fingerprint(p) + "_" + p.name
         with open(p, "rb") as fh:
-            files = {"image": (p.name, fh, "image/png")}
+            files = {"image": (name, fh, "image/png")}
             data = {"overwrite": "true"}
             r = self._post("/upload/image", files=files, data=data, timeout=180)
         if r.status_code >= 400:
             raise ComfyUIError(f"上传图片失败 {r.status_code}: {r.text[:200]}")
-        return r.json().get("name", p.name)
+        return r.json().get("name", name)
+
+    @staticmethod
+    def _fingerprint(path: Path, size: int = 10) -> str:
+        """A short fingerprint of the file's content."""
+        import hashlib
+        h = hashlib.md5()
+        try:
+            with open(path, "rb") as fh:
+                h.update(fh.read(1 << 20))
+        except OSError:
+            h.update(str(path).encode("utf-8", "replace"))
+        return h.hexdigest()[:size]
 
     def upload_audio(self, audio_path: str | Path) -> str:
         """Upload a local audio file to ComfyUI /input; returns the name.
@@ -645,19 +667,32 @@ class ComfyUIClient(BaseImageVideo):
         pictures = list(extra.get("ref_pictures") or [])
         if pictures:
             slots: list[tuple[str, str]] = []
+            ref_node = None
             for nid, node in graph.items():
                 if not isinstance(node, dict):
                     continue
                 if "ReferenceToVideo" in str(node.get("class_type", "")):
+                    ref_node = node
                     for slot, link in sorted(
                             (node.get("inputs", {}).get("ref_images") or {}).items()):
                         if isinstance(link, list) and link:
                             slots.append((str(link[0]), slot))
                     break
-            for (load_id, _slot), path in zip(slots, pictures):
+            used: set[str] = set()
+            for (load_id, slot), path in zip(slots, pictures):
                 if load_id not in graph or not Path(path).exists():
                     continue
                 graph[load_id].setdefault("inputs", {})["image"] = self.upload_image(path)
+                used.add(slot)
+            # The slots that got no picture are taken out of the job: the
+            # node behind them would go on loading the placeholder, and the
+            # model would be handed a picture that is not there.
+            if ref_node is not None:
+                imgs = dict(ref_node.get("inputs", {}).get("ref_images") or {})
+                for slot in list(imgs):
+                    if slot not in used:
+                        imgs.pop(slot)
+                ref_node.setdefault("inputs", {})["ref_images"] = imgs
         # the voice reference: the recording of the line goes in as the
         # timbre the character speaks with
         ref_audio = extra.get("ref_audio_path")
@@ -666,6 +701,17 @@ class ComfyUIClient(BaseImageVideo):
             server_audio = extra.get("uploaded_audio") or self.upload_audio(ref_audio)
             extra["uploaded_audio"] = server_audio
             graph.setdefault(slot, {}).setdefault("inputs", {})["audio"] = server_audio
+            # and the slots that got no recording are taken out too
+            for nid, node in graph.items():
+                if not isinstance(node, dict):
+                    continue
+                if "ReferenceToVideo" not in str(node.get("class_type", "")):
+                    continue
+                auds = dict(node.get("inputs", {}).get("ref_audios") or {})
+                for aslot in list(auds):
+                    if str(auds[aslot][0]) != slot:
+                        auds.pop(aslot)
+                node.setdefault("inputs", {})["ref_audios"] = auds
         if use_flf:
             last_name = (extra.get("uploaded_last_image")
                          or self.upload_image(last_image_path))

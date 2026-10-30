@@ -62,7 +62,7 @@
       "width": 960,
       "height": 544,
       "length": 124,
-      "ref_image_size": "match",
+      "ref_image_size": "max",
       "ref_images": {
         "ref_image_0": [
           "1",
@@ -120,7 +120,7 @@
         0
       ],
       "scheduler": "simple",
-      "steps": 4,
+      "steps": 8,
       "denoise": 1.0
     }
   },

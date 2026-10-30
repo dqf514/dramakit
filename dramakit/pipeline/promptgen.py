@@ -140,23 +140,38 @@ def _r2v_header(plan: list[tuple[str, str, str]]) -> str:
             room = str(i)
             keep.append(f"<Picture {i}> (the room): fully_preserved - the "
                         f"furniture, the light and the layout are kept.")
-        else:
+        elif kind == "frame":
             frame = str(i)
             keep.append(f"<Picture {i}> (the frame this shot continues from): "
-                        f"fully_preserved - the framing and the blocking are kept.")
+                        f"fully_preserved - the framing, the blocking, the "
+                        f"clothes, the faces and the light are kept.")
+        else:
+            keep.append(f"<Picture {i}> (the prop): fully_preserved - the "
+                        f"shape, the colour and the material are kept.")
     if not subject:
         subject = "<Subject 1> is the person in <Picture 1>.\n"
     anchor = frame or room or first_char or "1"
+    if frame:
+        # the frame is the picture the shot goes on from: the video has to
+        # be that picture, moving
+        how = (f"[reference generation + audio reference] The target video is "
+               f"a single shot that continues <Picture {anchor}>: the same "
+               f"framing, the same people, the same clothes and the same "
+               f"light, in which <Subject 1> speaks, using the voice timbre "
+               f"referenced from <Audio 1>. The person is the one in the "
+               f"reference sheet, not somebody who looks like them.")
+    else:
+        how = (f"[reference generation + audio reference] The target video is a "
+               f"single shot in the style and place of <Picture {anchor}>, in "
+               f"which <Subject 1> speaks, using the voice timbre referenced "
+               f"from <Audio 1>. The person is the one in the reference sheet, "
+               f"not somebody who looks like them.")
     return ("subject_definitions:\n"
             f"{subject}"
             "<Audio 1> is the voice-timbre reference for <Subject 1> (S1), "
             "containing a spoken Mandarin vocal layer.\n\n"
             "summary:\n"
-            f"[reference generation + audio reference] The target video is a "
-            f"single shot in the style and place of <Picture {anchor}>, in which "
-            "<Subject 1> speaks, using the voice timbre referenced from "
-            "<Audio 1>. The person is the one in the reference sheet, not "
-            "somebody who looks like them.\n\n"
+            f"{how}\n\n"
             "retention_analysis:\n"
             "<Subject 1> (appears in [Shot 1]): fully_preserved - the same "
             "person as in the reference sheet.\n"
