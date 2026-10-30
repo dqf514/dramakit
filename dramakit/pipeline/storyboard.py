@@ -155,6 +155,7 @@ def run(ctx: Context) -> dict:
                 ))
             sc.shots = shots or _fallback_shots(sc, dmin, dmax)
             _repair_line_casts(sc)
+            _repair_characters(ctx, sc)
             # a shot that carries too much dialogue gets a second shot
             _split_long_shots(sc)
         # the segments of the episode are scaled so that they fill it
@@ -165,6 +166,47 @@ def run(ctx: Context) -> dict:
         done += 1
         ctx.log.info("storyboard: 第%d集 → %d 镜", ep.index, ep.total_shots)
     return {"episodes_storyboarded": done}
+
+
+
+def _repair_characters(ctx, sc) -> int:
+    """Make the shot's list agree with its action, speaker first.
+
+    The picture is drawn from the action and the video is given reference
+    sheets of the people in the list, so the two have to agree.  The person
+    who speaks the shot goes first: <Subject 1> is the person in
+    <Picture 1>, <Subject 1> is the one who speaks, and <Audio 1> is the
+    timbre reference for that same person.
+    """
+    names = [c.name for c in ctx.project.characters if c.name]
+    spoken = [l for l in sc.lines if not is_narration(l)]
+    changed = 0
+    for shot in sc.shots:
+        action = shot.action or ""
+        # the people the action puts in the frame, in the order it puts
+        # them there
+        named = []
+        for n in names:
+            at = action.find(n)
+            if at >= 0:
+                named.append((at, n))
+        named = [n for _at, n in sorted(named)]
+        if not named:
+            continue
+        # the one who speaks the shot comes first
+        first = ""
+        for idx in (shot.line_indices or []):
+            if 1 <= idx <= len(spoken):
+                spk = spoken[idx - 1].speaker
+                if spk in named:
+                    first = spk
+                    break
+        keep = [n for n in (shot.characters or []) if n in named]
+        merged = list(dict.fromkeys(([first] if first else []) + named + keep))
+        if merged != (shot.characters or []):
+            shot.characters = merged
+            changed += 1
+    return changed
 
 
 def _repair_line_casts(sc) -> int:

@@ -390,7 +390,12 @@ def compose_episode(ctx: Context, ep) -> str:
             # on it, big enough to read on a phone.
             title = (ep.title or "").strip()
             if title and cc.cover_title:
-                ff.draw_title(cover, title, width=cc.width, height=cc.height)
+                # draw_title takes the source and the destination: the title
+                # goes onto a copy, and the copy takes the place
+                with_title = cover.with_name(cover.stem + "_t" + cover.suffix)
+                ff.draw_title(cover, with_title, title, width=cc.width,
+                              height=cc.height)
+                with_title.replace(cover)
             ep.cover_path = ctx.store.rel(cover)
         except Exception as e:  # noqa: BLE001
             log.warning("封面生成失败: %s", e)
