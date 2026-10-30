@@ -582,8 +582,8 @@ def run(ctx: Context) -> dict:
                     continue
                 visuals = _char_visuals(ctx, shot)
                 flf = _flf_enabled(ctx, shot)
-                loc = next((l for l in ctx.project.locations
-                            if l.name == sc.location), None)
+                from .refs import find_location
+                loc = find_location(ctx, sc.location)
                 location_visual = (loc.visual_prompt or loc.description) if loc else ""
                 # the shot before it decides where the people are standing:
                 # without it the same conversation keeps re-posing itself

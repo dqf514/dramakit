@@ -39,6 +39,9 @@ def _uses_h3(ctx: Context) -> bool:
 def _check_episode(ctx: Context, ep: Episode, h3: bool) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
+    # when the pipeline is set to make video, a shot that only has a picture
+    # is a slideshow waiting to be shipped - that is an error, not a note
+    want_video = ctx.cfg.comfyui.mode in ("video", "image_then_video")
     for sc in ep.scenes:
         for shot in sc.shots:
             vid = ctx.store.abs(shot.video_path) if shot.video_path else None
@@ -55,6 +58,10 @@ def _check_episode(ctx: Context, ep: Episode, h3: bool) -> tuple[list[str], list
                 continue
             if shot.image_path and (not img or not img.exists()):
                 errors.append(f"镜 {shot.id} 首帧图片缺失: {shot.image_path}")
+                continue
+            if want_video and not shot.video_path:
+                errors.append(f"镜 {shot.id} 只有静帧没有视频"
+                              f"（参考图不齐或视频没生成）")
                 continue
             if vid and vid.exists():
                 dur = ff.probe_duration(vid) or 0.0

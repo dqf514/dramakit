@@ -252,14 +252,21 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
         last_line_shot = line_shot_pos[-1] if line_shot_pos else -1
         shot_durs: list[float] = []
         for i, sh in enumerate(sc.shots):
+            # The director's segment is the shot's length.  A segment is six
+            # to fifteen seconds and holds several shots inside it; the
+            # dialogue has to fit inside the segment, it never shortens it.
+            # (A shot shortened to the length of its words ends up with a
+            # prompt that asks for seven seconds of business inside three
+            # seconds of clip.)
             d = max(sh.duration, min_shot)
+            if max_shot > 0:
+                d = min(d, max_shot)
             if line_map:
                 idxs = line_map.get(sh.id) or []
                 owned = sum(raw_lines[i - 1][0] for i in idxs)
                 if owned > 0:
-                    d = owned + gap * max(0, len(idxs) - 1)
-                    if i != last_line_shot:
-                        d += gap
+                    need = owned + gap * max(0, len(idxs) - 1)
+                    d = max(d, need)
             shot_durs.append(d)
         shot_sum = round(sum(shot_durs), 3)
         scene_dur = max(scene_audio, shot_sum, min_shot)
@@ -364,8 +371,13 @@ class Context:
         line falls inside a shot - otherwise the lips belong to the wrong
         person.
         """
+        rng = list(self.cfg.storyboard.shot_duration_range or [])
+        dmin = float(rng[0]) if rng else 6.0
+        dmax = float(rng[1]) if len(rng) > 1 else 15.0
+        cap = float(self.cfg.comfyui.max_video_seconds or 0) or dmax
         return build_timeline(ep,
-                              max_shot=self.cfg.comfyui.max_video_seconds,
+                              min_shot=dmin,
+                              max_shot=min(dmax, cap),
                               line_gap=self.cfg.compose.line_gap)
 
     def stage_done(self, ep: Episode, stage: str) -> bool:

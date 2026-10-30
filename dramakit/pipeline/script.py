@@ -23,6 +23,7 @@ def run(ctx: Context) -> dict:
     cfg = ctx.cfg
     llm = ctx.providers.llm_for("script")
     char_names = ", ".join(c.name for c in ctx.project.characters) or "（自行判断）"
+    loc_names = ", ".join(l.name for l in ctx.project.locations) or "（自行判断）"
     genre = ctx.project.art_direction.genre
     done = 0
     for ep in ctx.target_episodes():
@@ -44,7 +45,8 @@ def run(ctx: Context) -> dict:
         from ..skills.film import SCREENWRITER_RULES
         user = T.render(T.SCRIPT_USER, genre=genre, min_scenes=2, max_scenes=8,
                         screenwriter_rules=SCREENWRITER_RULES,
-                        character_names=char_names, text=block[:12000],
+                        character_names=char_names, location_names=loc_names,
+                        text=block[:12000],
                         budget_seconds=int(seconds), budget_chars=budget_chars,
                         budget_lines=budget_lines)
         try:

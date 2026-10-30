@@ -61,10 +61,10 @@ def _ref_images(ctx: Context, shot: Shot, scene=None) -> list[str]:
         if p.exists() and str(p) not in out:
             out.append(str(p))
     if scene is not None:
-        for loc in ctx.project.locations:
-            if loc.name != scene.location:
-                continue
-            for rel in loc.ref_images[:1]:
+        from .refs import find_location
+        loc = find_location(ctx, scene.location)
+        if loc is not None:
+            for rel in (loc.ref_images or [])[:1]:
                 p = ctx.store.abs(rel)
                 if p.exists() and str(p) not in out:
                     out.append(str(p))
@@ -356,7 +356,7 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
             ctx.log.error("visual: 镜 %s %s（不抽卡）", shot.id, msg)
             shot.status = Status.FAILED
             return shot.id, False, msg
-        plan = [p for p, _role in picture_plan(ctx, shot, sc)]
+        plan = [p for p, _role, _kind in picture_plan(ctx, shot, sc)]
         meta["references"] = len(plan)
     try:
         use_flf = flf_enabled(ctx, shot) and end_out.exists()
@@ -531,6 +531,9 @@ def run(ctx: Context) -> dict:
 
     ctx.log.info("visual: 生成 %d 个镜头（并发=%d，模式=%s）", len(jobs), c.concurrency, c.mode)
     ok_count = 0
+    phase_ok = 0
+    images_ok = 0
+    videos_ok = 0
 
     # Two phases on purpose. The still model and the video model do not fit in
     # one GPU at once, so alternating per shot makes ComfyUI swap 15GB of
@@ -538,7 +541,7 @@ def run(ctx: Context) -> dict:
     # all the videos after keeps one model resident and the swap happens once.
     def _run_phase(label: str, fn, total: int, offset: int,
                    workers: int = 0) -> int:
-        nonlocal ok_count
+        nonlocal ok_count, phase_ok
         done = 0
         n = workers or c.concurrency
         with ThreadPoolExecutor(max_workers=max(1, n)) as ex:
@@ -548,6 +551,7 @@ def run(ctx: Context) -> dict:
             for i, fut in enumerate(as_completed(futs), 1):
                 _sid, ok, _msg = fut.result()
                 ok_count += int(ok)
+                phase_ok += int(ok)
                 done = i
                 _write_progress(ctx, "visual", offset + i, total)
                 if i % 5 == 0 or i == len(jobs):
@@ -560,6 +564,8 @@ def run(ctx: Context) -> dict:
     if do_image:
         ctx.log.info("visual: 第一批 · 出图（%d 张）", len(jobs))
         offset += _run_phase("出图", _gen_image, total, offset)
+        images_ok = phase_ok
+        phase_ok = 0
         ctx.save()
     if do_video:
         ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(jobs))
@@ -568,6 +574,8 @@ def run(ctx: Context) -> dict:
         workers = max(1, int(c.video_concurrency or 0) or c.concurrency)
         workers = min(workers, _video_workers(ctx))
         offset += _run_phase("出视频", _gen_video, total, offset, workers=workers)
+        videos_ok = phase_ok
+        phase_ok = 0
         ctx.save()
     elif do_image:
         for (_ep, _sc, shot) in jobs:
@@ -584,7 +592,10 @@ def run(ctx: Context) -> dict:
                 and ep.total_shots > 0:
             ctx.mark(ep, "visual", Status.DONE)
     ctx.save()
-    return {"shots_ok": ok_count, "shots_total": len(jobs)}
+    return {"shots_ok": videos_ok if do_video else images_ok,
+            "shots_total": len(jobs),
+            "images_ok": images_ok, "videos_ok": videos_ok,
+            "failed": len(jobs) - (videos_ok if do_video else images_ok)}
 
 
 def regen_shot(store: ProjectStore, cfg: Config, ep_index: int, shot_id: str,
@@ -594,16 +605,26 @@ def regen_shot(store: ProjectStore, cfg: Config, ep_index: int, shot_id: str,
     ep = ctx.project.episode(ep_index)
     if ep is None:
         return {"ok": False, "error": f"没有第 {ep_index} 集"}
+    # the slot the shot sits in: the clip is shot to that length
+    dur = 0.0
+    for target in ctx.target_episodes():
+        for ts in ctx.timeline(target).shots:
+            if ts.shot.id == shot_id:
+                dur = ts.duration
+                break
     for sc in ep.scenes:
         for shot in sc.shots:
             if shot.id != shot_id:
                 continue
-            do_image = mode in ("image", "all")
-            do_video = mode in ("video", "all")
-            sid, ok, msg = _gen_one(ctx, sc, shot, do_image=do_image,
-                                    do_video=do_video, force=True)
+            ok = True
+            msg = ""
+            if mode in ("image", "all"):
+                _sid, ok, msg = _gen_image(ctx, sc, shot)
+            if ok and mode in ("video", "all"):
+                _sid, ok, msg = _gen_video(ctx, sc, shot, dur)
             ctx.save()
-            return {"ok": ok, "shot": sid, "error": msg,
+            return {"ok": ok, "shot": shot.id, "error": msg,
                     "image_path": shot.image_path, "end_image_path": shot.end_image_path,
-                    "video_path": shot.video_path, "gen_meta": shot.gen_meta}
+                    "video_path": shot.video_path, "gen_meta": shot.gen_meta,
+                    "duration": dur}
     return {"ok": False, "error": f"没有镜头 {shot_id}"}

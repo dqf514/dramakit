@@ -120,7 +120,7 @@
         0
       ],
       "scheduler": "simple",
-      "steps": 8,
+      "steps": 4,
       "denoise": 1.0
     }
   },
