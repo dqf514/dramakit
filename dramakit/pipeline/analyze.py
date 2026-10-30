@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 
-from ..models import ArtDirection, Character, Location
+from ..models import ArtDirection, Character, Location, Prop
 from ..prompts import templates as T
 from .base import Context
 
@@ -41,7 +41,8 @@ def run(ctx: Context) -> dict:
     sample = _sample(text, chapters)
 
     llm = ctx.providers.llm_for("analyze")
-    user = T.render(T.ANALYZE_USER, text=sample, max_characters=12, max_locations=10)
+    user = T.render(T.ANALYZE_USER, text=sample, max_characters=12,
+                    max_locations=10, max_props=8)
     data = llm.complete_json(T.ANALYZE_SYSTEM, user)
     if isinstance(data, list):
         data = data[0] if data else {}
@@ -81,6 +82,12 @@ def run(ctx: Context) -> dict:
                      visual_prompt=l.get("visual_prompt", ""))
             for l in (data.get("locations") or []) if l.get("name")]
     ctx.project.locations = locs
+    # the props: the objects the story keeps coming back to
+    ctx.project.props = [
+        Prop(name=str(p["name"]).strip(),
+             description=p.get("description", ""),
+             visual_prompt=p.get("visual_prompt", ""))
+        for p in (data.get("props") or []) if p.get("name")]
 
     if data.get("title") and not ctx.project.meta.title:
         ctx.project.meta.title = data["title"]

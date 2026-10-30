@@ -91,6 +91,19 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
                     seen.add(str(p))
                     out.append((str(p), f"the room: {loc.name}", "room"))
 
+    # the props this shot shows: they are assets too
+    for prop in (getattr(ctx.project, "props", None) or []):
+        if not prop.ref_images:
+            continue
+        if prop.name not in (shot.action or "") and \
+                prop.name not in " ".join(shot.characters or []):
+            continue
+        for rel in prop.ref_images[:1]:
+            pp = ctx.store.abs(rel)
+            if pp.exists() and str(pp) not in seen:
+                seen.add(str(pp))
+                out.append((str(pp), f"the prop: {prop.name}", "prop"))
+
     if with_frame and shot.image_path:
         p = ctx.store.abs(shot.image_path)
         if str(p) not in seen:

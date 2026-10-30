@@ -114,6 +114,15 @@ class Location(BaseModel):
     ref_images: list[str] = Field(default_factory=list)
 
 
+class Prop(BaseModel):
+    """One recurring object the story keeps returning to."""
+    name: str
+    description: str = ""
+    visual_prompt: str = ""                 # english, for the picture
+    ref_images: list[str] = Field(default_factory=list)
+    ref_sheet: str = ""
+
+
 class ArtDirection(BaseModel):
     genre: str = "都市"
     style: str = "写实电影感"
@@ -251,6 +260,7 @@ class Project(BaseModel):
     art_direction: ArtDirection = Field(default_factory=ArtDirection)
     characters: list[Character] = Field(default_factory=list)
     locations: list[Location] = Field(default_factory=list)
+    props: list[Prop] = Field(default_factory=list)
     episodes: list[Episode] = Field(default_factory=list)
     stage_status: dict[str, Status] = Field(default_factory=dict)
 

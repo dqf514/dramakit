@@ -95,7 +95,9 @@ def run(ctx: Context) -> dict:
             max_shots = max(cfg.min_shots_per_scene,
                             min(cfg.max_shots_per_scene, left, want) if want
                             else min(cfg.max_shots_per_scene, left))
+            from ..skills.film import DIRECTOR_RULES
             user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
+                            director_rules=DIRECTOR_RULES,
                             time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
                             lines_text=lines_text, min_shots=cfg.min_shots_per_scene,
                             max_shots=max_shots, prefer_dynamic=prefer,

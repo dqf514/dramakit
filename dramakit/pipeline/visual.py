@@ -101,6 +101,25 @@ def flf_enabled(ctx: Context, shot: Shot) -> bool:
     return bool(c.flf_workflow and c.i2v_nodes.get("last_image"))
 
 
+def _video_workers(ctx: Context) -> int:
+    """How many machines can take a video job right now."""
+    vis = ctx.providers.visual
+    nodes = list(getattr(vis, "nodes", None) or [])
+    if not nodes:
+        return 1
+    ok = 0
+    for n in nodes:
+        roles = {r.strip().lower() for r in (n.roles or [])}
+        if roles and "i2v" not in roles:
+            continue
+        try:
+            if n.client.ping():
+                ok += 1
+        except Exception:  # noqa: BLE001
+            continue
+    return max(1, ok)
+
+
 def _extra(ctx: Context) -> dict:
     c = ctx.cfg.comfyui
     return {"sampler": c.sampler, "scheduler": c.scheduler, "checkpoint": c.checkpoint}
@@ -544,9 +563,11 @@ def run(ctx: Context) -> dict:
         ctx.save()
     if do_video:
         ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(jobs))
-        offset += _run_phase("出视频", _gen_video, total, offset,
-                             workers=max(1, int(c.video_concurrency or 0)
-                                          or c.concurrency))
+        # as many at once as there are workers, and no more: one worker
+        # means one video at a time, two cards means two
+        workers = max(1, int(c.video_concurrency or 0) or c.concurrency)
+        workers = min(workers, _video_workers(ctx))
+        offset += _run_phase("出视频", _gen_video, total, offset, workers=workers)
         ctx.save()
     elif do_image:
         for (_ep, _sc, shot) in jobs:

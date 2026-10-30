@@ -345,7 +345,7 @@ comfyui:
         "11": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
     - name: gpu3090-b
       base_url: http://192.168.31.7:8189
-      enabled: true
+      enabled: false                    # 机器现在只剩一张卡，第二个实例起不来
       roles: [i2v]
       transfer: scp
       ssh_host: 192.168.31.7
@@ -523,6 +523,6 @@ pipeline:
     - compose
   resume: true                              # 跳过已完成节点，可断点续跑
   stop_after: null                          # 例: storyboard —— 只跑到分镜就停
-  only_episodes: []                         # 例: [1,2,3] 只处理这几集
+  only_episodes: [1]                         # 例: [1,2,3] 只处理这几集
   fail_fast: false                          # true=任一阶段报错即中止
   verbose: true
