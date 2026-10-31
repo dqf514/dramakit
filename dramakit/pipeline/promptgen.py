@@ -10,7 +10,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from ..models import Shot, Status
+from ..models import Shot, Status, is_narration
 from ..prompts import templates as T
 from .base import Context, build_timeline
 
@@ -33,7 +33,7 @@ def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str, float]
         for tl_line in tsc.lines:
             # a voice over is a caption card, not something the actor says:
             # it must not end up in the dialogue tags
-            if tl_line.line.kind.value == "narration":
+            if is_narration(tl_line.line):
                 continue
             # The line belongs to the shot that is on screen when it is
             # said: the last one that has started.
