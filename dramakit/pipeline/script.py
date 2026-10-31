@@ -42,9 +42,11 @@ def run(ctx: Context) -> dict:
         seconds = min(seconds, cfg.segment.max_episode_seconds or seconds)
         budget_chars = int(seconds * 4.5)
         budget_lines = max(4, int(seconds / 4.5))
+        from ..skills import loader
         from ..skills.film import SCREENWRITER_RULES
+        rules = SCREENWRITER_RULES + loader.for_stage(ctx, "script")
         user = T.render(T.SCRIPT_USER, genre=genre, min_scenes=2, max_scenes=8,
-                        screenwriter_rules=SCREENWRITER_RULES,
+                        screenwriter_rules=rules,
                         character_names=char_names, location_names=loc_names,
                         text=block[:12000],
                         budget_seconds=int(seconds), budget_chars=budget_chars,

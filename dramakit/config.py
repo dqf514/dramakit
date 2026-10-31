@@ -161,6 +161,22 @@ class WebConfig(BaseModel):
 # --------------------------------------------------------------------------- #
 # 角色定妆 / 一致性
 # --------------------------------------------------------------------------- #
+class SkillsConfig(BaseModel):
+    """Which skills each stage writes with (see skills/ for what is there)."""
+    analyze: list[str] = ["short-drama-novel-analyze"]
+    script: list[str] = ["short-drama-write"]
+    storyboard: list[str] = ["short-drama-storyboard"]
+    promptgen: list[str] = ["short-drama-video-prompts",
+                            "short-drama-image-prompts"]
+    # the screenwriting theory, by genre: the drama asks, the skills answer
+    by_genre: dict[str, list[str]] = {
+        "复仇": ["screenwriting-theory/sw-character-conflict"],
+        "甜宠": ["screenwriting-theory/ozu-screenplay-style"],
+        "悬疑": ["screenwriting-theory/sw-story-structure"],
+        "战神": ["screenwriting-theory/sw-genre-anatomy"],
+    }
+
+
 class CharacterConfig(BaseModel):
     """角色锁定：稳定锚点 + 三视图参考图，跨镜头/跨集保持同一张脸。"""
     enabled: bool = True
@@ -533,6 +549,7 @@ class Config(BaseModel):
     models: ModelsConfig = Field(default_factory=ModelsConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
     web: WebConfig = Field(default_factory=WebConfig)
+    skills: SkillsConfig = SkillsConfig()
     characters: CharacterConfig = Field(default_factory=CharacterConfig)
     tts: TTSConfig = Field(default_factory=TTSConfig)
     comfyui: ComfyUIConfig = Field(default_factory=ComfyUIConfig)

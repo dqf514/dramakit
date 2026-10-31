@@ -107,7 +107,9 @@ def run(ctx: Context) -> dict:
             max_shots = max(cfg.min_shots_per_scene,
                             min(cfg.max_shots_per_scene, left, want) if want
                             else min(cfg.max_shots_per_scene, left))
+            from ..skills import loader as _loader
             from ..skills.film import DIRECTOR_RULES
+            _rules = DIRECTOR_RULES + _loader.for_stage(ctx, "storyboard")
             # how long this scene is, and how long a segment of it is on
             # average: concrete numbers, so the plan lands where it should
             share = max(1, int(getattr(sc, "_shot_budget", 0) or 1))
@@ -115,7 +117,7 @@ def run(ctx: Context) -> dict:
                                       / max(1, total_need)))
             scene_avg = round(scene_seconds / share, 1)
             user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
-                            director_rules=DIRECTOR_RULES,
+                            director_rules=_rules,
                             episode_seconds=episode_seconds,
                             avg_seconds=round(avg, 1),
                             scene_seconds=scene_seconds,
