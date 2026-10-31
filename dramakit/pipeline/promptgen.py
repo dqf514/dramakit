@@ -219,7 +219,7 @@ def _fallback_h3_prompt(ctx: Context, shot: Shot, sc, lines) -> str:
     loc = next((l for l in ctx.project.locations if l.name == sc.location), None)
     location = (loc.visual_prompt or loc.description) if loc else sc.location
     style = ad.style_prompt_prefix or ad.style
-    desc = (f"[Shot 1] {style}, 9:16 vertical widescreen, {anchors + ', ' if anchors else ''}"
+    desc = (f"[Shot 1] {style}, 16:9 landscape widescreen, {anchors + ', ' if anchors else ''}"
             f"{who}, {shot.action}, {location}, {sc.time_of_day}, "
             f"{shot.shot_type.value} shot with {shot.camera_move} camera movement, "
             f"cinematic lighting, highly detailed")
@@ -274,7 +274,7 @@ def _fallback_prompt(ctx: Context, shot: Shot, scene) -> str:
     anchors = ", ".join(c.anchor() for c in _picked_characters(ctx, shot) if c.anchor())
     loc = next((l for l in ctx.project.locations if l.name == scene.location), None)
     location = (loc.visual_prompt or loc.description) if loc else scene.location
-    return (f"vertical composition 9:16, {anchors + ', ' if anchors else ''}"
+    return (f"landscape composition 16:9, {anchors + ', ' if anchors else ''}"
             f"{shot.shot_type.value} shot, {who}, "
             f"{shot.action}, {location}, {scene.time_of_day}, "
             f"{style}, cinematic lighting, highly detailed")
@@ -320,7 +320,7 @@ def _aspect(ctx: Context) -> tuple[str, str]:
     h = ctx.cfg.compose.height or 720
     if w >= h:
         return "横屏(16:9)镜头", "横屏构图 horizontal composition, 16:9"
-    return "竖屏(9:16)镜头", "竖屏构图 vertical composition, 9:16"
+    return "横屏(16:9)镜头", "横屏构图 landscape composition, 16:9"
 
 
 def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
@@ -672,6 +672,15 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             marks = _cut_marks(shot)
             if desc and "[Shot 2]" not in desc and marks:
                 desc = desc.rstrip() + "\n" + "\n".join(marks)
+            # The background: the character pictures are shot against a plain
+            # studio backdrop, and the model sometimes brings that backdrop
+            # into the picture.  So the place is written into the
+            # description itself, every time.
+            if desc and location_visual:
+                desc = desc.rstrip() + (
+                    f"\nThe background is {location_visual} - the room "
+                    f"itself, with its own light and its own furniture, never "
+                    f"a plain studio backdrop and never an empty gray wall.")
         if desc:
             if ctx.cfg.comfyui.native_audio:
                 # the score has its own music-only clip; the shot clip

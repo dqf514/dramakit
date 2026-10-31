@@ -1,9 +1,9 @@
 """Jinja2 prompt templates for every LLM stage.
 
 All templates demand STRICT JSON output so we can parse deterministically. They
-are written for Chinese vertical short-drama (红果/抖音短剧) conventions: fast
+are written for Chinese short-drama (红果/抖音短剧) conventions: fast
 cold-open conflict, a hook at every episode end, tight dialogue, and shot types
-that read well on a phone in 9:16.
+that read well on a phone in 16:9.
 """
 from __future__ import annotations
 
@@ -213,10 +213,10 @@ SCRIPT_USER = """把下面这一集原文改编成短剧剧本。题材：{{genr
 # --------------------------------------------------------------------------- #
 # STORYBOARD — shot list per scene
 # --------------------------------------------------------------------------- #
-STORYBOARD_SYSTEM = """你是短剧分镜师，为每场戏设计竖屏(9:16)分镜。
+STORYBOARD_SYSTEM = """你是短剧分镜师，为每场戏设计横屏(16:9)分镜。
 只输出JSON。"""
 
-STORYBOARD_USER = """为下面这场戏设计分镜（竖屏手机观看）。
+STORYBOARD_USER = """为下面这场戏设计分镜（16:9 横屏观看）。
 
 场景：{{location}} / {{time_of_day}} / 氛围 {{mood}}
 剧情：{{summary}}
@@ -225,9 +225,11 @@ STORYBOARD_USER = """为下面这场戏设计分镜（竖屏手机观看）。
 
 分镜规则：
 - 生成 {{min_shots}}~{{max_shots}} 个镜头，覆盖本场全部台词与动作
-- **这一集大约 {{episode_seconds}} 秒（这是个参考，不是硬指标）**。
-  一集三到六分钟都成立，**跟着剧情的节奏走**：哪里戏重，哪里就给时间；
-  哪里是过场，哪里就一带而过。片段的长度你定，定完这一集自然就是这个长度
+- **这一集大约 {{episode_seconds}} 秒（参考值；一集三到六分钟都成立，跟着剧情走）**。
+  **本场大概 {{scene_seconds}} 秒，请分成大约 {{scene_shots}} 个片段，
+  平均每段 {{scene_avg}} 秒左右**——片段长度不要老是顶到上限，
+  该短的地方短一点（一个眼神、一句话就是一段），该长的地方才给到十几秒。
+  这一场戏重就多给时间，过场就一带而过
 - **台词要摊开，不要全堆在头几个片段**：本场的台词要分给大部分片段，
   平均每个片段一两句话就够。剩下的时间给表演、对方的反应、
   道具的插入特写和空镜——**片段比台词长出来的那部分是有内容的，不是空白**
@@ -416,7 +418,7 @@ integrated_multimodal_description / overall_soundscape / non_diegetic_music
   台词由后期配音轨提供，画面里的口型要对得上。
 - **一个镜头里只有台词表里的说话人开口**：其余人嘴要闭着，只是听和反应，
   不张嘴、不出声；说话人的嘴型要跟后期配音轨对上
-- 画面是 9:16 竖屏"""
+- 画面是 16:9 横屏"""
 
 H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模式：图片是第一帧）。
 

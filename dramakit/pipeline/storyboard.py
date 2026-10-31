@@ -108,10 +108,19 @@ def run(ctx: Context) -> dict:
                             min(cfg.max_shots_per_scene, left, want) if want
                             else min(cfg.max_shots_per_scene, left))
             from ..skills.film import DIRECTOR_RULES
+            # how long this scene is, and how long a segment of it is on
+            # average: concrete numbers, so the plan lands where it should
+            share = max(1, int(getattr(sc, "_shot_budget", 0) or 1))
+            scene_seconds = int(round(episode_seconds * share
+                                      / max(1, total_need)))
+            scene_avg = round(scene_seconds / share, 1)
             user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
                             director_rules=DIRECTOR_RULES,
                             episode_seconds=episode_seconds,
                             avg_seconds=round(avg, 1),
+                            scene_seconds=scene_seconds,
+                            scene_avg=scene_avg,
+                            scene_shots=share,
                             time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
                             lines_text=lines_text, min_shots=cfg.min_shots_per_scene,
                             max_shots=max_shots, prefer_dynamic=prefer,

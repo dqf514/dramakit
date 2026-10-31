@@ -83,6 +83,22 @@
         "ref_image_4": [
           "904",
           0
+        ],
+        "ref_image_5": [
+          "905",
+          0
+        ],
+        "ref_image_6": [
+          "906",
+          0
+        ],
+        "ref_image_7": [
+          "907",
+          0
+        ],
+        "ref_image_8": [
+          "908",
+          0
         ]
       },
       "ref_audios": {
@@ -240,6 +256,46 @@
     "inputs": {
       "image": "placeholder.png",
       "upload": "image"
+    }
+  },
+  "905": {
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_5"
+    }
+  },
+  "906": {
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_6"
+    }
+  },
+  "907": {
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_7"
+    }
+  },
+  "908": {
+    "inputs": {
+      "image": "placeholder.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_8"
     }
   }
 }

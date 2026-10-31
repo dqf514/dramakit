@@ -172,7 +172,9 @@ class CharacterConfig(BaseModel):
     # 正面、侧面、四分之三、背面：一张资产图上拼起来，人物全程不变
     ref_views: list[str] = Field(
         default_factory=lambda: ["front", "side", "three_quarter", "back"])
-    ref_width: int = 768
+    ref_width: int = 1024
+    ref_body_width: int = 576
+    ref_body_height: int = 1024
     ref_height: int = 1024
     # prompt = 只靠文字锚点；ref = 出图时附带角色/场景参考图（需工作流支持）
     consistency: Literal["prompt", "ref", "lora"] = "ref"
@@ -348,8 +350,8 @@ class ComfyUIConfig(BaseModel):
     models_dir: str = ""
     # generation defaults
     mode: Literal["image", "video", "image_then_video"] = "image_then_video"
-    width: int = 768
-    height: int = 1344                                # ~9:16
+    width: int = 1024
+    height: int = 576                                 # 16:9
     steps: int = 25
     cfg: float = 6.5
     sampler: str = "dpmpp_2m"
@@ -432,8 +434,8 @@ class StoryboardConfig(BaseModel):
 # Compose / render
 # --------------------------------------------------------------------------- #
 class ComposeConfig(BaseModel):
-    width: int = 1080
-    height: int = 1920
+    width: int = 1024
+    height: int = 576
     fps: int = 30
     video_bitrate: str = "6M"
     audio_bitrate: str = "192k"

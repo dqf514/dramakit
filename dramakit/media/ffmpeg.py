@@ -439,9 +439,13 @@ def mix_shot_audio(clips: Sequence[tuple[str, float, float]], out: str | Path,
     for i, (_c, st, ln) in enumerate(usable):
         ms = int(max(0.0, st) * 1000)
         # only the part that belongs to this slot, and one channel so the
-        # delay and the mix always line up
+        # delay and the mix always line up.  The audio is padded to the
+        # length of the picture first: every clip's audio is a little
+        # shorter than its picture - a hundredth of a second, three
+        # hundredths - and the words that fall in those hundredths are the
+        # words that get cut.
         trim = (f"[{i}:a]aformat=sample_fmts=fltp:sample_rates={rate}:"
-                f"channel_layouts=mono,atrim=0:{max(0.05, ln):.3f},"
+                f"channel_layouts=mono,apad,atrim=0:{max(0.05, ln):.3f},"
                 f"asetpts=N/SR/TB,adelay={ms}[a{i}]")
         parts.append(trim)
         mixin.append(f"[a{i}]")

@@ -28,11 +28,12 @@ MAX_PICTURES = 5
 
 
 def _sheet(ctx: Context, name: str, paths: list[Path]) -> str:
-    """One picture with the three views side by side.
+    """One picture with the views of the person side by side.
 
-    The official guide says a reference sheet can hold several panels and
-    should get its own picture number - so the model is pointed at a panel
-    rather than at three loose photographs.
+    A character is given to the video with two pictures: the face, and the
+    views of the person arranged horizontally.  The face is on its own
+    because the face is what has to stay the same, and a face shared with
+    three full bodies is a small face.
     """
     from ..media import sheet
     if len(paths) == 1:
@@ -42,8 +43,9 @@ def _sheet(ctx: Context, name: str, paths: list[Path]) -> str:
     out = out_dir / "sheet.jpg"
     if out.exists() and out.stat().st_mtime > max(p.stat().st_mtime for p in paths):
         return str(out)
+    bodies = [p for p in paths if "face" not in p.name.lower()]
     try:
-        sheet.contact_sheet(paths, out, width=1536)
+        sheet.contact_sheet(bodies or paths, out, width=1536)
         return str(out)
     except Exception as e:  # noqa: BLE001
         ctx.log.warning("三视图合成失败(%s): %s", name, str(e)[:120])
@@ -118,6 +120,15 @@ def find_location(ctx: Context, name: str):
     return None
 
 
+def _previous_shot(ctx: Context, sc, shot):
+    """The shot before this one in the scene, if there is one."""
+    try:
+        i = [x.id for x in sc.shots].index(shot.id)
+        return sc.shots[i - 1] if i > 0 else None
+    except ValueError:
+        return None
+
+
 def _face_picture(ctx: Context, name: str, refs: list[Path]) -> str | None:
     """The picture of the face filling the frame, if there is one."""
     for rel in ctx.project.character(name).refs():
@@ -149,6 +160,21 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
         if str(p) not in seen:
             seen.add(str(p))
             out.append((str(p), "the frame this shot continues from", "frame"))
+        # the handoff: where the shot before this one ended.  The slot is
+        # reserved whether or not there is such a frame yet - the prompt is
+        # written before the clip exists, and the numbers have to match.
+        prev = _previous_shot(ctx, sc, shot)
+        if prev is not None:
+            prev_rel = prev.video_path or ctx.store.rel(
+                ctx.store.video_path(prev.id))
+            q = ctx.store.abs(prev_rel)
+            if str(q) not in seen:
+                seen.add(str(q))
+                out.append((str(q),
+                            "the last frame of the shot before this one: the "
+                            "people and the props are exactly where that shot "
+                            "left them",
+                            "handoff"))
 
     for name in shot.characters or []:
         c = ctx.project.character(name)
@@ -161,21 +187,24 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
                 refs.append(p)
         if not refs:
             continue
-        # The face is what has to stay the same, and a face in a full-body
-        # photograph is a small face.  So the reference is the picture of the
-        # face filling the frame, and the sheet of the body is only used when
-        # there is no such picture.
+        # Two pictures per person: the face, then the views side by side.
+        # The face is on its own because a face shared with three full
+        # bodies is a small face, and the face is what has to stay the same.
         face = _face_picture(ctx, name, refs)
-        if face is None:
-            face = _sheet(ctx, name, refs)
-            role = (f"the views of {name} "
-                    f"(front, profile, three-quarter and back, left to right)")
-        else:
-            role = f"the face of {name}, filling the frame, looking at the camera"
-        if face in seen:
-            continue
-        seen.add(face)
-        out.append((face, role, "character"))
+        if face is not None and face not in seen:
+            seen.add(face)
+            out.append((face,
+                        f"the face of {name}, filling the frame - this is who "
+                        f"{name} is, and it must not change",
+                        "character"))
+        views = _sheet(ctx, name, refs)
+        if views not in seen:
+            seen.add(views)
+            out.append((views,
+                        f"the views of {name} side by side: from the front, "
+                        f"from the side, three-quarters and from behind - the "
+                        f"same person as the face picture",
+                        "character"))
 
     if sc is not None:
         loc = find_location(ctx, sc.location)

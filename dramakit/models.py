@@ -3,7 +3,7 @@
 The whole pipeline is a series of transformations over this tree:
 
     Project
-      └── Episode            (一集, 竖屏 1~2 分钟)
+      └── Episode            (一集, 3~6 分钟)
             └── Scene        (一场戏, 同一时空)
                   ├── Line   (一句台词 / 旁白)
                   └── Shot   (一个分镜 / 一个生成单元)
@@ -126,7 +126,7 @@ class Prop(BaseModel):
 class ArtDirection(BaseModel):
     genre: str = "都市"
     style: str = "写实电影感"
-    aspect_ratio: str = "9:16"
+    aspect_ratio: str = "16:9"
     era: str = "当代"
     color_palette: str = ""
     global_negative_prompt: str = (

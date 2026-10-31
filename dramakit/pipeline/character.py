@@ -205,6 +205,73 @@ def generate_location_refs(ctx: Context) -> int:
     return made
 
 
+def differentiate_characters(ctx: Context, chars: list[Character]) -> int:
+    """Two characters that look the same come out as copies.
+
+    Same gender, the same age written, the same hair, the same
+    temperament - and the two faces come out of the model as one face
+    twice.  The fix is before the pictures: compare the characters on a
+    few dimensions, and change the ones that match too much.
+    """
+    if len(chars) < 2:
+        return 0
+    llm = ctx.providers.llm_for("character")
+    lines = "\n".join(
+        f"- name: {c.name}; role: {c.role}; gender: {c.gender}; age: {c.age}; "
+        f"appearance: {c.appearance}" for c in chars)
+    try:
+        data = llm.complete_json(
+            "你是短剧的选角导演。你要看的是一群角色会不会长得太像。"
+            "只输出JSON。",
+            "下面是这部短剧的角色：\n" + lines + "\n\n"
+            "找出**看起来会像同一个人的角色对**：同性别、年龄相仿、发型相仿、"
+            "气质相近的两个人，看镜头会让观众分不清谁是谁。\n"
+            "对每一对，给出其中**后一个**角色的新外貌描述（中文），"
+            "要明确改掉年龄感、发型、体型、气质里的至少两项，"
+            "但保持他的身份、年龄大方向和角色功能不变。\n"
+            "只输出JSON：{\"pairs\":[{\"a\":\"角色名\",\"b\":\"角色名\","
+            "\"appearance\":\"新的外貌描述\"}]}")
+    except Exception as e:  # noqa: BLE001
+        ctx.log.warning("character: 角色相似度检查失败(%s)", str(e)[:120])
+        return 0
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    by_name = {c.name: c for c in chars}
+    changed = 0
+    for pair in (data.get("pairs") or []):
+        if not isinstance(pair, dict):
+            continue
+        a = str(pair.get("a") or "").strip()
+        b = str(pair.get("b") or "").strip()
+        text = str(pair.get("appearance") or "").strip()
+        if a not in by_name or b not in by_name or not text:
+            continue
+        c = by_name[b]
+        ctx.log.warning("character: %s 和 %s 太像了，把 %s 的外貌改成：%s",
+                        a, b, b, text[:120])
+        c.appearance = text[:400]
+        c.anchor_prompt = ""       # the anchor is built from the appearance
+        changed += 1
+    if changed:
+        build_anchors(ctx, [by_name[str(p.get("b"))] for p in (data.get("pairs") or [])
+                            if isinstance(p, dict) and str(p.get("b")) in by_name])
+    return changed
+
+
+def _view_size(ctx: Context, view: str) -> tuple[int, int]:
+    """The size of one reference picture.
+
+    The face fills a wide frame - a face in a portrait frame has gray on
+    both sides.  The body views are the other way round: a full body in a
+    wide frame is a small person in a field of gray, and that gray is what
+    ends up in the picture.
+    """
+    cfg = ctx.cfg.characters
+    if view == "face":
+        return int(cfg.ref_width), int(cfg.ref_height)
+    return int(cfg.ref_body_width), int(cfg.ref_body_height)
+
+
 def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) -> int:
     """Generate reference portraits for one character. Never raises."""
     cfg = ctx.cfg.characters
@@ -228,10 +295,11 @@ def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) ->
             # the first view is the master; the other views are made from
             # it, so the four panels are one person
             refs = [master] if master else []
+            vw, vh = _view_size(ctx, view)
             vis.generate_image(
                 prompt=_ref_prompt(ctx, c, view, derived=bool(master)),
                 negative=negative,
-                width=cfg.ref_width, height=cfg.ref_height,
+                width=vw, height=vh,
                 seed=_seed(c.name, view), steps=ccfg.steps, cfg=ccfg.cfg,
                 out_path=str(out),
                 extra={"sampler": ccfg.sampler, "scheduler": ccfg.scheduler,
@@ -449,6 +517,9 @@ def run(ctx: Context) -> dict:
         return {"skipped": True}
 
     anchors = build_anchors(ctx, chars)
+    # the characters that would come out as copies are changed before the
+    # pictures are made, not after
+    anchors += differentiate_characters(ctx, chars)
     casted = cast_voices(ctx, chars)
     refs = 0
     if cfg.generate_refs:

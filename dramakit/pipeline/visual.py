@@ -341,6 +341,49 @@ def _reference_audio(ctx: Context, shot: Shot) -> str:
     return ""
 
 
+def _handoff_frame(ctx: Context, shot: Shot, sc, path: str) -> str:
+    """The last frame of the shot before, as a picture.
+
+    The list points at the shot before's video - the list is built before
+    that video exists, and the numbers have to match the prompt.  With the
+    video there, the frame the next shot continues from is its last one.
+    """
+    if not path.endswith((".mp4", ".mov", ".mkv", ".webm")):
+        return path
+    src = Path(path)
+    if not src.exists():
+        return path
+    out = ctx.store.root / "tmp" / f"handoff_{src.stem}.png"
+    try:
+        if not out.exists() or out.stat().st_mtime < src.stat().st_mtime:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            from ..media import ffmpeg as ff
+            ff._run([ff.ffmpeg_bin(), "-y", "-sseof", "-0.1", "-i", str(src),
+                     "-frames:v", "1", str(out)], quiet=True)
+        return str(out) if out.exists() else path
+    except Exception:  # noqa: BLE001
+        return path
+
+
+def _wait_for_still(ctx: Context, shot: Shot, sc, minutes: float = 30.0) -> list[str]:
+    """What is missing for this shot - waiting for its still if it is being drawn.
+
+    The stills and the clips are generated at the same time, so a shot may
+    be asked for before its own still exists.  That is a wait, not a
+    failure: the picture machine is drawing it.
+    """
+    import time as _t
+    from .refs import missing_references
+    deadline = _t.time() + minutes * 60
+    missing = missing_references(ctx, shot, sc)
+    while missing and _t.time() < deadline:
+        if not any("首帧" in m for m in missing):
+            return missing          # something else is missing: not a wait
+        _t.sleep(12)
+        missing = missing_references(ctx, shot, sc)
+    return missing
+
+
 def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str, bool, str]:
     """Render only the video for one shot."""
     vis = ctx.providers.visual
@@ -356,14 +399,26 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
     # views, the room, and the frame this shot continues from.
     plan: list[str] = []
     if c.native_audio or c.video_references:
-        from .refs import missing_references, picture_plan
-        missing = missing_references(ctx, shot, sc)
+        from .refs import picture_plan
+        missing = _wait_for_still(ctx, shot, sc)
         if missing:
             msg = "参考图不齐: " + "、".join(missing)
             ctx.log.error("visual: 镜 %s %s（不抽卡）", shot.id, msg)
             shot.status = Status.FAILED
             return shot.id, False, msg
+        # A shot whose words are not in its prompt comes out without the
+        # line, and the card is spent.  So it is checked here, before the
+        # job is sent.
+        need = len([n for n in (shot.line_indices or []) if n > 0])
+        have = (shot.video_prompt or "").count("<d>")
+        if need and have < need:
+            msg = (f"提示词里的台词标签 {have} 个，这一镜要 {need} 句"
+                   "（模型会把动作当旁白念出来）")
+            ctx.log.error("visual: 镜 %s %s（不抽卡）", shot.id, msg)
+            shot.status = Status.FAILED
+            return shot.id, False, msg
         plan = [p for p, _role, _kind in picture_plan(ctx, shot, sc)]
+        plan = [_handoff_frame(ctx, shot, sc, x) for x in plan]
         meta["references"] = len(plan)
     try:
         use_flf = flf_enabled(ctx, shot) and end_out.exists()
@@ -540,7 +595,6 @@ def run(ctx: Context) -> dict:
 
     ctx.log.info("visual: 生成 %d 个镜头（并发=%d，模式=%s）", len(jobs), c.concurrency, c.mode)
     ok_count = 0
-    phase_ok = 0
     images_ok = 0
     videos_ok = 0
 
@@ -549,47 +603,65 @@ def run(ctx: Context) -> dict:
     # weights in and out for every single shot. Doing all the stills first and
     # all the videos after keeps one model resident and the swap happens once.
     def _run_phase(label: str, fn, total: int, offset: int,
-                   workers: int = 0) -> int:
-        nonlocal ok_count, phase_ok
+                   workers: int = 0, quiet: bool = False) -> tuple[int, int]:
+        """Returns (how many finished, how many succeeded)."""
         done = 0
+        ok = 0
         n = workers or c.concurrency
         with ThreadPoolExecutor(max_workers=max(1, n)) as ex:
             futs = [ex.submit(fn, ctx, sc, shot, durations.get(shot.id, 0.0))
                     if fn is _gen_video else ex.submit(fn, ctx, sc, shot)
                     for (_ep, sc, shot) in jobs]
             for i, fut in enumerate(as_completed(futs), 1):
-                _sid, ok, _msg = fut.result()
-                ok_count += int(ok)
-                phase_ok += int(ok)
+                _sid, shot_ok, _msg = fut.result()
+                ok += int(shot_ok)
                 done = i
-                _write_progress(ctx, "visual", offset + i, total)
-                if i % 5 == 0 or i == len(jobs):
-                    ctx.save()
-                    ctx.log.info("visual: %s %d/%d 完成", label, i, total)
-        return done
+                if not quiet:
+                    _write_progress(ctx, "visual", offset + i, total)
+                    if i % 5 == 0 or i == len(jobs):
+                        ctx.save()
+                        ctx.log.info("visual: %s %d/%d 完成", label, i, total)
+        return done, ok
 
     total = len(jobs) * (2 if (do_image and do_video) else 1)
     offset = 0
-    if do_image:
-        ctx.log.info("visual: 第一批 · 出图（%d 张）", len(jobs))
-        offset += _run_phase("出图", _gen_image, total, offset)
-        images_ok = phase_ok
-        phase_ok = 0
-        ctx.save()
-    if do_video:
-        ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(jobs))
-        # as many at once as there are workers, and no more: one worker
-        # means one video at a time, two cards means two
+    if do_image and do_video:
+        # The picture machine and the video machine run together: the
+        # stills are drawn in the order the clips are generated, and a clip
+        # waits for the still it continues from.  Neither machine sits idle
+        # while the other finishes its whole batch.
+        ctx.log.info("visual: 出图与出视频并行（出图 %d 张 / 出视频 %d 段）",
+                     len(jobs), len(jobs))
         workers = max(1, int(c.video_concurrency or 0) or c.concurrency)
         workers = min(workers, _video_workers(ctx))
-        offset += _run_phase("出视频", _gen_video, total, offset, workers=workers)
-        videos_ok = phase_ok
-        phase_ok = 0
+        img_pool = ThreadPoolExecutor(max_workers=1)
+        img_fut = img_pool.submit(_run_phase, "出图", _gen_image, len(jobs), 0,
+                                  1, True)
+        _d, videos_ok = _run_phase("出视频", _gen_video, total, offset,
+                                   workers=workers)
+        _i, images_ok = img_fut.result()
+        img_pool.shutdown()
+        ok_count = images_ok + videos_ok
         ctx.save()
-    elif do_image:
-        for (_ep, _sc, shot) in jobs:
-            if shot.image_path and shot.status != Status.FAILED:
-                shot.status = Status.DONE
+    else:
+        if do_image:
+            ctx.log.info("visual: 第一批 · 出图（%d 张）", len(jobs))
+            _d, images_ok = _run_phase("出图", _gen_image, total, offset)
+            ctx.save()
+        if do_video:
+            ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(jobs))
+            # as many at once as there are workers, and no more: one worker
+            # means one video at a time, two cards means two
+            workers = max(1, int(c.video_concurrency or 0) or c.concurrency)
+            workers = min(workers, _video_workers(ctx))
+            _d, videos_ok = _run_phase("出视频", _gen_video, total, offset,
+                                       workers=workers)
+            ctx.save()
+        ok_count = images_ok + videos_ok
+        if do_image:
+            for (_ep, _sc, shot) in jobs:
+                if shot.image_path and shot.status != Status.FAILED:
+                    shot.status = Status.DONE
 
     # the music bed: one music-only clip per scene
     if do_video:
