@@ -1,4 +1,4 @@
-"""The shots whose words went to the wrong shot are drawn again.
+"""The shots whose words are in the wrong place are drawn again.
 
 The timeline used to leave a fraction of a millisecond between the end of
 one shot and the start of the next, so a line that belongs to a shot landed
@@ -9,7 +9,7 @@ The timeline is fixed.  The prompts that were written against the broken
 one are not, so the shots whose words are in the wrong place get a new
 prompt and a new clip.
 """
-import json
+import re
 import subprocess
 import sys
 import time
@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, r"E:\\dramakit")
 from dramakit.config import Config
-from dramakit.pipeline.base import Context
+from dramakit.models import is_narration
 from dramakit.pipeline.visual import regen_shot
 from dramakit.project import ProjectStore
 
@@ -26,31 +26,28 @@ ep_index = int(sys.argv[2]) if len(sys.argv) > 2 else 1
 root = Path(r"E:\\dramakit\\projects") / name
 cfg = Config.load(r"E:\\dramakit\\config\\default.yaml")
 store = ProjectStore(root)
-ctx = Context(cfg, store)
-ep = ctx.project.episode(ep_index)
+proj = store.load()
+ep = proj.episode(ep_index)
 
 # the shots whose words are in the wrong place
 bad: list[str] = []
 for sc in ep.scenes:
-    spoken = [l for l in sc.lines if l.kind.value != "narration"]
+    spoken = [l for l in sc.lines if not is_narration(l)]
     for sh in sc.shots:
-        owned = [spoken[n - 1] for n in (sh.line_indices or [])
-                 if 1 <= n <= len(spoken)]
-        vp = sh.video_prompt or ""
-        if not owned:
-            continue
-        if any(l.text not in vp for l in owned):
+        owned = {spoken[n - 1].text.strip() for n in (sh.line_indices or [])
+                 if 1 <= n <= len(spoken)}
+        tags = {t.strip() for t in
+                re.findall(r"<d>\[zh-CN\](.*?)</d>", sh.video_prompt or "")}
+        if owned and tags != owned:
             bad.append(sh.id)
-        # and the ones that hold a line that is not theirs
-        for other in ep.scenes:
-            for o in other.lines:
-                pass
-print(f"台词错位的片段 {len(bad)} 个：{bad}")
+            print(f"  {sh.id}: 该说 {sorted(owned)}，提示词里 {sorted(tags)}")
+print(f"台词错位的片段 {len(bad)} 个")
+
+if not bad:
+    sys.exit(0)
 
 # clear their prompts so the promptgen writes them again
-proj = store.load()
-ep2 = proj.episode(ep_index)
-for sc in ep2.scenes:
+for sc in ep.scenes:
     for sh in sc.shots:
         if sh.id in bad:
             sh.video_prompt = ""
@@ -61,7 +58,7 @@ r = subprocess.run([str(Path(r"E:\\dramakit\\venv\\Scripts\\dj.exe")), "run",
                     str(root), "--stages", "promptgen"],
                    cwd=r"E:\\dramakit", capture_output=True, text=True,
                    encoding="utf-8", errors="replace")
-print((r.stdout or "")[-400:])
+print((r.stdout or "")[-300:])
 
 # and draw the shots again
 for sid in bad:

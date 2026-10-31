@@ -457,7 +457,9 @@ def _gen_score(ctx: Context, ep, sc, scene_duration: float = 0.0) -> tuple[str, 
     # music loops inside the scene
     scene_dur = scene_duration or 0.0
     frames = int(round(scene_dur * c.fps)) if scene_dur > 0 else 124
-    frames = max(124, min(frames, 240, int(c.max_video_seconds * c.fps)))
+    # the model makes up to about fifteen seconds of picture in one go; the
+    # longer the bed, the less often the scene hears the same loop
+    frames = max(124, min(frames, 362, int(c.max_video_seconds * c.fps)))
     seed = 100000 + ep.index * 100 + sc.index
     try:
         _render(ctx, "配乐", sc.id, lambda: vis.generate_video(

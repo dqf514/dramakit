@@ -535,10 +535,19 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         desc = str(h3.get("integrated_multimodal_description") or "").strip()
         soundscape = str(h3.get("overall_soundscape") or "").strip()
         music = str(h3.get("non_diegetic_music") or "").strip()
-        # A line that is not in the prompt is a line nobody says.  The model
-        # that writes the description drops one now and then, so the ones it
-        # left out are written back in with the moment they belong to.
+        # The tags have to be the shot's own words.  The model that writes
+        # the description drops a line now and then, and it puts the words
+        # of the next shot in the tag - and once it wrote a caption card as
+        # if it were something to say out loud.  The ones that do not belong
+        # are taken out; the ones that are missing are written back in with
+        # the moment they belong to.
         if desc and ctx.cfg.comfyui.native_audio and lines:
+            allowed = {txt.strip() for _spk, txt, _d in lines if txt and txt.strip()}
+
+            def _keep(m):
+                return m.group(0) if m.group(1).strip() in allowed else ""
+
+            desc = re.sub(r"<d>\[zh-CN\](.*?)</d>", _keep, desc)
             windows = _line_windows(shot, lines)
             add = []
             for (start, end, spk, txt) in windows:
