@@ -113,10 +113,10 @@ characters:
   generate_location_refs: true # 每个场景生成一张无人的环境参考图（注入镜头）
   auto_cast: true # 由 AI 从可用音色里给角色分配声音（失败按性别回退）
   ref_views: [front, face, side, three_quarter, back]  # 角色资产图：正面全身/面部满屏/侧面/四分之三/背面
-  ref_width: 1024                               # 参考图跟出图同尺寸（16:9）
-  ref_height: 576
-  ref_body_width: 576                           # 全身视图用竖幅：宽幅里人太小、灰底太多
-  ref_body_height: 1024
+  ref_width: 1344                           # 面部满屏照：跟出图同尺寸
+  ref_height: 768                           # 面部满屏照
+  ref_body_width: 768                       # 全身视图用竖幅：宽幅里人太小、灰底太多
+  ref_body_height: 1344                     # 全身视图
   consistency: ref # prompt=只靠文字锚点 | ref=附带参考图（推荐） | lora
 
 # --------------------------- 配音 TTS -------------------------------------
@@ -381,16 +381,16 @@ comfyui:
   # 本机 ComfyUI 的 models 目录（模型文件存放处，也是同步来源）
   models_dir: E:\\ComfyUI\\models
   mode: image_then_video # image | video | image_then_video
-  width: 1024                             # 出图分辨率（FLUX 3 / H3 都吃 32 的倍数）
-  height: 576                             # 16:9 横屏
+  width: 1344                               # 出图分辨率（H3 原生 768p，16:9）
+  height: 768                               # 出图分辨率
   steps: 8                                # FLUX 3 Klein 是蒸馏版：8 步和 16 步锐度一样（实测 1124 vs 1218），4 步掉 29%
   cfg: 1.0                                # 蒸馏版无引导，cfg 必须 1
   sampler: euler
   scheduler: simple
   checkpoint: flux3-image-klein-int8-convrot.safetensors
   # 出视频分辨率（H3 标准 16:9 = 960x544，32 的倍数）
-  video_width: 1024                      # 16:9 横屏
-  video_height: 576
+  video_width: 1344                         # 视频分辨率（H3 原生 768p，16:9）
+  video_height: 768                         # 视频分辨率
   frames: 124                               # frame_mode=fixed 时所有镜头都用这个帧数
   # 视频时长：auto = 按每个镜头在时间线上实际占多长生成（对齐 H3 的 17k+5 网格）
   frame_mode: auto
@@ -449,8 +449,8 @@ storyboard:
 
 # --------------------------- 合成 compose -----------------------------------
 compose:
-  width: 1024
-  height: 576                             # 16:9 横屏成片
+  width: 1344                         # 16:9 横屏 768p 成片
+  height: 768                          # 16:9 横屏 768p 成片
   fps: 30
   video_bitrate: 6M
   audio_bitrate: 192k
