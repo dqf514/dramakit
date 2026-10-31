@@ -343,6 +343,7 @@ comfyui:
       remote_models: /data/comfyui/models
       # 3090 是 Ampere，没有 FP4 张量核：用 int8/convrot 的那套权重
       graph_overrides:
+        "13": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}   # Ampere 没有 FP4 核，nvfp4 是模拟执行的，换 int8 原生核
         "6": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
         "11": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
     - name: gpu3090-b
@@ -355,6 +356,7 @@ comfyui:
       ssh_key: C:/Users/David/.ssh/id_ed25519
       remote_models: /data/comfyui/models
       graph_overrides:
+        "13": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}   # Ampere 没有 FP4 核，nvfp4 是模拟执行的，换 int8 原生核
         "6": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
         "11": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
   #  - name: gpu3090-v0        # 3090#0，专做视频
