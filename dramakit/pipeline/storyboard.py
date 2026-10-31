@@ -71,15 +71,15 @@ def run(ctx: Context) -> dict:
         # with five lines does not get thirty segments of picture.
         avg = (dmin + dmax) / 2.0
         spec = float(ctx.cfg.segment.episode_duration)
-        target = max(spec, dialogue_need * avg)
-        length_need = max(dialogue_need, int(round(target / avg)))
+        length_need = max(1, int(round(spec / avg)))
         # a scene never gets more than two and a half times what its dialogue
         # can hold - the rest of the episode's length is the picture
         cap = max(cfg.min_shots_per_scene * len(ep.scenes),
                   int(dialogue_need * 2.5))
-        length_need = min(length_need, cap)
-        target = max(dialogue_need * avg, length_need * avg)
-        total_need = length_need
+        total_need = min(max(dialogue_need, length_need), cap)
+        # the length of the episode follows from the segments: the format's
+        # five minutes, and no more than the segments can carry
+        target = min(spec, total_need * dmax)
         for sc, need in zip(ep.scenes, needs):
             if sc.shots:
                 continue
@@ -371,7 +371,23 @@ def _fit_durations(shots: list[Shot], target: float,
         return 0.0
     k = float(target) / total
     for s in shots:
-        s.duration = round(max(dmin, min(dmax, float(s.duration or dmin) * k)), 2)
+        s.duration = max(dmin, min(dmax, float(s.duration or dmin) * k))
+    # The segments that hit the ends of the range took the difference out of
+    # the others; the difference is given back to the ones that have room.
+    for _ in range(6):
+        cur = sum(float(s.duration) for s in shots)
+        diff = float(target) - cur
+        if abs(diff) < 0.05:
+            break
+        free = [s for s in shots
+                if dmin + 0.01 < float(s.duration) < dmax - 0.01]
+        if not free:
+            break
+        share = diff / len(free)
+        for s in free:
+            s.duration = max(dmin, min(dmax, float(s.duration) + share))
+    for s in shots:
+        s.duration = round(float(s.duration), 2)
     return round(sum(float(s.duration) for s in shots), 2)
 
 

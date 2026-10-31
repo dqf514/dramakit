@@ -1,7 +1,7 @@
-"""Get episodes two and three ready.
+"""Get episodes two and three ready - in a copy of the project.
 
-Their shot lists came from the first storyboard, so their segments are still
-the old three-second ones, and one of the rooms they happen in has no
+Their shot lists came from the first storyboard, so their segments are
+still the old three-second ones, and one of the rooms they happen in has no
 picture yet - a scene without a room picture is a scene whose shots cannot
 be rendered at all.
 
@@ -16,10 +16,11 @@ sys.path.insert(0, r"E:\\dramakit")
 from dramakit.models import Location, Status
 from dramakit.project import ProjectStore
 
-name = sys.argv[1] if len(sys.argv) > 1 else "短剧_重生恶毒继母"
+root = Path(sys.argv[1] if len(sys.argv) > 1
+            else r"E:\\dramakit\\projects\\短剧_重生恶毒继母")
 eps = [int(x) for x in sys.argv[2].split(",")] if len(sys.argv) > 2 else [2, 3]
 
-store = ProjectStore(Path(r"E:\\dramakit\\projects") / name)
+store = ProjectStore(root)
 proj = store.load()
 
 # the rooms the script puts a scene in, and what they look like
