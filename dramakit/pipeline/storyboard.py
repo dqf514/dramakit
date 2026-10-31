@@ -65,21 +65,19 @@ def run(ctx: Context) -> dict:
             want = max(cfg.min_shots_per_scene, (int(secs * 100) + 349) // 350)
             needs.append(want)
         dialogue_need = sum(needs)
-        # The format asks for a five minute episode and a segment is six to
-        # fifteen seconds, so an episode is about thirty of them.  What the
-        # material can hold decides how many of them carry a line: a scene
-        # with five lines does not get thirty segments of picture.
+        # How many segments the episode wants is the director's business.
+        # The dialogue says how many it needs to hold the lines; the format
+        # says roughly how long the episode should be; the model says how
+        # long a segment may be.  The director is told all three and the
+        # number of segments is not worked out for them.
         avg = (dmin + dmax) / 2.0
         spec = float(ctx.cfg.segment.episode_duration)
         length_need = max(1, int(round(spec / avg)))
-        # a scene never gets more than two and a half times what its dialogue
-        # can hold - the rest of the episode's length is the picture
         cap = max(cfg.min_shots_per_scene * len(ep.scenes),
                   int(dialogue_need * 2.5))
         total_need = min(max(dialogue_need, length_need), cap)
-        # the length of the episode follows from the segments: the format's
-        # five minutes, and no more than the segments can carry
         target = min(spec, total_need * dmax)
+        episode_seconds = int(spec)
         for sc, need in zip(ep.scenes, needs):
             if sc.shots:
                 continue
@@ -112,7 +110,7 @@ def run(ctx: Context) -> dict:
             from ..skills.film import DIRECTOR_RULES
             user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
                             director_rules=DIRECTOR_RULES,
-                            episode_seconds=int(target),
+                            episode_seconds=episode_seconds,
                             avg_seconds=round(avg, 1),
                             time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
                             lines_text=lines_text, min_shots=cfg.min_shots_per_scene,
@@ -158,9 +156,12 @@ def run(ctx: Context) -> dict:
             _repair_characters(ctx, sc)
             # a shot that carries too much dialogue gets a second shot
             _split_long_shots(sc)
-        # the segments of the episode are scaled so that they fill it
-        _fit_durations([sh for sc in ep.scenes for sh in sc.shots],
-                       target, dmin, dmax)
+        # The lengths are the director's.  They are only kept inside the
+        # range the video model can render - a segment outside it cannot be
+        # made at all.
+        for sc in ep.scenes:
+            for sh in sc.shots:
+                sh.duration = round(max(dmin, min(dmax, float(sh.duration or dmin))), 2)
         ctx.mark(ep, "storyboard", Status.DONE)
         ctx.save()
         done += 1

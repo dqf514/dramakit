@@ -25,8 +25,12 @@ steps = int(sys.argv[1]) if len(sys.argv) > 1 else 8
 use_lora = (sys.argv[2] if len(sys.argv) > 2 else "yes") == "yes"
 ref_size = sys.argv[3] if len(sys.argv) > 3 else "match"
 shot_id = sys.argv[4] if len(sys.argv) > 4 else "sh-428137b3"
+size = sys.argv[5] if len(sys.argv) > 5 else "768x1344"
+W, H = (int(x) for x in size.split("x"))
 
 cfg = Config.load(r"E:\\dramakit\\config\\default.yaml")
+cfg.comfyui.video_width = W
+cfg.comfyui.video_height = H
 store = ProjectStore(Path(r"E:\\dramakit\\projects\\短剧_重生恶毒继母"))
 ctx = Context(cfg, store)
 ep = ctx.project.episodes[0]
@@ -42,7 +46,7 @@ for node in cfg.comfyui.nodes:
 
 plan = picture_plan(ctx, shot, sc)
 print(f"镜头 {shot.id} | 步数 {steps} | LoRA {'开' if use_lora else '关'} | "
-      f"参考图尺寸 {ref_size}")
+      f"参考图尺寸 {ref_size} | 画幅 {W}x{H}")
 for i, (p, role, kind) in enumerate(plan, 1):
     print(f"   Picture {i}: {kind:<10} {Path(p).name}")
 

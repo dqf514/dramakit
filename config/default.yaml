@@ -385,8 +385,8 @@ comfyui:
   scheduler: simple
   checkpoint: flux3-image-klein-int8-convrot.safetensors
   # 出视频分辨率（H3 标准 16:9 = 960x544，32 的倍数）
-  video_width: 768
-  video_height: 1344
+  video_width: 576
+  video_height: 1024
   frames: 124                               # frame_mode=fixed 时所有镜头都用这个帧数
   # 视频时长：auto = 按每个镜头在时间线上实际占多长生成（对齐 H3 的 17k+5 网格）
   frame_mode: auto
@@ -438,7 +438,7 @@ storyboard:
   min_shots_per_scene: 2
   max_shots_per_episode: 90
   max_shots_per_scene: 26
-  shot_duration_range: [6.0, 15.0]            # 一个片段 6~15 秒，段里有多个镜头
+  shot_duration_range: [5.0, 15.0]            # 视频模型一次能生成的画面长度（技术上限，不是导演规定）
   prefer_dynamic: true                      # 多用推拉摇移增强节奏
   include_insert_shots: true                # 允许空镜/特写插入
   language: bilingual                       # 提示词语言 zh | en | bilingual
