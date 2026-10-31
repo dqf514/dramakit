@@ -22,6 +22,7 @@ from .base import Context
 
 VIEW_TEXT = {
     "front": "front view, facing the camera, neutral standing pose",
+    "face": "tight close-up of the face, the face filling the frame",
     "side": "side profile view, facing left, neutral standing pose",
     "three_quarter": "three-quarter view, slight body angle, neutral standing pose",
     "back": "back view, seen from behind, neutral standing pose",
@@ -31,6 +32,9 @@ VIEW_TEXT = {
 # sheet" literally - the old wording came back as technical line art.
 FLUX3_VIEW = {
     "front": "seen from the front, facing the camera, standing at ease",
+    "face": ("seen in a tight head-and-shoulders close-up, the face filling "
+             "the frame and looking straight into the camera, every feature "
+             "sharp and unobstructed"),
     "side": "seen from the side in profile, facing left, standing at ease",
     "three_quarter": "seen from a three-quarter angle, body slightly turned, standing at ease",
     "back": "seen from behind, back turned to the camera, standing at ease",
@@ -105,6 +109,29 @@ def _ref_prompt(ctx: Context, c: Character, view: str,
             f"light gray seamless backdrop, soft even light from the front, "
             f"natural skin texture and fabric detail, a neutral expression, "
             f"no props, no text, no watermark, {style}."
+        )
+    if view == "face":
+        # the face, filling the frame: this is the picture that keeps the
+        # face the same from one shot to the next
+        if derived:
+            return (
+                f"Full-color studio photograph, the same face as in the "
+                f"reference picture - identical face, identical hair, "
+                f"identical clothes - now a tight head-and-shoulders close-up. "
+                f"The face fills the frame, looking straight into the camera, "
+                f"every feature sharp and unobstructed, photographed against a "
+                f"plain light gray seamless backdrop, soft even light from the "
+                f"front, natural skin texture, no props, no text, no "
+                f"watermark, {style}."
+            )
+        return (
+            f"Full-color studio photograph, a tight head-and-shoulders "
+            f"close-up portrait of {c.anchor()}, "
+            f"{FLUX3_VIEW['face']}. The face fills the frame, every feature "
+            f"sharp and unobstructed, photographed against a plain light gray "
+            f"seamless backdrop, soft even light from the front, natural skin "
+            f"texture, a neutral expression, no props, no text, no watermark, "
+            f"{style}."
         )
     if ctx.cfg.comfyui.prompt_format == "flux3":
         return (

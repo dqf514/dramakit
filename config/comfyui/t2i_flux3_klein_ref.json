@@ -24,25 +24,54 @@
     "class_type": "CLIPTextEncode",
     "inputs": {
       "text": "Full-color indoor photograph, medium shot, a woman in her early thirties stands in the doorway of a cramped old apartment at dusk. She has fair skin, straight shoulder-length black hair, and wears a pale grey wool coat over a white shirt. Her right hand rests on the door frame, her eyes turned toward the camera with a restrained, tired expression. Warm tungsten light from a bare bulb behind her falls across the left side of her face, while cooler blue dusk light from the stairwell window fills the right side. Behind her, a narrow hallway recedes into shadow with a pair of worn slippers on the concrete floor and a bicycle leaning against the wall. The image is framed slightly from below, with the doorway framing her on the right and the empty hallway occupying the left third. Dust drifts through the light beam. Fine grain, natural skin texture, muted teal and amber palette.",
-      "clip": ["102", 0]
+      "clip": [
+        "102",
+        0
+      ]
     }
   },
   "105": {
     "class_type": "CLIPTextEncode",
     "inputs": {
       "text": "",
-      "clip": ["102", 0]
+      "clip": [
+        "102",
+        0
+      ]
     }
   },
   "130": {
     "class_type": "ReferenceMultiLatent",
     "inputs": {
-      "positive": ["104", 0],
-      "negative": ["105", 0],
-      "vae": ["103", 0],
+      "positive": [
+        "104",
+        0
+      ],
+      "negative": [
+        "105",
+        0
+      ],
+      "vae": [
+        "103",
+        0
+      ],
       "resolution": "keep resolution",
-      "images.image0": ["201", 0],
-      "images.image1": ["202", 0]
+      "images.image0": [
+        "201",
+        0
+      ],
+      "images.image1": [
+        "202",
+        0
+      ],
+      "images.image2": [
+        "203",
+        0
+      ],
+      "images.image3": [
+        "204",
+        0
+      ]
     }
   },
   "201": {
@@ -76,34 +105,72 @@
       "sampler_name": "euler",
       "scheduler": "simple",
       "denoise": 1.0,
-      "model": ["112", 0],
-      "positive": ["130", 0],
-      "negative": ["130", 1],
-      "latent_image": ["130", 2]
+      "model": [
+        "112",
+        0
+      ],
+      "positive": [
+        "130",
+        0
+      ],
+      "negative": [
+        "130",
+        1
+      ],
+      "latent_image": [
+        "130",
+        2
+      ]
     }
   },
   "108": {
     "class_type": "VAEDecode",
     "inputs": {
-      "samples": ["107", 0],
-      "vae": ["103", 0]
+      "samples": [
+        "107",
+        0
+      ],
+      "vae": [
+        "103",
+        0
+      ]
     }
   },
   "109": {
     "class_type": "SaveImage",
     "inputs": {
       "filename_prefix": "dramakit/t2i_ref",
-      "images": ["108", 0]
+      "images": [
+        "108",
+        0
+      ]
     }
   },
   "112": {
     "class_type": "ModelSamplingFlux",
     "inputs": {
-      "model": ["101", 0],
+      "model": [
+        "101",
+        0
+      ],
       "base_shift": 2.7725887,
       "max_shift": 2.7725887,
       "width": 1344,
       "height": 768
+    }
+  },
+  "203": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png",
+      "upload": "image"
+    }
+  },
+  "204": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png",
+      "upload": "image"
     }
   }
 }

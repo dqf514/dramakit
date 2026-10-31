@@ -49,17 +49,24 @@ def _ref_images(ctx: Context, shot: Shot, scene=None) -> list[str]:
     if ctx.cfg.characters.consistency != "ref":
         return []
     out: list[str] = []
+    from .refs import _face_picture
     for name in shot.characters or []:
         c = ctx.project.character(name)
         if c is None or (c.consistency and c.consistency != "ref"):
             continue
         refs = c.refs()
-        primary = refs[0] if refs else ""
+        primary = ""
+        # the picture of the face filling the frame: the face is what has to
+        # stay the same, and a face in a full-body photograph is a small face
+        face = _face_picture(ctx, name, [ctx.store.abs(r) for r in refs])
+        if face:
+            primary = face
+        elif refs:
+            primary = str(ctx.store.abs(refs[0]))
         if not primary:
             continue
-        p = ctx.store.abs(primary)
-        if p.exists() and str(p) not in out:
-            out.append(str(p))
+        if primary not in out:
+            out.append(primary)
     if scene is not None:
         from .refs import find_location
         loc = find_location(ctx, scene.location)

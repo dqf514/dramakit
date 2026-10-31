@@ -118,6 +118,17 @@ def find_location(ctx: Context, name: str):
     return None
 
 
+def _face_picture(ctx: Context, name: str, refs: list[Path]) -> str | None:
+    """The picture of the face filling the frame, if there is one."""
+    for rel in ctx.project.character(name).refs():
+        if "face" not in rel.lower():
+            continue
+        p = ctx.store.abs(rel)
+        if p.exists():
+            return str(p)
+    return None
+
+
 def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
                  ) -> list[tuple[str, str, str]]:
     """The pictures for one shot: (path, what it is, kind).
@@ -150,14 +161,21 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
                 refs.append(p)
         if not refs:
             continue
-        sheet = _sheet(ctx, name, refs)
-        if sheet in seen:
+        # The face is what has to stay the same, and a face in a full-body
+        # photograph is a small face.  So the reference is the picture of the
+        # face filling the frame, and the sheet of the body is only used when
+        # there is no such picture.
+        face = _face_picture(ctx, name, refs)
+        if face is None:
+            face = _sheet(ctx, name, refs)
+            role = (f"the views of {name} "
+                    f"(front, profile, three-quarter and back, left to right)")
+        else:
+            role = f"the face of {name}, filling the frame, looking at the camera"
+        if face in seen:
             continue
-        seen.add(sheet)
-        out.append((sheet,
-                    f"the views of {name} "
-                    f"(front, profile, three-quarter and back, left to right)",
-                    "character"))
+        seen.add(face)
+        out.append((face, role, "character"))
 
     if sc is not None:
         loc = find_location(ctx, sc.location)

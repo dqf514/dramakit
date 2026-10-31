@@ -401,15 +401,26 @@ def _shot_seconds(shot) -> float:
         return 3.0
 
 
-def _reference_jobs(shot) -> str:
+def _reference_jobs(shot, plan=None) -> str:
     """Say what each reference is for - and what it is not for."""
-    n = len(shot.characters or [])
-    if n:
-        return (f"图片1 到 图片{n} 是人物定妆参考，锁定人物的脸、发型与服装；"
-                f"图片{n+1} 以后是场景与光影参考，只用它的环境与光线，"
-                "不要借用里面的服装、人物或文字。")
-    return ("图片1 是场景与光影参考，只用它的环境与光线，"
-            "不要借用里面的文字或人物。")
+    kinds = [k for _p, _w, k in (plan or [])]
+    n_face = kinds.count("character")
+    n_room = kinds.count("room")
+    bits = []
+    if "frame" in kinds:
+        bits.append("图片1 是这一镜的首帧：构图、站位、服装、光线都以它为准")
+    if n_face:
+        lo = 2 if "frame" in kinds else 1
+        bits.append(f"图片{lo} 到 图片{lo + n_face - 1} 是画面里人物的面部特写，"
+                    f"锁定他们的脸、发型与服装")
+    if n_room:
+        lo = (2 if "frame" in kinds else 1) + n_face
+        bits.append(f"图片{lo} 是场景与光影参考，只用它的环境与光线，"
+                    "不要借用里面的服装、人物或文字")
+    if not bits:
+        bits.append("图片1 是场景与光影参考，只用它的环境与光线，"
+                    "不要借用里面的文字或人物")
+    return "；".join(bits) + "。"
 
 
 def _segment_beats(shot) -> list[tuple[float, float, str]]:
@@ -436,6 +447,30 @@ def _segment_beats(shot) -> list[tuple[float, float, str]]:
         k = dur / last
         out = [(a * k, b * k, t) for a, b, t in out]
     return out
+
+
+def _cut_marks(shot) -> list[str]:
+    """The cut markers the segment is to have.
+
+    From the shots the director wrote inside it; and when the director
+    left the segment with one shot, the segment is cut in the middle, on
+    the same action, with a different framing - ten seconds without a cut
+    is a short drama that has forgotten to cut.
+    """
+    beats = _segment_beats(shot)
+    dur = float(shot.duration or 0.0)
+    if len(beats) >= 2:
+        return [f"At {at:06.3f}, the camera cuts to [Shot {i}]: a different "
+                f"framing of the same moment - a different size of shot and a "
+                f"different angle on the people - the action carrying on and "
+                f"the light unchanged."
+                for i, (at, _end, _what) in enumerate(beats[1:], 2)]
+    if len(beats) == 1 and dur > 6.5:
+        at = dur * 0.55
+        return [f"At {at:06.3f}, the camera cuts to [Shot 2]: a closer framing "
+                f"of the same moment, a different angle on the people, the "
+                f"action carrying on and the light unchanged."]
+    return []
 
 
 def _internal_cuts(shot) -> list[tuple[float, float]]:
@@ -533,6 +568,15 @@ def _shot_timeline(shot, lines) -> str:
 
 
 
+def _plan_for(ctx: Context, shot: Shot, sc) -> list[tuple[str, str, str]]:
+    """The pictures this shot is given, in the order they are given."""
+    from .refs import picture_plan
+    try:
+        return picture_plan(ctx, shot, sc)
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                    location_visual: str, lines: list[tuple[str, str]],
                    continuity: str = "") -> None:
@@ -587,7 +631,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             color_palette=ad.color_palette, mood=sc.mood,
             dialogue=dlg_text, dialogue_note=note, continuity=continuity,
             duration=_shot_seconds(shot),
-            references=_reference_jobs(shot),
+            references=_reference_jobs(shot, _plan_for(ctx, shot, sc)),
             timeline=_shot_timeline(shot, lines),
             segment_shots=_segment_shots_text(shot),
             constraints=H3_CONSTRAINTS)
@@ -625,15 +669,8 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             # was told to write the cuts and wrote one take in almost every
             # segment, so the cut is put in here, at the times the director
             # wrote into the action, in the form the model is told to use.
-            cuts = _internal_cuts(shot)
-            if desc and "[Shot 2]" not in desc and len(cuts) >= 2:
-                marks = []
-                for i, (at, _end) in enumerate(cuts[1:], 2):
-                    marks.append(
-                        f"At {at:06.3f}, the camera cuts to [Shot {i}]: a "
-                        f"different framing of the same moment - a different "
-                        f"size of shot and a different angle on the people - "
-                        f"the action carrying on and the light unchanged.")
+            marks = _cut_marks(shot)
+            if desc and "[Shot 2]" not in desc and marks:
                 desc = desc.rstrip() + "\n" + "\n".join(marks)
         if desc:
             if ctx.cfg.comfyui.native_audio:
