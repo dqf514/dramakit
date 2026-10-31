@@ -489,7 +489,7 @@ compose:
     outline: 2
     shadow: 0
     margin_v: 1                              # 距画面底部几个字高（1 = 紧贴底部上方一个文字高）
-    margin_v_pct: 12                         # 至少离底部这么高（%）：竖屏里底部是平台自己的按钮区
+    margin_v_pct: 2                         # 至少离底部这么高（%）：字幕贴在底边上方一个字高
     bold: true
     alignment: 2                            # 底部居中
     speaker_color: "&H0000E5FF"             # 角色名高亮色
