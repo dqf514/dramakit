@@ -442,9 +442,22 @@ H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模�
 
 **时间轴（必须与 {{duration}} 秒一致）**：
 {{timeline}}
+{% if segment_shots %}
+**这一段是几个镜头，逐个写出来**（下面的切点是定好的，不要改时间）：
+{{segment_shots}}
+integrated_multimodal_description 就要写成 [Shot 1] … [Shot 2] … [Shot 3] … 的样子，
+每个镜头写自己的景别、机位和内容，镜头之间用
+`At 00:0X.XXX, the camera cuts to [Shot N]` 开头（硬切，不是叠化）。
+**这一段不能写成一镜到底**
+{% endif %}
 
 要求：
 - integrated_multimodal_description 以 [Shot 1] 开头，描述这一镜的完整画面与运动
+- **这一段要写成几个镜头，不要写成一镜到底**（除非下面没有给镜头）：
+  [Shot 1] … At 00:0X.XXX, the camera cuts to … [Shot 2] … At 00:0Y.XXX, the camera
+  cuts to … [Shot 3] …
+  每个新镜头都要**换景别换机位**（近景↔特写↔过肩↔中景），
+  切点是硬切（cut），不是叠化；时间和上面给的切点对齐
 - 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词
 - **integrated_multimodal_description 的最后要原样带上这些约束**（写在描述的结尾）：
   {{constraints}}

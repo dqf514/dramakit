@@ -1,61 +1,68 @@
-"""The cuts the viewer cannot see.
+"""A segment has to be cut inside.
 
-The timeline says where the shots change, but if two shots in a row look
-almost the same, the change does not read as a cut - the viewer sees a
-jump instead. That is the difference between cutting fast and cutting
-well.
+A ten second take is a short drama that has forgotten to cut: the
+reference films cut twenty to forty times a minute, and the eye reads a
+long uncut take as dead.  The model was told to write the cuts, and wrote
+one continuous take in thirty-two segments out of thirty-three.
+
+So the description is asked for it more firmly, and the code checks: a
+segment that has a second beat gets a cut marker at that beat, in the
+form the model is told to use.
 """
 from pathlib import Path
 
-p = Path(r"E:\dramakit\qa.py")
-s = p.read_text(encoding="utf-8")
-
-old = """def check_rhythm(ctx, ep, tl, issues):"""
-new = '''def check_visible_cuts(ctx, ep, tl, issues):
-    """Every cut on the timeline has to be a cut the viewer can see."""
-    path = ctx.store.abs(ep.video_path) if ep.video_path else None
-    if not path or not path.exists():
-        return {}
-    from dramakit.ref_rhythm import analyse
-    p = analyse(Path(path))
-    if not p.get("shots"):
-        return {}
-    detected = p.get("cut_times") or []
-    invisible = []
-    for sc in tl.scenes:
-        bounds = [ts.start for ts in sc.shots[1:]]
-        for b in bounds:
-            if not any(abs(b - d) < 0.45 for d in detected):
-                invisible.append(round(b, 2))
-    if invisible:
-        issues.append(("rhythm", "invisible_cut", "-",
-                       f"{len(invisible)} 个切点观众看不出来（前后两个镜头太像）："
-                       + "、".join(f"{t:.1f}s" for t in invisible[:4])))
-    return {"cuts": len(detected), "invisible": len(invisible)}
+ROOT = Path(r"E:\\dramakit")
 
 
-def check_rhythm(ctx, ep, tl, issues):'''
-assert old in s, "rhythm 锚点没找到"
-s = s.replace(old, new, 1)
+def patch(path: str, pairs: list[tuple[str, str]]) -> None:
+    p = ROOT / path
+    s = p.read_text(encoding="utf-8")
+    for old, new in pairs:
+        if new in s and old not in s:
+            print(f"  {path}: 已经打过补丁了")
+            continue
+        assert old in s, f"{path}: 锚点没找到\n{old[:200]}"
+        s = s.replace(old, new, 1)
+    p.write_text(s, encoding="utf-8")
+    print(f"  {path}: 改好了")
 
-old = """        e["rhythm"] = check_rhythm(ctx, ep, tl, issues)"""
-new = """        e["rhythm"] = check_rhythm(ctx, ep, tl, issues)
-        e["visible_cuts"] = check_visible_cuts(ctx, ep, tl, issues)"""
-assert old in s, "rhythm 调用锚点没找到"
-s = s.replace(old, new, 1)
 
-p.write_text(s, encoding="utf-8")
+# --------------------------------------------------------------------------- #
+# 1. the prompt asks for it more firmly
+# --------------------------------------------------------------------------- #
+patch("dramakit/prompts/templates.py", [
+    ("""要求：
+- integrated_multimodal_description 以 [Shot 1] 开头，描述这一镜的完整画面与运动
+- 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词""",
+     """要求：
+- integrated_multimodal_description 以 [Shot 1] 开头，描述这一镜的完整画面与运动
+- **这一段要切成 2~4 个镜头，不要写成一镜到底**（除非这一段本来就只有一个动作）：
+  [Shot 1] … At 00:0X.XXX, the camera cuts to … [Shot 2] … At 00:0Y.XXX, the camera
+  cuts to … [Shot 3] …
+  每个新镜头都要**换景别换机位**（近景↔特写↔过肩↔中景），
+  切点是硬切（cut），不是叠化；时间和下面的时间轴对齐
+- 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词"""),
+])
 
-# the rhythm profile has to carry the cut times
-p = Path(r"E:\dramakit\dramakit\ref_rhythm.py")
-s = p.read_text(encoding="utf-8")
-old = """        "cuts_per_min": round(len(cuts) / max(dur / 60.0, 1e-6), 1),
-        "shot_lengths": lengths[:120],"""
-new = """        "cuts_per_min": round(len(cuts) / max(dur / 60.0, 1e-6), 1),
-        "cut_times": cuts[:120],
-        "shot_lengths": lengths[:120],"""
-assert old in s, "profile 锚点没找到"
-s = s.replace(old, new, 1)
-p.write_text(s, encoding="utf-8")
-
-print("可见切点检查已加")
+# --------------------------------------------------------------------------- #
+# 2. and the code makes sure the cut is there
+# --------------------------------------------------------------------------- #
+patch("dramakit/pipeline/promptgen.py", [
+    ("""            if add:
+                desc = desc.rstrip() + "\\n" + "\\n".join(add)
+        if desc:""",
+     """            if add:
+                desc = desc.rstrip() + "\\n" + "\\n".join(add)
+            # A segment that is cut inside is a short drama; a ten second
+            # take is a short drama that has forgotten to cut.  The model
+            # was told to write the cuts and wrote one take in almost every
+            # segment, so the cut is put in here, at the second beat, in the
+            # form the model is told to use.
+            if desc and "[Shot 2]" not in desc and len(windows) >= 2:
+                at = windows[1][0]
+                desc = desc.rstrip() + (
+                    f"\\nAt {at:06.3f}, the camera cuts to [Shot 2]: a closer "
+                    f"framing of the same moment, a different angle on the "
+                    f"people, the action carrying on and the light unchanged.")
+        if desc:"""),
+])

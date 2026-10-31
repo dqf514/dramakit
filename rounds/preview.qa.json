@@ -6,12 +6,12 @@
       "title": "重生婚礼当场改嫁",
       "picture": {
         "frames": 16,
-        "sharp_median": 12.6,
-        "sharp_min": 9.7,
-        "luma_spread": 6.7,
-        "src_luma_spread": 32.9,
-        "graded_luma_spread": 5.5,
-        "sat_spread": 2.4
+        "sharp_median": 12.7,
+        "sharp_min": 6.3,
+        "luma_spread": 11.4,
+        "src_luma_spread": 21.4,
+        "graded_luma_spread": 4.6,
+        "sat_spread": 4.5
       },
       "voice": {
         "lines": 38,
@@ -344,7 +344,7 @@
         "duration": 304.5,
         "timeline": 304.47,
         "lines": 38,
-        "onsets": 6
+        "onsets": 83
       },
       "story": {
         "mismatched": 0,
@@ -448,15 +448,15 @@
         "wrong": 0
       },
       "rhythm": {
-        "shots": 31,
-        "avg_shot": 9.82,
+        "shots": 33,
+        "avg_shot": 9.23,
         "median_shot": 9.43,
         "max_shot": 18.8,
         "opening_shot": 9.87,
-        "cuts_per_min": 5.9
+        "cuts_per_min": 6.3
       },
       "visible_cuts": {
-        "cuts": 30,
+        "cuts": 32,
         "invisible": 0
       },
       "hook": {
@@ -465,25 +465,30 @@
       },
       "mix": {
         "episode": {
-          "i": -16.0,
-          "lra": 13.9,
-          "pk": -2.5
+          "i": -17.3,
+          "lra": 14.4,
+          "pk": -1.5
         },
         "voice": {
-          "i": -70.0,
-          "lra": 0.0
+          "i": -9.3,
+          "lra": 13.9,
+          "pk": 4.0
         },
         "music": {
-          "i": -12.6,
+          "i": -25.7,
           "lra": 19.7,
-          "pk": -0.1
+          "pk": -13.0
         },
         "bed": {
           "i": -12.6,
           "lra": 19.7,
           "pk": -0.2
         },
-        "audibility": {},
+        "audibility": {
+          "speech_lufs": -11.4,
+          "bed_peak_lufs": -23.4,
+          "gap_lu": 12.0
+        },
         "black_segments": 0
       },
       "subtitle": {
@@ -529,12 +534,6 @@
       "kind": "voices_too_similar",
       "where": "-",
       "detail": "司仪 与 陆沉 声音太像（基频 220Hz vs 215Hz，差 2%，过零率差 1%），角色听感分不清"
-    },
-    {
-      "area": "completeness",
-      "kind": "silent_clips",
-      "where": "-",
-      "detail": "1/1 个片段没有人声，这些镜头的台词观众听不到"
     },
     {
       "area": "story",
@@ -759,6 +758,6 @@
       "detail": "这句没有对应的字幕：先娶你，再跟陆沉算。"
     }
   ],
-  "issue_count": 41,
+  "issue_count": 40,
   "verdict": "ISSUES"
 }
