@@ -35,12 +35,16 @@ def _dialogue_by_shot(ctx: Context, ep) -> dict[str, list[tuple[str, str, float]
             # it must not end up in the dialogue tags
             if tl_line.line.kind.value == "narration":
                 continue
+            # The line belongs to the shot that is on screen when it is
+            # said: the last one that has started.
+            owner = None
             for ts in tsc.shots:
-                if ts.start <= tl_line.start < ts.start + ts.duration:
-                    out.setdefault(ts.shot.id, []).append(
-                        (tl_line.line.speaker, tl_line.line.text,
-                         float(tl_line.line.duration or 0.0)))
-                    break
+                if ts.start - 0.02 <= tl_line.start < ts.start + ts.duration:
+                    owner = ts
+            if owner is not None:
+                out.setdefault(owner.shot.id, []).append(
+                    (tl_line.line.speaker, tl_line.line.text,
+                     float(tl_line.line.duration or 0.0)))
     return out
 
 

@@ -280,8 +280,12 @@ def build_timeline(ep: Episode, min_shot: float = 1.0,
                 d = shot_durs[i] * scale
                 if i == len(sc.shots) - 1:               # absorb rounding on last
                     d = scene_dur - (shot_cursor - cursor)
-                d = max(d, min_shot)
-                timed_shots.append(TimedShot(sh, round(shot_cursor, 3), round(d, 3)))
+                d = round(max(d, min_shot), 3)
+                # the cursor walks over the rounded duration, so the end of
+                # one shot is the start of the next: a line that belongs to
+                # a shot starts exactly when that shot starts, and it must
+                # not fall into the tail of the shot before it
+                timed_shots.append(TimedShot(sh, round(shot_cursor, 3), d))
                 shot_cursor += d
 
         # 4) place the spoken lines: inside the shot that carries them, one
