@@ -378,19 +378,16 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
 # The rules that stop the drift, written at the end of the prompt where the
 # official guide says they work best.
 H3_CONSTRAINTS = (
-    "保持人物身份、脸部、发型与服装和第一帧完全一致；"
-    "画面里不出现除第一帧已有文字以外的新文字，也不加字幕和水印；"
-    "不出现多余人物、多余肢体或畸形的手；"
-    "镜头不抖动、不跳帧、不慢动作；"
-    "不要切换到别的场景或别的机位；"
-    # the face is what drifts: over a long take the model slowly changes
-    # the bone structure, and the last frame is not the person any more
-    "全片人脸的五官比例不变：脸不变长、不变窄、不变胖，"
-    "眼睛和嘴的形状保持一致；"
-    "人物动作幅度小，只做细微的表情、眼神和呼吸，"
-    "不要大幅转身、走动或做剧烈动作；"
-    "镜头运动平缓，不要突然加速或甩动。"
-)
+    "Keep the identity of every person exactly as in the reference pictures - "
+    "the face, the hair and the clothes. No new text appears anywhere in the "
+    "frame, no captions and no watermark. No extra people, no extra limbs and "
+    "no malformed hands. The camera does not shake, the picture does not jump "
+    "and there is no slow motion. Do not cut to another room or to another "
+    "camera position inside this shot. The proportions of every face stay "
+    "the same: the face does not lengthen, narrow or fatten, and the shape of "
+    "the eyes and the mouth does not change. The people move little - small "
+    "expressions, glances and breaths, no large turns, no walking, no violent "
+    "action. The camera moves smoothly: no sudden acceleration and no whip.")
 
 
 def _shot_seconds(shot) -> float:

@@ -461,7 +461,7 @@ integrated_multimodal_description 就要写成 [Shot 1] … [Shot 2] … [Shot 3
   每个新镜头都要**换景别换机位**（近景↔特写↔过肩↔中景），
   切点是硬切（cut），不是叠化；时间和上面给的切点对齐
 - 本镜台词用 <d>[zh-CN]...</d> 包住，保留原样台词
-- **integrated_multimodal_description 的最后要原样带上这些约束**（写在描述的结尾）：
+- **the constraints go at the end of the description, unchanged (in English)**：
   {{constraints}}
 输出JSON：
 {"integrated_multimodal_description":"","overall_soundscape":"","non_diegetic_music":""}"""
