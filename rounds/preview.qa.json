@@ -1,0 +1,764 @@
+{
+  "project": "preview",
+  "episodes": [
+    {
+      "index": 1,
+      "title": "重生婚礼当场改嫁",
+      "picture": {
+        "frames": 16,
+        "sharp_median": 12.6,
+        "sharp_min": 9.7,
+        "luma_spread": 6.7,
+        "src_luma_spread": 32.9,
+        "graded_luma_spread": 5.5,
+        "sat_spread": 2.4
+      },
+      "voice": {
+        "lines": 38,
+        "rows": [
+          {
+            "id": "ln-592be097",
+            "speaker": "苏晚",
+            "emotion": "愤怒（咬牙）",
+            "duration": 2.69,
+            "chars": 10
+          },
+          {
+            "id": "ln-48ffef90",
+            "speaker": "司仪",
+            "emotion": "惊讶",
+            "duration": 1.82,
+            "chars": 6
+          },
+          {
+            "id": "ln-4b4c63a2",
+            "speaker": "陆沉",
+            "emotion": "紧张（压低声音）",
+            "duration": 2.06,
+            "chars": 8
+          },
+          {
+            "id": "ln-899a69a4",
+            "speaker": "陆沉",
+            "emotion": "得意",
+            "duration": 2.47,
+            "chars": 10
+          },
+          {
+            "id": "ln-36c34c43",
+            "speaker": "苏晚",
+            "emotion": "愤怒",
+            "duration": 1.92,
+            "chars": 7
+          },
+          {
+            "id": "ln-042e1c68",
+            "speaker": "林薇薇",
+            "emotion": "紧张",
+            "duration": 2.41,
+            "chars": 8
+          },
+          {
+            "id": "ln-b3cfb6cd",
+            "speaker": "苏晚",
+            "emotion": "愤怒",
+            "duration": 1.29,
+            "chars": 6
+          },
+          {
+            "id": "ln-13439e63",
+            "speaker": "林薇薇",
+            "emotion": "紧张（结巴）",
+            "duration": 2.67,
+            "chars": 8
+          },
+          {
+            "id": "ln-5c7efa68",
+            "speaker": "苏晚",
+            "emotion": "平静",
+            "duration": 2.8,
+            "chars": 11
+          },
+          {
+            "id": "ln-b9aefd2b",
+            "speaker": "苏晚",
+            "emotion": "冷静",
+            "duration": 2.45,
+            "chars": 10
+          },
+          {
+            "id": "ln-bd0626c8",
+            "speaker": "陆沉",
+            "emotion": "愤怒",
+            "duration": 1.91,
+            "chars": 7
+          },
+          {
+            "id": "ln-5b562020",
+            "speaker": "陆沉",
+            "emotion": "紧张",
+            "duration": 2.71,
+            "chars": 10
+          },
+          {
+            "id": "ln-81df7285",
+            "speaker": "苏父",
+            "emotion": "愤怒",
+            "duration": 2.33,
+            "chars": 9
+          },
+          {
+            "id": "ln-42e9b8c4",
+            "speaker": "苏母",
+            "emotion": "紧张",
+            "duration": 2.52,
+            "chars": 8
+          },
+          {
+            "id": "ln-309b6145",
+            "speaker": "苏晚",
+            "emotion": "冷静",
+            "duration": 2.52,
+            "chars": 9
+          },
+          {
+            "id": "ln-109950d9",
+            "speaker": "陆沉",
+            "emotion": "惊讶",
+            "duration": 2.05,
+            "chars": 8
+          },
+          {
+            "id": "ln-3c158ab0",
+            "speaker": "苏晚",
+            "emotion": "冷静",
+            "duration": 2.73,
+            "chars": 10
+          },
+          {
+            "id": "ln-b17842f9",
+            "speaker": "陆沉",
+            "emotion": "惊讶",
+            "duration": 2.13,
+            "chars": 8
+          },
+          {
+            "id": "ln-c6299b66",
+            "speaker": "苏晚",
+            "emotion": "得意",
+            "duration": 2.69,
+            "chars": 10
+          },
+          {
+            "id": "ln-eba67540",
+            "speaker": "林薇薇",
+            "emotion": "紧张",
+            "duration": 2.56,
+            "chars": 8
+          },
+          {
+            "id": "ln-22782310",
+            "speaker": "苏晚",
+            "emotion": "愤怒",
+            "duration": 1.71,
+            "chars": 7
+          },
+          {
+            "id": "ln-cd5621c9",
+            "speaker": "林薇薇",
+            "emotion": "紧张（结巴）",
+            "duration": 2.41,
+            "chars": 7
+          },
+          {
+            "id": "ln-81bd388e",
+            "speaker": "陆沉",
+            "emotion": "惊讶",
+            "duration": 2.09,
+            "chars": 9
+          },
+          {
+            "id": "ln-e7a33d63",
+            "speaker": "苏晚",
+            "emotion": "冷静",
+            "duration": 2.59,
+            "chars": 9
+          },
+          {
+            "id": "ln-8da6fbd9",
+            "speaker": "周砚川",
+            "emotion": "平静",
+            "duration": 2.32,
+            "chars": 9
+          },
+          {
+            "id": "ln-726c4096",
+            "speaker": "陆沉",
+            "emotion": "得意",
+            "duration": 1.92,
+            "chars": 7
+          },
+          {
+            "id": "ln-307a3b38",
+            "speaker": "苏晚",
+            "emotion": "坚定",
+            "duration": 2.05,
+            "chars": 7
+          },
+          {
+            "id": "ln-ce2fd379",
+            "speaker": "苏晚",
+            "emotion": "挑衅",
+            "duration": 3.12,
+            "chars": 12
+          },
+          {
+            "id": "ln-1a21ad5b",
+            "speaker": "周砚川",
+            "emotion": "平静",
+            "duration": 1.52,
+            "chars": 6
+          },
+          {
+            "id": "ln-1c3cee19",
+            "speaker": "苏晚",
+            "emotion": "惊讶",
+            "duration": 1.46,
+            "chars": 6
+          },
+          {
+            "id": "ln-6268a185",
+            "speaker": "周砚川",
+            "emotion": "笃定",
+            "duration": 1.22,
+            "chars": 4
+          },
+          {
+            "id": "ln-8176445f",
+            "speaker": "陆沉",
+            "emotion": "紧张",
+            "duration": 2.17,
+            "chars": 9
+          },
+          {
+            "id": "ln-26e78c10",
+            "speaker": "周砚川",
+            "emotion": "平静",
+            "duration": 2.12,
+            "chars": 8
+          },
+          {
+            "id": "ln-cf68dbcd",
+            "speaker": "陆沉",
+            "emotion": "惊讶",
+            "duration": 1.9,
+            "chars": 8
+          },
+          {
+            "id": "ln-d5c85756",
+            "speaker": "苏晚",
+            "emotion": "愤怒",
+            "duration": 1.22,
+            "chars": 5
+          },
+          {
+            "id": "ln-2c282cd3",
+            "speaker": "周砚川",
+            "emotion": "平静",
+            "duration": 2.12,
+            "chars": 8
+          },
+          {
+            "id": "ln-e7a0b70b",
+            "speaker": "苏晚",
+            "emotion": "疑惑",
+            "duration": 1.78,
+            "chars": 7
+          },
+          {
+            "id": "ln-3f6779f0",
+            "speaker": "周砚川",
+            "emotion": "得意",
+            "duration": 2.51,
+            "chars": 10
+          }
+        ],
+        "per_emotion": {
+          "愤怒（咬牙）": 2.69,
+          "惊讶": 1.91,
+          "紧张（压低声音）": 2.06,
+          "得意": 2.4,
+          "愤怒": 1.73,
+          "紧张": 2.47,
+          "紧张（结巴）": 2.54,
+          "平静": 2.18,
+          "冷静": 2.57,
+          "坚定": 2.05,
+          "挑衅": 3.12,
+          "笃定": 1.22,
+          "疑惑": 1.78
+        },
+        "voices": {
+          "苏晚": {
+            "pitch": 227.1,
+            "zcr": 1132.3,
+            "lines": 15
+          },
+          "司仪": {
+            "pitch": 220.1,
+            "zcr": 809.9,
+            "lines": 1
+          },
+          "陆沉": {
+            "pitch": 214.8,
+            "zcr": 818.6,
+            "lines": 10
+          },
+          "林薇薇": {
+            "pitch": 220.3,
+            "zcr": 1050.8,
+            "lines": 4
+          },
+          "苏父": {
+            "pitch": 199.2,
+            "zcr": 804.9,
+            "lines": 1
+          },
+          "苏母": {
+            "pitch": 227.5,
+            "zcr": 1206.3,
+            "lines": 1
+          },
+          "周砚川": {
+            "pitch": 111.9,
+            "zcr": 606.6,
+            "lines": 6
+          }
+        }
+      },
+      "review": {
+        "hits": 0,
+        "rows": []
+      },
+      "completeness": {
+        "duration": 304.5,
+        "timeline": 304.47,
+        "lines": 38,
+        "onsets": 6
+      },
+      "story": {
+        "mismatched": 0,
+        "off_screen_lines": 4,
+        "rows": [
+          {
+            "line": "ln-b9aefd2b",
+            "speaker": "苏晚",
+            "shot": "sh-051508b7",
+            "on_screen": [
+              "陆沉",
+              "林薇薇",
+              "苏父",
+              "苏母"
+            ],
+            "text": "这门婚事，我不要了。"
+          },
+          {
+            "line": "ln-5b562020",
+            "speaker": "陆沉",
+            "shot": "sh-2ac018a1",
+            "on_screen": [
+              "苏晚"
+            ],
+            "text": "回家再说，爸妈都在。"
+          },
+          {
+            "line": "ln-81df7285",
+            "speaker": "苏父",
+            "shot": "sh-2ac018a1",
+            "on_screen": [
+              "苏晚"
+            ],
+            "text": "苏晚！你太过分了！"
+          },
+          {
+            "line": "ln-8da6fbd9",
+            "speaker": "周砚川",
+            "shot": "sh-49fa5d40",
+            "on_screen": [
+              "陆沉"
+            ],
+            "text": "这场婚礼，谁做主？"
+          }
+        ]
+      },
+      "line_order": {
+        "scenes_out_of_order": 0
+      },
+      "frozen": {
+        "short": 0,
+        "rows": []
+      },
+      "sync": {
+        "off_cut": 0,
+        "rows": []
+      },
+      "pacing": {
+        "average": 9.23,
+        "long": 0,
+        "rows": []
+      },
+      "framing": {
+        "same_size": 0,
+        "opens": 0
+      },
+      "prompt_line": {
+        "missing": 3,
+        "rows": [
+          {
+            "shot": "sh-c3f5e9b5",
+            "lines": [
+              "我替你答——我愿意。"
+            ],
+            "tagged": false,
+            "same_as_picture": false
+          },
+          {
+            "shot": "sh-8c246f16",
+            "lines": [
+              "苏晚！你太过分了！"
+            ],
+            "tagged": false,
+            "same_as_picture": false
+          },
+          {
+            "shot": "sh-fe5ae2ae",
+            "lines": [
+              "你在替他求情？"
+            ],
+            "tagged": true,
+            "same_as_picture": false
+          }
+        ]
+      },
+      "line_stretch": {
+        "stretched": 0,
+        "rows": []
+      },
+      "shot_shape": {
+        "wrong": 0
+      },
+      "rhythm": {
+        "shots": 31,
+        "avg_shot": 9.82,
+        "median_shot": 9.43,
+        "max_shot": 18.8,
+        "opening_shot": 9.87,
+        "cuts_per_min": 5.9
+      },
+      "visible_cuts": {
+        "cuts": 30,
+        "invisible": 0
+      },
+      "hook": {
+        "first_line_at": 0.0,
+        "first_line": "陆沉！这婚换个人结！"
+      },
+      "mix": {
+        "episode": {
+          "i": -16.0,
+          "lra": 13.9,
+          "pk": -2.5
+        },
+        "voice": {
+          "i": -70.0,
+          "lra": 0.0
+        },
+        "music": {
+          "i": -12.6,
+          "lra": 19.7,
+          "pk": -0.1
+        },
+        "bed": {
+          "i": -12.6,
+          "lra": 19.7,
+          "pk": -0.2
+        },
+        "audibility": {},
+        "black_segments": 0
+      },
+      "subtitle": {
+        "cues": 38,
+        "styles": [
+          "Default",
+          "Speaker",
+          "Narration"
+        ],
+        "max_rows": 1
+      },
+      "subtitle_place": {
+        "margin_v": 230,
+        "height": 1920
+      },
+      "nle": {
+        "spine": 33,
+        "lanes": [
+          "Dialogue",
+          "Music"
+        ],
+        "missing_media": 0,
+        "spine_gaps": 0,
+        "spine_length": 304.47
+      }
+    }
+  ],
+  "issues": [
+    {
+      "area": "voice",
+      "kind": "voices_too_similar",
+      "where": "-",
+      "detail": "苏晚 与 林薇薇 声音太像（基频 227Hz vs 220Hz，差 3%，过零率差 7%），角色听感分不清"
+    },
+    {
+      "area": "voice",
+      "kind": "voices_too_similar",
+      "where": "-",
+      "detail": "苏晚 与 苏母 声音太像（基频 227Hz vs 228Hz，差 0%，过零率差 6%），角色听感分不清"
+    },
+    {
+      "area": "voice",
+      "kind": "voices_too_similar",
+      "where": "-",
+      "detail": "司仪 与 陆沉 声音太像（基频 220Hz vs 215Hz，差 2%，过零率差 1%），角色听感分不清"
+    },
+    {
+      "area": "completeness",
+      "kind": "silent_clips",
+      "where": "-",
+      "detail": "1/1 个片段没有人声，这些镜头的台词观众听不到"
+    },
+    {
+      "area": "story",
+      "kind": "prompt_without_line",
+      "where": "-",
+      "detail": "3 个镜头的提示词里没有它承载的台词（其中 2 个连台词标签都没有，0 个直接用了出图提示词），模型会把动作当旁白念出来"
+    },
+    {
+      "area": "rhythm",
+      "kind": "hook_too_late",
+      "where": "-",
+      "detail": "开场第一个镜头 9.87s，钩子来得太晚"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-48ffef90",
+      "detail": "这句没有对应的字幕：苏晚，你……"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-4b4c63a2",
+      "detail": "这句没有对应的字幕：晚晚，你闹什么？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-36c34c43",
+      "detail": "这句没有对应的字幕：谁让你替我答？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-042e1c68",
+      "detail": "这句没有对应的字幕：晚晚，别吓大家。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-b3cfb6cd",
+      "detail": "这句没有对应的字幕：你就盼我嫁？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-5c7efa68",
+      "detail": "这句没有对应的字幕：抱歉，耽误大家吃饭了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-b9aefd2b",
+      "detail": "这句没有对应的字幕：这门婚事，我不要了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-bd0626c8",
+      "detail": "这句没有对应的字幕：苏晚，你别闹！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-5b562020",
+      "detail": "这句没有对应的字幕：回家再说，爸妈都在。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-81df7285",
+      "detail": "这句没有对应的字幕：苏晚！你太过分了！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-42e9b8c4",
+      "detail": "这句没有对应的字幕：老头子，冷静点！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-309b6145",
+      "detail": "这句没有对应的字幕：你妈在老家打麻将。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-109950d9",
+      "detail": "这句没有对应的字幕：她、她怎么会……"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-3c158ab0",
+      "detail": "这句没有对应的字幕：你爸上月因嫖娼被抓。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-b17842f9",
+      "detail": "这句没有对应的字幕：你、你怎么知道？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-c6299b66",
+      "detail": "这句没有对应的字幕：你们的底牌，我清楚。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-eba67540",
+      "detail": "这句没有对应的字幕：晚晚，别再说了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-22782310",
+      "detail": "这句没有对应的字幕：你在替他求情？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-cd5621c9",
+      "detail": "这句没有对应的字幕：我、我没有……"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-81bd388e",
+      "detail": "这句没有对应的字幕：周总，您怎么来了？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-e7a33d63",
+      "detail": "这句没有对应的字幕：陆沉，你顶头上司。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-8da6fbd9",
+      "detail": "这句没有对应的字幕：这场婚礼，谁做主？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-726c4096",
+      "detail": "这句没有对应的字幕：当然是我做主。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-307a3b38",
+      "detail": "这句没有对应的字幕：不，现在换了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-ce2fd379",
+      "detail": "这句没有对应的字幕：周先生，缺个夫人气他吗？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-1a21ad5b",
+      "detail": "这句没有对应的字幕：我不娶工具。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-1c3cee19",
+      "detail": "这句没有对应的字幕：那您要什么？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-6268a185",
+      "detail": "这句没有对应的字幕：我要你。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-8176445f",
+      "detail": "这句没有对应的字幕：周总，别听她胡说！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-26e78c10",
+      "detail": "这句没有对应的字幕：这场婚，我接了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-cf68dbcd",
+      "detail": "这句没有对应的字幕：晚晚！你疯了？！"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-d5c85756",
+      "detail": "这句没有对应的字幕：你才疯了。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-2c282cd3",
+      "detail": "这句没有对应的字幕：苏小姐，嫁给我。"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-e7a0b70b",
+      "detail": "这句没有对应的字幕：你为什么帮我？"
+    },
+    {
+      "area": "subtitle",
+      "kind": "cue_missing_for_line",
+      "where": "ln-3f6779f0",
+      "detail": "这句没有对应的字幕：先娶你，再跟陆沉算。"
+    }
+  ],
+  "issue_count": 41,
+  "verdict": "ISSUES"
+}
