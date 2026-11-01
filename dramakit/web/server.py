@@ -268,8 +268,14 @@ def _make_handler(state: State):
                 return self._json(self._api_nodes_sync(body))
             if path == "/api/reindex":
                 return self._json(self._api_reindex(body))
+            if path == "/api/upload":
+                return self._json(self._api_upload(body))
             if path == "/api/new":
                 return self._json(self._api_new(body))
+            if path == "/api/catalog":
+                return self._json(self._api_catalog(body))
+            if path == "/api/chapters/choose":
+                return self._json(self._api_chapters_choose(body))
             if path == "/api/config/llm":
                 return self._json(self._api_config_llm_save(body))
             if path == "/api/config/models":
@@ -641,6 +647,76 @@ def _make_handler(state: State):
 
             jid = state.start_job("reindex", _job)
             return {"ok": True, "job": jid}
+
+        def _api_upload(self, body: dict) -> dict:
+            """The browser's file, into the project's source folder.
+
+            The body carries the name and the text: a browser cannot write
+            to the machine's disk, and the pipeline reads from the disk.
+            """
+            name = (body.get("name") or "").strip()
+            text = body.get("text") or ""
+            slug = (body.get("project") or "").strip()
+            if not text:
+                return {"ok": False, "error": "文件是空的"}
+            if slug:
+                store = state.open_store(slug)
+                if not store:
+                    return {"ok": False, "error": "项目不存在"}
+            else:
+                name = name or "新项目"
+                store = ProjectStore.create(state.projects_root, name)
+            src_dir = store.root / "source"
+            src_dir.mkdir(parents=True, exist_ok=True)
+            fname = Path(name or "novel.txt").name
+            if not fname.lower().endswith((".txt", ".md")):
+                fname += ".txt"
+            f = src_dir / fname
+            f.write_text(text, encoding="utf-8")
+            store.load()
+            proj = store.load()
+            proj.meta.source_file = str(f)
+            store.save(proj)
+            # and cut the book straight away, so the console can show the
+            # table of contents and the user can pick the chapters
+            info = {}
+            try:
+                from ..pipeline.catalog import run as catalog_run
+                from ..pipeline.base import Context
+                cfg = state.cfg
+                info = {"catalog": catalog_run(Context(cfg, store), str(f))}
+            except Exception as e:  # noqa: BLE001
+                info = {"catalog_error": str(e)[:300]}
+            return {"ok": True, "project": store.root.name,
+                    "path": str(f), "chars": len(text), **info}
+
+        def _api_chapters_choose(self, body: dict) -> dict:
+            """The chapters the drama is made from, and how many episodes."""
+            store = state.open_store(body.get("project", ""))
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            proj = store.load()
+            chosen = body.get("chosen")
+            if chosen is not None:
+                proj.meta.chosen_chapters = [int(x) for x in chosen]
+            want = body.get("episodes_wanted")
+            if want:
+                proj.meta.episodes_wanted = int(want)
+            store.save(proj)
+            return {"ok": True, "chosen": proj.meta.chosen_chapters,
+                    "episodes_wanted": proj.meta.episodes_wanted}
+
+        def _api_catalog(self, body: dict) -> dict:
+            """The table of contents of a project, and its chosen chapters."""
+            store = state.open_store(body.get("project", ""))
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            proj = store.load()
+            return {"ok": True,
+                    "volumes": proj.meta.volumes,
+                    "chapters": [c.model_dump() for c in proj.meta.chapters],
+                    "chosen": proj.meta.chosen_chapters,
+                    "episodes_wanted": proj.meta.episodes_wanted}
 
         def _api_new(self, body: dict) -> dict:
             name = (body.get("name") or "").strip()

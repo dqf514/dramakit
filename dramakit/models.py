@@ -243,12 +243,27 @@ class SubtitleCue(BaseModel):
 # --------------------------------------------------------------------------- #
 # Project root
 # --------------------------------------------------------------------------- #
+class Chapter(BaseModel):
+    """One chapter of the book, as the console lists it."""
+    volume: str = ""
+    index: int = 0
+    title: str = ""
+    chars: int = 0
+    file: str = ""
+
+
 class ProjectMeta(BaseModel):
     name: str
     source_file: str = ""
     title: str = ""
     author: str = ""
     synopsis: str = ""
+    volumes: list[str] = []
+    chapters: list[Chapter] = []
+    chapter_pattern: str = ""
+    volume_pattern: str = ""
+    chosen_chapters: list[int] = []
+    episodes_wanted: int = 0
     created_at: str = ""
     updated_at: str = ""
 

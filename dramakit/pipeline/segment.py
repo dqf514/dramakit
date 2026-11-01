@@ -61,7 +61,24 @@ def run(ctx: Context) -> dict:
         ctx.log.info("segment: 已完成，%d 集", len(ctx.project.episodes))
         return {"skipped": True}
 
-    text = ctx.store.cleaned_text_path().read_text(encoding="utf-8")
+    # the chapters the user picked, cut into episodes; the whole book is
+    # only what the pick says it is
+    chosen = list(ctx.project.meta.chosen_chapters or [])
+    chapters_meta = ctx.project.meta.chapters or []
+    if chosen and chapters_meta:
+        blocks = []
+        for c in chapters_meta:
+            if c.index not in chosen:
+                continue
+            f = ctx.store.root / c.file if c.file else None
+            if f and f.exists():
+                blocks.append(f.read_text(encoding="utf-8"))
+        text = "\n\n".join(blocks) if blocks else \
+            ctx.store.cleaned_text_path().read_text(encoding="utf-8")
+        ctx.log.info("segment: 用了选中的 %d 个章节（%d 字）",
+                     len(chosen), len(text))
+    else:
+        text = ctx.store.cleaned_text_path().read_text(encoding="utf-8")
     chapters = json.loads(ctx.store.chapters_path().read_text(encoding="utf-8")) \
         if ctx.store.chapters_path().exists() else []
 
