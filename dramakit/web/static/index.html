@@ -679,7 +679,7 @@ function renderProjects(){
       pct=d.total?Math.round(d.done/d.total*100):0;
     }
     return `<div class="proj ${p.slug===S.current?"on":""}" data-slug="${esc(p.slug)}">
-      <div class="pn">${esc(p.title)}</div>
+      <div class="pn">${esc(p.title)}<span class="mini" title="删除项目" style="float:right;cursor:pointer;opacity:.5;margin-left:6px" onclick="event.stopPropagation();deleteProject('${esc(p.slug)}')">×</span></div>
       <div class="pm">${esc(p.genre||"")} · ${p.episodes}集 · ${p.shots}镜${isCur?" · "+pct+"%":""}</div>
     </div>`;
   }).join("");
@@ -2381,6 +2381,28 @@ async function chooseChapters(){
   toast("已选 "+chosen.length+" 章，按 "+want+" 集生成","",2000);
   await postJSON("/api/run",{project:slug,stages:["segment","script","storyboard"]});
   toast("剧本与分镜开始…","",2600);
+}
+</script>
+
+
+<script>
+// delete a project: say what it takes away, and ask twice
+async function deleteProject(slug){
+  const p = (S.projects||[]).find(x=>x.slug===slug);
+  const who = (p && p.title) || slug;
+  const what = p ? ((p.episodes||0)+" 集、"+(p.shots||0)+" 个镜头、"+(p.characters||0)+" 个角色") : "";
+  if(!confirm("确定删除项目「"+who+"」？\n\n里面是："+what+"\n\n删除后会先移到 projects/_trash/，不会立即销毁。")) return;
+  const typed = prompt("再输入项目名「"+who+"」确认删除：");
+  if(typed===null) return;
+  if(typed.trim() !== who && typed.trim() !== slug){
+    toast("名字对不上，没有删除","",2600); return;
+  }
+  const r = await postJSON("/api/projects/delete",{project:slug});
+  if(!r || !r.ok){ toast((r&&r.error)||"删除失败","",2600); return; }
+  toast("已移到 projects/_trash/","",2600);
+  S.projects = (S.projects||[]).filter(x=>x.slug!==slug);
+  renderProjects();
+  if(S.current===slug){ S.current = ""; S.detail = null; }
 }
 </script>
 
