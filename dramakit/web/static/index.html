@@ -1430,8 +1430,9 @@ function workProgressHtml(){
   const ms=stageElapsed();
   const strip=STAGES.map((x,i)=>{
     const v=stageState(x);
-    const mark=v==="done"?"●":v==="running"?"◐":"○";
-    const col=v==="done"?"var(--go2)":v==="running"?"var(--confirm)":"var(--fg3)";
+    const mark=v==="done"?"●":v==="running"?"◐":v==="interrupted"?"◑":"○";
+    const col=v==="done"?"var(--go2)":v==="running"?"var(--confirm)"
+             :v==="interrupted"?"var(--warn)":"var(--fg3)";
     return `<span style="color:${col}" title="${esc(STAGE_HINT[x]||STAGE_ZH[x])}">${mark} ${i+1} ${esc(STAGE_ZH[x])}</span>`;
   }).join("");
   let item="", bar="";
@@ -1453,6 +1454,8 @@ function workProgressHtml(){
       ${item}
       <span style="flex:1"></span>
       ${ms==null?"":`<span class="mini muted">已运行 ${fmtDur(ms)}</span>`}
+      <button class="btn ghost" id="stopRunBtn" onclick="stopRun()"
+              title="当前这一步的调用结束后停下（约 1 分钟内），已完成的保留">停止</button>
     </div>
     ${hint?`<div class="muted" style="font-size:11.5px;margin-top:6px">${esc(hint)}</div>`:""}
     ${bar}
@@ -1612,7 +1615,10 @@ function renderWorkbench(){
 }
 
 function badge(st){
-  const m={done:["done","完成"],running:["run","进行"],failed:["fail","失败"],pending:["","待办"],skipped:["","跳过"]};
+  const m={done:["done","完成"],running:["run","进行"],failed:["fail","失败"],
+           pending:["","待办"],skipped:["","跳过"],
+           // a refusal, not a fault: the work was not bad, it was stopped
+           interrupted:["fail","已中断"]};
   const x=m[st]||["",st||""];
   return `<span class="badge ${x[0]}">${esc(x[1])}</span>`;
 }
@@ -2985,6 +2991,28 @@ function renderLightbox(){
         <button class="btn" ${i>=imgs.length-1?"disabled":""} onclick="event.stopPropagation();lightboxStep(1)">下一张 →</button>
       </div>
     </div></div>`;
+}
+</script>
+
+<script>
+// ---------- stop a run ----------
+// The pipeline asks whether to continue before each stage and before each
+// episode, so this takes effect at the next item rather than at the end of
+// the batch - which is the only reason to have a button at all.
+async function stopRun(){
+  const btn=document.getElementById("stopRunBtn");
+  if(btn){ btn.disabled=true; btn.textContent="正在停…"; }
+  const r=await postJSON("/api/jobs/stop",{});
+  if(!r||!r.ok){
+    if(btn){ btn.disabled=false; btn.textContent="停止"; }
+    toast((r&&r.error)||"停不下来","err",4000);
+    return;
+  }
+  toast("已请求停止：当前这一步的调用结束后停下（约 1 分钟内），"
+        "已完成的保留","",5000);
+  // the panel keeps polling; the stage will show as interrupted when the
+  // run has actually let go
+  setTimeout(()=>{ updateProgressPanel(); }, 2500);
 }
 </script>
 </body>

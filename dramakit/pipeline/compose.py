@@ -425,6 +425,7 @@ def run(ctx: Context) -> dict:
         raise RuntimeError("未找到 ffmpeg/ffprobe，请先安装并加入 PATH")
     made = 0
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "compose") and ep.video_path and ctx.store.abs(ep.video_path).exists():
             continue
         if ep.compose_blocked:

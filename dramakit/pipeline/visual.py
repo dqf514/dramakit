@@ -468,6 +468,7 @@ def _gen_scores(ctx: Context) -> int:
         return 0
     jobs = []
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         for tscene in ctx.timeline(ep).scenes:
             jobs.append((ep, tscene.scene, tscene.duration))
     if not jobs:
@@ -577,10 +578,12 @@ def run(ctx: Context) -> dict:
     # to that length instead of a fixed one
     durations: dict[str, float] = {}
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         for ts in ctx.timeline(ep).shots:
             durations[ts.shot.id] = ts.duration
     jobs = []
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "visual"):
             continue
         for sc in ep.scenes:
@@ -670,6 +673,7 @@ def run(ctx: Context) -> dict:
     ctx.save()
 
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         if all(sh.status == Status.DONE for sc in ep.scenes for sh in sc.shots) \
                 and ep.total_shots > 0:
             ctx.mark(ep, "visual", Status.DONE)

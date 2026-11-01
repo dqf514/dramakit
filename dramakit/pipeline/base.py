@@ -17,6 +17,10 @@ from ..config import Config
 from ..models import (Episode, Line, Project, Scene, Season, Shot, Status,
                       is_narration)
 from ..project import ProjectStore
+class RunStopped(Exception):
+    """Raised when a run is asked to stop. Not a fault - a refusal."""
+
+
 from ..providers import Providers
 from ..utils.text import estimate_reading_seconds
 
@@ -357,10 +361,44 @@ class Context:
         self.providers = providers or Providers(cfg, store.root)
         self.project: Project = store.load()
         self.log: logging.Logger = logging.getLogger("dramakit")
-        # the season being made.  Every stage works on this season's
-        # chapters and episodes only - a long book is produced a season at
-        # a time, and a rerun of season 3 must not touch season 1.
-        self.season_index: int = self.project.current_season
+        # set when someone asks the run to stop. Stages that loop over
+        # many episodes or many calls ask between items, so a stop lands
+        # in seconds rather than at the end of the batch.
+        self._stop = None
+        # The season being made, if a run is making one. Zero means none:
+        # a plain run is not scoped to a season, and filtering its episodes
+        # by the next season number - which is what current_season is - would
+        # leave it with nothing to do while reporting success.
+        self.season_index: int = 0
+        self.season_scoped: bool = False
+
+    def bind_stop(self, event) -> None:
+        """Hand the run the thing that can stop it.
+
+        The providers are told too: a stage that makes one long model call
+        has nothing to check between items, and only the client making the
+        call can let go of it early.
+        """
+        self._stop = event
+        try:
+            self.providers.bind_stop(event)
+        except AttributeError:  # a stub provider in a test
+            pass
+
+    @property
+    def stopped(self) -> bool:
+        return bool(self._stop is not None and self._stop.is_set())
+
+    def check_stop(self) -> None:
+        """Raise if someone asked the run to stop.
+
+        Stages call this between the items that cost time - an episode, a
+        shot, an API call - so that asking to stop takes effect now rather
+        than after the batch. A stop is not a failure, so it raises its
+        own error and the runner records it as interrupted.
+        """
+        if self.stopped:
+            raise RunStopped()
 
     def save(self) -> None:
         self.store.save(self.project)
@@ -372,9 +410,11 @@ class Context:
         return self.project.season(self.season_index)
 
     def use_season(self, index: int) -> None:
+        """Work on one season: its chapters, its episodes, its looks."""
         """Point this run at a season.  Older seasons are opened read-mostly:
         their episodes stay, only this season's are reworked."""
         self.season_index = index
+        self.season_scoped = bool(index)
 
     def season_chapters(self) -> list[int]:
         """The chapter indices this season is made from."""
@@ -383,6 +423,10 @@ class Context:
 
     def seed_season(self, chapters: list[int]) -> "Season":
         """Create this season if it does not exist yet, claiming chapters."""
+        # A stage asking to build a season but not pointed at one means
+        # the next season: that is what the book is waiting for.
+        if not self.season_index:
+            self.use_season(self.project.current_season)
         s = self.season
         if s is None:
             s = Season(index=self.season_index, chapters=list(chapters))
@@ -408,7 +452,7 @@ class Context:
         voices, their timing.  A whole-project run sees everything.
         """
         eps = self.project.episodes
-        if self.season_index:
+        if self.season_scoped and self.season_index:
             eps = [e for e in eps if getattr(e, "season", 1) == self.season_index]
         only = self.cfg.pipeline.only_episodes
         if not only:

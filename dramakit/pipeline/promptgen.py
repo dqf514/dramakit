@@ -762,6 +762,7 @@ def run(ctx: Context) -> dict:
     # the LLM round trips are the slowest part of this stage
     workers = max(1, int(ctx.cfg.llm.concurrency or 1))
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         dlg_map = _dialogue_by_shot(ctx, ep)
         jobs = []
         for sc in ep.scenes:

@@ -29,6 +29,10 @@ class Status(str, enum.Enum):
     DONE = "done"
     FAILED = "failed"
     SKIPPED = "skipped"
+    # a run that was asked to stop, or that a restarting process left
+    # behind. Not a fault: the stage did not fail, it was interrupted -
+    # and saying so is what lets a resume begin at the right place.
+    INTERRUPTED = "interrupted"
 
 
 class LineKind(str, enum.Enum):

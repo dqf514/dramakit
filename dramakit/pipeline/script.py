@@ -27,6 +27,7 @@ def run(ctx: Context) -> dict:
     genre = ctx.project.art_direction.genre
     done = 0
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "script") and ep.scenes:
             continue
         block = ctx.store.abs(ep.source_path).read_text(encoding="utf-8") \

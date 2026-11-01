@@ -12,7 +12,7 @@ from ..seasons import complete_season
 from . import (analyze, character, compose, ingest, lipsync, music_stage,
                precheck, promptgen, qc, script, segment, storyboard, subtitle,
                visual, voice)
-from .base import Context
+from .base import Context, RunStopped
 
 log = logging.getLogger("dramakit.runner")
 
@@ -99,6 +99,16 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
     season_obj = ctx.season
 
     for name in stages:
+        # Ask before starting anything new. A stage that was already asked
+        # to stop raises inside its own loops; this is the other half, so
+        # a stop between stages does not begin the next one.
+        if ctx.stopped:
+            log.info("── 已停止，未开始 [%s] ──", name)
+            ctx.project.stage_status[name] = Status.INTERRUPTED
+            if season_obj is not None:
+                season_obj.stage_status[name] = Status.INTERRUPTED
+            results[name] = {"interrupted": True}
+            break
         if name not in cfg.pipeline.stages_enabled and stages == cfg.pipeline.stages_enabled:
             continue
         log.info("── 阶段 [%s] 开始 ──", name)
@@ -120,6 +130,17 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                 season_obj.stage_status[name] = Status.DONE
             ctx.save()
             log.info("── 阶段 [%s] 完成: %s ──", name, res)
+        except RunStopped:
+            # a refusal, not a fault: whatever the stage finished stays
+            # finished, and the stage is marked interrupted so the next
+            # run knows to begin here rather than at the start
+            ctx.project.stage_status[name] = Status.INTERRUPTED
+            if season_obj is not None:
+                season_obj.stage_status[name] = Status.INTERRUPTED
+            ctx.save()
+            log.info("── 阶段 [%s] 已停止 ──", name)
+            results[name] = {"interrupted": True}
+            break
         except Exception as e:  # noqa: BLE001
             ctx.project.stage_status[name] = Status.FAILED
             if season_obj is not None:
@@ -138,9 +159,13 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
 
     # the season is finished when every stage it ran came out clean
     if season_obj is not None:
-        done = all(season_obj.stage_status.get(n) == Status.DONE
-                   for n in stages if n in season_obj.stage_status)
-        season_obj.status = Status.DONE if done else Status.FAILED
+        vals = [season_obj.stage_status.get(n) for n in stages
+                if n in season_obj.stage_status]
+        if any(v == Status.INTERRUPTED for v in vals):
+            season_obj.status = Status.INTERRUPTED
+        else:
+            done = all(v == Status.DONE for v in vals)
+            season_obj.status = Status.DONE if done else Status.FAILED
         ctx.save()
     # Closing a season off is what makes the next one able to start where
     # this one stopped: the chapters it turned into episodes, and a digest

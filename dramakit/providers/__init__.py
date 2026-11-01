@@ -31,6 +31,9 @@ class Providers:
         self._tts: Optional[BaseTTS] = None
         self._visual: Optional[BaseImageVideo] = None
         self._music: Optional[BaseMusic] = None
+        # every client is told when a run is asked to stop, so a long
+        # model call lets go at once instead of at its end
+        self._stop = None
 
     @property
     def llm(self) -> BaseLLM:
@@ -60,6 +63,13 @@ class Providers:
             self._music = build_music(self.cfg.music, self.root)
         return self._music
 
+    def bind_stop(self, event) -> None:
+        """Tell every client, present and future, that a stop can happen."""
+        self._stop = event
+        for client in [self._llm, *self._llm_roles.values()]:
+            if client is not None:
+                client.stop_event = event
+
     def llm_for(self, stage: str) -> BaseLLM:
         """LLM for a pipeline stage, resolved through the model registry.
 
@@ -69,7 +79,9 @@ class Providers:
         """
         if self.cfg.models.entries:
             if stage not in self._llm_roles:
-                self._llm_roles[stage] = build_llm(self.cfg.resolve_llm(stage))
+                client = build_llm(self.cfg.resolve_llm(stage))
+                client.stop_event = self._stop
+                self._llm_roles[stage] = client
             return self._llm_roles[stage]
         base = self.llm
         if isinstance(base, OpenAICompatLLM):

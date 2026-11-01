@@ -50,6 +50,7 @@ def run(ctx: Context) -> dict:
     dmin, dmax = (cfg.shot_duration_range + [2.0, 5.0])[:2]
     done = 0
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "storyboard"):
             continue
         if not ep.scenes:

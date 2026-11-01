@@ -27,7 +27,9 @@ log = logging.getLogger("dramakit.ai.actions")
 ACTION_SPEC: dict[str, dict] = {
     "run_pipeline": {
         "title": "运行流水线",
-        "params": ["project", "episodes", "stages", "overrides"],
+        # chapters are the input, episodes the output: naming
+        # chapters is how a run is told to make part of a book
+        "params": ["project", "chapters", "episodes", "stages", "overrides"],
         "needs_confirm": True,       # spends GPU/API time
         "destructive": False,
     },
@@ -124,6 +126,25 @@ def _build(kind: str, raw: dict, projects: list[str]) -> Action:
     if proj:
         params["project"] = proj
 
+    if "chapters" in allowed:
+        raw_ch = raw.get("chapters") or []
+        if isinstance(raw_ch, (int, str)):
+            raw_ch = [raw_ch]
+        # an instruction says "1-10" far more often than it lists ten
+        # numbers, so a range is expanded here rather than left to the
+        # model to enumerate
+        expanded: list[int] = []
+        for c in raw_ch:
+            piece = str(c).strip()
+            if "-" in piece:
+                lo, _, hi = piece.partition("-")
+                if lo.strip().isdigit() and hi.strip().isdigit():
+                    lo_n, hi_n = int(lo), int(hi)
+                    expanded.extend(range(min(lo_n, hi_n), max(lo_n, hi_n) + 1))
+                    continue
+            if piece.isdigit():
+                expanded.append(int(piece))
+        params["chapters"] = sorted(set(expanded))
     if "episodes" in allowed:
         eps = raw.get("episodes") or []
         if isinstance(eps, (int, str)):
@@ -149,9 +170,13 @@ def _build(kind: str, raw: dict, projects: list[str]) -> Action:
 def _default_confirm(kind: str, params: dict) -> str:
     p = params
     if kind == "run_pipeline":
+        chs = (f"第{min(p['chapters'])}~{max(p['chapters'])}章（共{len(p['chapters'])}章）"
+               if p.get("chapters") else "全部章节")
         eps = f"第{','.join(map(str, p.get('episodes', [])))}集" if p.get("episodes") else "全部集"
         st = ",".join(p.get("stages", [])) or "全部阶段"
-        return f"将对《{p.get('project','')}》的{eps}运行阶段：{st}。会消耗算力/API额度。"
+        scope = chs if p.get("chapters") else eps
+        return (f"将对《{p.get('project','')}》的{scope}运行阶段：{st}。"
+                f"会消耗算力/API额度")
     if kind == "regenerate_shot":
         return f"将重做《{p.get('project','')}》分镜 {p.get('shot_ref','')}。"
     if kind == "set_art_style":
@@ -176,6 +201,7 @@ def parse(brain, instruction: str, *, projects: Optional[list[str]] = None,
         "你是短剧工厂的动作解析器。把用户的中文指令映射成一个白名单动作，只输出 JSON。\n"
         "可选动作:\n" + "\n".join(spec_lines) + "\n"
         "输出格式: {\"kind\": \"动作名\", \"project\": \"项目名或空\", "
+        "\"chapters\": [chapter numbers or a range like 1-10], "
         "\"episodes\": [集号数字], \"stages\": [\"voice\",\"subtitle\"...], "
         "\"overrides\": {可选的 art_direction/compose 覆盖，如 {\"style\":\"卡通风\"}}, "
         "\"query\": \"检索词\", \"shot_ref\": \"分镜id\", \"with_ai\": true, "
@@ -203,7 +229,7 @@ def parse(brain, instruction: str, *, projects: Optional[list[str]] = None,
 # Execution (only called on an approved plan)
 # --------------------------------------------------------------------------- #
 def execute(action: Action, cfg: Config, *, projects_root="projects",
-            catalog=None) -> dict:
+            catalog=None, stop_event=None) -> dict:
     """Run an approved action. Returns a JSON-serializable result dict."""
     kind = action.kind
     p = action.params
@@ -217,7 +243,7 @@ def execute(action: Action, cfg: Config, *, projects_root="projects",
         return {"ok": False, "error": f"找不到项目: {p.get('project','')}"}
 
     if kind == "run_pipeline":
-        return _do_run(cfg, store, p)
+        return _do_run(cfg, store, p, stop_event=stop_event)
     if kind == "regenerate_shot":
         return _do_regen_shot(cfg, store, p)
     if kind == "set_art_style":
@@ -249,7 +275,8 @@ def _apply_overrides(cfg: Config, overrides: dict) -> None:
             setattr(cfg.compose, k, comp[k])
 
 
-def _do_run(cfg: Config, store: ProjectStore, p: dict) -> dict:
+def _do_run(cfg: Config, store: ProjectStore, p: dict,
+            stop_event=None) -> dict:
     _apply_overrides(cfg, p.get("overrides", {}))
     # art-direction overrides live on the project, not cfg
     art_over = (p.get("overrides", {}) or {}).get("art_direction") or {}
@@ -259,11 +286,20 @@ def _do_run(cfg: Config, store: ProjectStore, p: dict) -> dict:
             if hasattr(proj.art_direction, k):
                 setattr(proj.art_direction, k, v)
         store.save(proj)
+    # the chapters this run is made from. segment reads this and cuts
+    # nothing else, so it is the only thing that limits a partial book
+    if p.get("chapters"):
+        proj = store.load()
+        proj.meta.chosen_chapters = sorted({int(c) for c in p["chapters"]})
+        store.save(proj)
     if p.get("episodes"):
         cfg.pipeline.only_episodes = p["episodes"]
     stages = p.get("stages") or cfg.pipeline.stages_enabled
     season = p.get("season")
     ctx = make_context(cfg, store)
+    if stop_event is not None:
+        # the pipeline asks this between stages and between episodes
+        ctx.bind_stop(stop_event)
     res = run_pipeline(ctx, stages=stages, season=season)
     return {"ok": True, "project": store.root.name, "stages": stages,
             "season": season, "results": {k: str(v)[:200] for k, v in res.items()}}

@@ -29,6 +29,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from ..catalog import Catalog, open_catalog
 from ..config import Config
+from ..models import Status
 from ..project import ProjectStore
 
 log = logging.getLogger("dramakit.web")
@@ -80,35 +81,107 @@ class State:
     # -- background jobs --
     def start_job(self, kind: str, fn) -> str:
         jid = uuid.uuid4().hex[:12]
+        # The event is what makes a run stoppable: the thread runs the
+        # pipeline, the pipeline asks between stages and between episodes,
+        # and this is the thing they ask. Without it a plan that turns out
+        # wrong has to run to the end.
+        stop = threading.Event()
         self.jobs[jid] = {"id": jid, "kind": kind, "status": "running",
-                          "result": None, "error": None}
+                          "result": None, "error": None, "stop": stop}
 
         def _wrap():
             try:
-                res = fn()
+                res = fn(stop)
                 self.jobs[jid].update(status="done", result=res)
             except Exception as e:  # noqa: BLE001
                 log.error("job %s failed: %s", jid, traceback.format_exc())
                 self.jobs[jid].update(status="error", error=str(e)[:500])
+            finally:
+                # the event is not JSON; the record is handed to the page
+                self.jobs[jid].pop("stop", None)
 
         threading.Thread(target=_wrap, daemon=True).start()
         return jid
 
+    def stop_job(self, jid: str) -> bool:
+        """Ask a running job to stop. False when there is no such job."""
+        j = self.jobs.get(jid)
+        if not j:
+            return False
+        ev = j.get("stop")
+        if ev is None:
+            return False
+        ev.set()
+        return True
+
+    def settle_leftover_runs(self) -> int:
+        """Mark the stages a dead process left claiming to run.
+
+        A process that dies cannot write its own epitaph: the stage it was
+        working on stays running for ever, and the console spins over work
+        nobody is doing - which is worse than no progress, because it looks
+        like progress. The next boot finds them and says what happened.
+        """
+        settled = 0
+        for slug in self.project_slugs():
+            store = self.open_store(slug)
+            if store is None:
+                continue
+            try:
+                proj = store.load()
+            except Exception:  # noqa: BLE001
+                continue
+            changed = False
+            for stage, st in list(proj.stage_status.items()):
+                if st == Status.RUNNING:
+                    proj.stage_status[stage] = Status.INTERRUPTED
+                    changed = True
+                    settled += 1
+            for ep in proj.episodes:
+                for stage, st in list((ep.stage_status or {}).items()):
+                    if st == Status.RUNNING:
+                        ep.stage_status[stage] = Status.INTERRUPTED
+                        changed = True
+                        settled += 1
+            for season in (proj.seasons or []):
+                for stage, st in list((season.stage_status or {}).items()):
+                    if st == Status.RUNNING:
+                        season.stage_status[stage] = Status.INTERRUPTED
+                        changed = True
+                        settled += 1
+            if changed:
+                try:
+                    store.save(proj)
+                    log.warning("项目 %s: 有阶段停在 running，已标记为中断", slug)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("项目 %s: 清理结果写不进去（%s），跳过", slug, e)
+        if settled:
+            log.warning("启动清理：%d 个阶段原为 running，已标记为中断", settled)
+        return settled
+
+    def running_jobs(self) -> list[str]:
+        return [k for k, v in self.jobs.items() if v.get("status") == "running"]
+
     def start_job_progress(self, kind: str, fn) -> str:
         """Like start_job, but fn gets a report() callable for live progress."""
         jid = uuid.uuid4().hex[:12]
+        stop = threading.Event()
         self.jobs[jid] = {"id": jid, "kind": kind, "status": "running",
-                          "result": None, "error": None, "progress": {}}
+                          "result": None, "error": None, "progress": {},
+                          "stop": stop}
 
         def _wrap():
             def report(**kw):
                 self.jobs[jid]["progress"].update(kw)
             try:
-                res = fn(report)
+                res = fn(report, stop)
                 self.jobs[jid].update(status="done", result=res)
             except Exception as e:  # noqa: BLE001
                 log.error("job %s failed: %s", jid, traceback.format_exc())
                 self.jobs[jid].update(status="error", error=str(e)[:500])
+            finally:
+                # the event is not JSON; the record is handed to the page
+                self.jobs[jid].pop("stop", None)
 
         threading.Thread(target=_wrap, daemon=True).start()
         return jid
@@ -271,6 +344,8 @@ def _make_handler(state: State):
                 return self._json(self._api_ai_run(body))
             if path == "/api/run":
                 return self._json(self._api_run(body))
+            if path == "/api/jobs/stop":
+                return self._json(self._api_jobs_stop(body))
             if path == "/api/nodes/sync":
                 return self._json(self._api_nodes_sync(body))
             if path == "/api/reindex":
@@ -557,7 +632,7 @@ def _make_handler(state: State):
             # Probe does network I/O (ComfyUI ping, edge-tts voice list) that can
             # take >10s when a server is unreachable, so run it as a job and let
             # the browser poll — never block the request thread.
-            def _job():
+            def _job(stop=None):
                 from ..ai import autoconfig
                 rep = autoconfig.probe(state.cfg)
                 return {"probe": _slim_probe(rep), "brain": state.brain().probe()}
@@ -587,7 +662,7 @@ def _make_handler(state: State):
             extra = body.get("extra", "")
             write = bool(body.get("write", True))
 
-            def _job():
+            def _job(stop=None):
                 out_path = state.config_path or Path("config/default.yaml")
                 res = autoconfig.setup(state.cfg, intent, genre_preset=preset,
                                        chips=chips, extra=extra, out_path=out_path)
@@ -628,10 +703,11 @@ def _make_handler(state: State):
                         r["media_url"] = _media_url(r["project"], r["path"])
                 return {"ok": True, "result": res}
 
-            def _job():
+            def _job(stop):
                 res = actions.execute(act, state.cfg,
                                       projects_root=state.projects_root,
-                                      catalog=state.catalog)
+                                      catalog=state.catalog,
+                                      stop_event=stop)
                 # keep the catalog fresh after mutations
                 slug = act.params.get("project")
                 if slug and state.cfg.ai.auto_tag:
@@ -647,10 +723,35 @@ def _make_handler(state: State):
             jid = state.start_job(kind, _job)
             return {"ok": True, "job": jid}
 
+        def _api_jobs_stop(self, body: dict) -> dict:
+            """Ask a running job to stop.
+
+            The pipeline asks before each stage and before each episode,
+            so this takes effect at the next item rather than at the end -
+            which is the whole point of asking.
+            """
+            jid = str(body.get("job") or "").strip()
+            if not jid:
+                # no id: stop whatever is running. A console that can only
+                # stop a job it knows the id of cannot stop anything,
+                # because the page that submitted it may be closed.
+                running = state.running_jobs()
+                if not running:
+                    return {"ok": False, "error": "没有正在运行的任务"}
+                stopped = [j for j in running if state.stop_job(j)]
+                return {"ok": True, "jobs": stopped,
+                        "message": f"已请求停止 {len(stopped)} 个任务"}
+            if state.stop_job(jid):
+                return {"ok": True, "jobs": [jid], "message": "已请求停止"}
+            return {"ok": False, "error": "没有这个任务，或它已经结束"}
+
         def _api_run(self, body: dict) -> dict:
             from ..ai import actions
             params = {
                 "project": body.get("project", ""),
+                # chapters are the input: naming them is how a run is told
+                # to make part of a book rather than all of it
+                "chapters": body.get("chapters", []),
                 "episodes": body.get("episodes", []),
                 "stages": body.get("stages", []),
                 "overrides": body.get("overrides", {}),
@@ -658,10 +759,11 @@ def _make_handler(state: State):
             }
             act = actions._build("run_pipeline", params, state.project_slugs())
 
-            def _job():
+            def _job(stop):
                 res = actions.execute(act, state.cfg,
                                       projects_root=state.projects_root,
-                                      catalog=state.catalog)
+                                      catalog=state.catalog,
+                                      stop_event=stop)
                 slug = act.params.get("project")
                 if slug and state.cfg.ai.auto_tag:
                     store = state.open_store(slug)
@@ -693,7 +795,7 @@ def _make_handler(state: State):
                         "error": "该节点未配置传输方式(comfyui.nodes[].transfer)"}
             report = SyncReport(node=spec.name)
 
-            def _job(report_progress):
+            def _job(report_progress, stop):
                 health = check_node(spec, refs)
                 if not health.online:
                     raise RuntimeError("节点离线，无法同步")
@@ -715,7 +817,7 @@ def _make_handler(state: State):
             if not store:
                 return {"ok": False, "error": f"no such project: {slug}"}
 
-            def _job():
+            def _job(stop=None):
                 brain = state.brain()
                 use_ai = with_ai and state.cfg.ai.enabled and brain.probe()["main"]["ok"]
                 return state.catalog.reindex_project(
@@ -935,7 +1037,7 @@ def _make_handler(state: State):
                 return {"ok": False, "error": "mode 必须是 image/video/all"}
             slug = store.root.name
 
-            def _job():
+            def _job(stop=None):
                 res = visual_stage.regen_shot(store, state.cfg, ep_index, shot_id, mode=mode)
                 if res.get("ok") and mode in ("video", "all"):
                     with state.lock:
@@ -989,7 +1091,6 @@ def _make_handler(state: State):
             return {"ok": True, "line": line.model_dump()}
 
         def _api_character_update(self, body: dict) -> dict:
-            from ..models import Status
             store = state.open_store(body.get("project", ""))
             if not store:
                 return {"ok": False, "error": "项目不存在"}
@@ -1036,7 +1137,7 @@ def _make_handler(state: State):
             views = body.get("views") or None
             reset = _as_bool(body.get("reset_prompts"))
 
-            def _job():
+            def _job(stop=None):
                 res = character_stage.generate_for_one(store, state.cfg, name, views)
                 if res.get("ok") and reset:
                     from ..models import Status
@@ -1602,6 +1703,13 @@ def serve(cfg: Config, *, config_path: Optional[Path] = None,
     projects_root = Path(cfg.pipeline.output_dir).resolve()
     projects_root.mkdir(parents=True, exist_ok=True)
     state = State(cfg, config_path, projects_root)
+    # a process that died could not say so; settle what it left running
+    # before anyone reads the console and believes it
+    try:
+        state.settle_leftover_runs()
+    except Exception as e:  # noqa: BLE001
+        # a failed tidy-up must never be why the console will not start
+        log.warning("启动时清理残留状态失败（%s），已跳过", e)
 
     handler = _make_handler(state)
     httpd = ThreadingHTTPServer((host, port), handler)

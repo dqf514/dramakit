@@ -154,6 +154,18 @@ def run(ctx: Context) -> dict:
 
     ctx.project.episodes = episodes
 
+    # Remember which chapters are now episodes, and which season they made.
+    # The whole-book path records it too: without this a second run cannot
+    # tell what was already made, and there is nothing to resume from -
+    # which is how the same book gets cut twice.
+    if not todo and blocks_src:
+        cut = sorted({b["index"] for b in blocks_src if b.get("index")})
+        if cut:
+            done = set(meta.segmented_chapters or [])
+            done.update(cut)
+            meta.segmented_chapters = sorted(done)
+            ctx.log.info("segment: 整本书切分，记录 %d 章", len(cut))
+
     # remember which chapters are now episodes, and which season they made
     if todo:
         already = set(meta.segmented_chapters or [])

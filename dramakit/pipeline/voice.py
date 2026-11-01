@@ -200,6 +200,7 @@ def run(ctx: Context) -> dict:
         cast_voices(ctx, list(ctx.project.characters))
     lines = []
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "voice"):
             continue
         for sc in ep.scenes:
@@ -228,6 +229,7 @@ def run(ctx: Context) -> dict:
     ctx.save()
 
     for ep in ctx.target_episodes():
+        ctx.check_stop()   # 一集一问：停止能在下一集生效
         all_lines = [l for sc in ep.scenes for l in sc.lines]
         # narration lines are intentionally skipped -> not a failure
         if all_lines and all(l.status in (Status.DONE, Status.SKIPPED) for l in all_lines):

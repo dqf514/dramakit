@@ -11,6 +11,7 @@ Implemented directly on httpx so no vendor SDK is required.
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -56,6 +57,10 @@ def _shape_error(data: object, budget: int, exc: Optional[Exception]) -> str:
 class OpenAICompatLLM(BaseLLM):
     def __init__(self, cfg: LLMConfig):
         self.cfg = cfg
+        # Set when a run is running and someone asks it to stop. It is
+        # consulted between attempts and around the request itself, so a
+        # call that would hold a stage for a minute lets go at once.
+        self.stop_event = None
         self.base_url = cfg.base_url.rstrip("/")
         if not self.base_url.endswith("/v1"):
             # tolerate both ".../v1" and ".../v1/" and bare host
@@ -68,7 +73,39 @@ class OpenAICompatLLM(BaseLLM):
     def _model(self, override: Optional[str]) -> str:
         return override or self.cfg.model
 
+    def _abandoned(self) -> bool:
+        """Raise if the run was asked to stop while this call was in flight."""
+        from ..pipeline.base import RunStopped
+        if self.stop_event is not None and self.stop_event.is_set():
+            raise RunStopped()
+
     def _post(self, payload: dict) -> dict:
+        # A stop must land now, not when the request happens to finish.
+        # The call is issued in a worker and the caller waits on the event
+        # as well as the answer; the request carries on at the provider
+        # and is paid for either way, but the run moves on immediately.
+        if self.stop_event is not None:
+            box: dict = {}
+
+            def _work():
+                try:
+                    box["res"] = self._post_retrying(payload)
+                except BaseException as e:  # noqa: BLE001
+                    box["err"] = e
+
+            th = threading.Thread(target=_work, daemon=True)
+            th.start()
+            while th.is_alive():
+                if self.stop_event.wait(0.25):
+                    self._abandoned()
+                th.join(0.25)
+            self._abandoned()
+            if "err" in box:
+                raise box["err"]
+            return box["res"]
+        return self._post_retrying(payload)
+
+    def _post_retrying(self, payload: dict) -> dict:
         attempts = max(1, self.cfg.max_retries + 1)
         for attempt in Retrying(
             retry=retry_if_exception_type((RetryableLLMError, httpx.TransportError)),
@@ -77,6 +114,7 @@ class OpenAICompatLLM(BaseLLM):
             reraise=True,
         ):
             with attempt:
+                self._abandoned()
                 return self._post_once(payload)
 
     def _post_once(self, payload: dict) -> dict:
