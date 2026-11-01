@@ -22,6 +22,8 @@ from urllib.parse import quote
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import shutil
+import time
 from typing import Optional
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -268,6 +270,8 @@ def _make_handler(state: State):
                 return self._json(self._api_nodes_sync(body))
             if path == "/api/reindex":
                 return self._json(self._api_reindex(body))
+            if path == "/api/projects/delete":
+                return self._json(self._api_projects_delete(body))
             if path == "/api/upload":
                 return self._json(self._api_upload(body))
             if path == "/api/new":
@@ -705,6 +709,35 @@ def _make_handler(state: State):
             store.save(proj)
             return {"ok": True, "chosen": proj.meta.chosen_chapters,
                     "episodes_wanted": proj.meta.episodes_wanted}
+
+        def _api_projects_delete(self, body: dict) -> dict:
+            """A project, out of the way.
+
+            It goes to projects/_trash first: a project that took hours of
+            rendering should not vanish on a mis-click, and the trash is
+            there to be emptied by hand when the user is sure.
+            """
+            slug = (body.get("project") or "").strip()
+            if not slug:
+                return {"ok": False, "error": "project required"}
+            store = state.open_store(slug)
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            root = store.root.resolve()
+            base = state.projects_root.resolve()
+            if root.parent != base:
+                return {"ok": False, "error": "项目不在项目目录里"}
+            trash = base / "_trash"
+            trash.mkdir(exist_ok=True)
+            dest = trash / root.name
+            if dest.exists():
+                dest = trash / f"{root.name}_{int(time.time())}"
+            shutil.move(str(root), str(dest))
+            try:
+                state.catalog.reindex_project(ProjectStore(base), with_ai=False)
+            except Exception:  # noqa: BLE001
+                pass
+            return {"ok": True, "project": slug, "moved_to": str(dest)}
 
         def _api_catalog(self, body: dict) -> dict:
             """The table of contents of a project, and its chosen chapters."""

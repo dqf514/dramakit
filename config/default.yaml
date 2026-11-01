@@ -527,6 +527,6 @@ pipeline:
     - compose
   resume: true                              # 跳过已完成节点，可断点续跑
   stop_after: null                          # 例: storyboard —— 只跑到分镜就停
-  only_episodes: [1]                         # 例: [1,2,3] 只处理这几集
+  only_episodes: []                       # 空=全部集都做                         # 例: [1,2,3] 只处理这几集
   fail_fast: false                          # true=任一阶段报错即中止
   verbose: true
