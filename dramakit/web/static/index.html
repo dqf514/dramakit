@@ -1327,6 +1327,18 @@ function renderWorkbench(){
   const stageHtml=STAGES.map((s,i)=>`<span class="stg ${stageState(s)}" data-stage="${s}" title="点击去流水线重跑">
     <span class="dot ${stageState(s)==="done"?"ok":stageState(s)==="partial"?"warn":"na"}"></span>
     <span class="num">${i+1}</span> ${STAGE_ZH[s]}</span>`).join("");
+  const chapterHtml =
+    `<div class="card" id="work-chapters" style="display:none;margin-bottom:10px">
+       <div style="display:flex;align-items:center;gap:8px">
+         <b>章节目录</b>
+         <span class="muted" id="chapterHint" style="font-size:11.5px"></span>
+         <span style="flex:1"></span>
+         <input type="number" id="epWanted" value="1" min="1" max="50"
+                style="width:56px" title="生成几集">
+         <button class="btn go" onclick="chooseChapters()">按选中章节开始</button>
+       </div>
+       <div id="chapterList" style="max-height:320px;overflow:auto;margin-top:8px"></div>
+     </div>`;
   const epHtml=eps.map(ep=>`<div class="epcard" data-ep="${ep.index}">
       <div class="eh"><b>第${ep.index}集</b>${badge(ep.status)}<span style="flex:1"></span>
         <span class="muted" style="font-size:10.5px">${ep.scenes.length}场 · ${ep.scenes.reduce((a,s)=>a+s.shots.length,0)}镜</span></div>
@@ -1343,7 +1355,7 @@ function renderWorkbench(){
       </div>
     </div>`).join("");
 
-  box.innerHTML=`
+  box.innerHTML=`${chapterHtml}
     <div class="hero">
       <div class="cover">${firstCover?`<img src="${firstCover}">`:'<div class="empty" style="padding:0;height:100%;display:flex;align-items:center;justify-content:center">无封面</div>'}</div>
       <div class="hb">
