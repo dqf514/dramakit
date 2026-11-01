@@ -197,6 +197,11 @@ def _make_handler(state: State):
             if path.startswith("/api/projects/"):
                 slug = path[len("/api/projects/"):]
                 return self._json(self._api_project_detail(slug))
+            if path == "/api/seasons":
+                slug = (query.get("project") or [""])[0]
+                if not slug:
+                    return self._err("project required", 400)
+                return self._json(self._api_seasons(slug))
             if path == "/api/search":
                 q = (query.get("q") or [""])[0]
                 slug = (query.get("project") or [""])[0]
@@ -389,6 +394,70 @@ def _make_handler(state: State):
                 })
             out.sort(key=lambda p: p.get("updated_at") or "", reverse=True)
             return out
+
+        def _api_seasons(self, slug: str) -> dict:
+            """The production seasons of a project, newest last.
+
+            A long book is made a season at a time: each season is a full
+            pipeline run over its own chapters, and it carries its own
+            character looks. This hands the console the seasons, which
+            chapters and episodes each one owns, and how far the whole
+            book has got - so the next season can be picked from where
+            the last one stopped rather than from the beginning.
+            """
+            store = state.open_store(slug)
+            if not store:
+                return {"ok": False, "error": f"no such project: {slug}"}
+            proj = store.load()
+
+            def _sv(s):
+                return s.value if hasattr(s, "value") else str(s or "")
+
+            by_season: dict[int, dict] = {}
+            for ep in proj.episodes:
+                sec = getattr(ep, "season", 1) or 1
+                d = by_season.setdefault(sec, {"season": sec, "episodes": 0,
+                                               "first": None, "last": None,
+                                               "done": 0})
+                d["episodes"] += 1
+                d["first"] = ep.index if d["first"] is None else min(d["first"], ep.index)
+                d["last"] = ep.index if d["last"] is None else max(d["last"], ep.index)
+                if ep.status.value == "done":
+                    d["done"] += 1
+
+            seasons = []
+            for s in (proj.seasons or []):
+                d = by_season.get(s.index, {})
+                seasons.append({
+                    "index": s.index, "title": s.title,
+                    "chapters": list(s.chapters),
+                    "episode_range": list(s.episode_range),
+                    "episodes": d.get("episodes", 0),
+                    "done": d.get("done", 0),
+                    "status": _sv(s.status),
+                    "synopsis": s.synopsis,
+                    "stage_status": {k: _sv(v) for k, v in (s.stage_status or {}).items()},
+                    "character_looks": len(s.character_looks or {}),
+                })
+            # a season that produced episodes but has no Season record (made
+            # before seasons existed) still shows up, so nothing is hidden
+            known = {s["index"] for s in seasons}
+            for sec, d in sorted(by_season.items()):
+                if sec not in known:
+                    seasons.append({"index": sec, "title": "", "chapters": [],
+                                    "episode_range": [d["first"], d["last"]],
+                                    "episodes": d["episodes"], "done": d["done"],
+                                    "status": "done", "synopsis": "",
+                                    "stage_status": {}, "character_looks": 0})
+
+            done_ch = sorted(set(proj.meta.segmented_chapters or []))
+            all_ch = sorted(c.index for c in (proj.meta.chapters or []))
+            next_ch = (max(done_ch) + 1) if done_ch else (all_ch[0] if all_ch else 1)
+            return {"ok": True, "seasons": seasons,
+                    "current": proj.current_season,
+                    "chapters_total": len(all_ch),
+                    "chapters_done": len(done_ch),
+                    "next_chapter": next_ch}
 
         def _api_project_detail(self, slug: str) -> dict:
             store = state.open_store(slug)
@@ -585,6 +654,7 @@ def _make_handler(state: State):
                 "episodes": body.get("episodes", []),
                 "stages": body.get("stages", []),
                 "overrides": body.get("overrides", {}),
+                "season": body.get("season") or None,
             }
             act = actions._build("run_pipeline", params, state.project_slugs())
 

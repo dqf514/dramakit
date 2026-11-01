@@ -201,6 +201,11 @@ class Scene(BaseModel):
 class Episode(BaseModel):
     id: str
     index: int = 1
+    # which season this episode was made in.  A long book is produced a
+    # season at a time, and the season owns the character looks this
+    # episode was drawn with - so a rerun of a later season can never
+    # change how an earlier one looked.
+    season: int = 1
     title: str = ""
     logline: str = ""                         # 一句话剧情
     hook: str = ""                            # 结尾钩子/悬念
@@ -263,20 +268,77 @@ class ProjectMeta(BaseModel):
     chapter_pattern: str = ""
     volume_pattern: str = ""
     chosen_chapters: list[int] = []
-    # the chapters already cut into episodes.  A project is built a few
-    # chapters at a time, and without this the second batch would either be
-    # refused ("segment done") or wipe the first batch's episodes.  Picking
-    # chapters appends to chosen; running segment turns only the ones not
-    # yet segmented into new episodes, after the existing ones.
+    # which season a chapter was made in.  A long book is made a season at
+    # a time, and this is how the console knows that chapter 12 belongs to
+    # season 2 and not to whatever season is being made now.
+    chapter_season: dict[int, int] = {}
     segmented_chapters: list[int] = []
     episodes_wanted: int = 0
     created_at: str = ""
     updated_at: str = ""
 
 
+class Season(BaseModel):
+    """One production batch: the chapters it was made from, and its episodes.
+
+    A season is a full run of the pipeline - analyze through qc - over a
+    chosen slice of the book.  It keeps its own copy of the character and
+    prop looks, because a character can change across a long story and the
+    change has to be deliberate rather than a side effect of a rerun.
+    """
+    index: int = 1
+    title: str = ""
+    chapters: list[int] = Field(default_factory=list)   # the chapter indices
+    # the chapters this season actually turned into episodes.  These are
+    # not always the same as `chapters`: a run seeded with a batch that
+    # had already been cut has nothing new to do, and what it owns is what
+    # it already had.  The next season starts after these.
+    done_chapters: list[int] = Field(default_factory=list)
+    episode_range: list[int] = Field(default_factory=list)  # [first, last]
+    status: Status = Status.PENDING
+    stage_status: dict[str, Status] = Field(default_factory=dict)
+    # the looks this season was made with: name -> look dict
+    character_looks: dict[str, dict] = Field(default_factory=dict)
+    # where the story had got to when this season was made
+    synopsis: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class Canon(BaseModel):
+    """What carries across seasons: who these people are, and where we are.
+
+    The canon is what makes season 2 continuous with season 1.  analyze
+    reads it, so the new season knows the cast and how each has looked so
+    far, and can decide what has changed since - a character who grew up,
+    changed sides, or was scarred does not have to look the same as they
+    did ten chapters ago.
+    """
+    # name -> who they are (identity travels unchanged between seasons)
+    characters: dict[str, dict] = Field(default_factory=dict)
+    # name -> list of looks, oldest first, one per season that used them
+    character_looks: dict[str, list[dict]] = Field(default_factory=dict)
+    # name -> voice, kept so a character sounds the same in every season
+    voices: dict[str, str] = Field(default_factory=dict)
+    locations: list[dict] = Field(default_factory=list)
+    props: list[dict] = Field(default_factory=list)
+    art_direction: ArtDirection = Field(default_factory=ArtDirection)
+    # where the story left off, written at the end of each season
+    progress: str = ""
+    # chapter indices already made into episodes, across all seasons
+    done_chapters: list[int] = Field(default_factory=list)
+
+    def look_for(self, name: str, season: int) -> Optional[dict]:
+        """The look a character had in a given season, if any."""
+        looks = self.character_looks.get(name) or []
+        if 1 <= season <= len(looks):
+            return looks[season - 1]
+        return looks[-1] if looks else None
+
+
 class Project(BaseModel):
     """Persisted as project.json inside the project directory."""
-    schema_version: int = 1
+    schema_version: int = 2
     meta: ProjectMeta
     art_direction: ArtDirection = Field(default_factory=ArtDirection)
     characters: list[Character] = Field(default_factory=list)
@@ -284,6 +346,12 @@ class Project(BaseModel):
     props: list[Prop] = Field(default_factory=list)
     episodes: list[Episode] = Field(default_factory=list)
     stage_status: dict[str, Status] = Field(default_factory=dict)
+    # the production batches.  A long book is made a season at a time; each
+    # season is a full pipeline run over its own chapters, and carries its
+    # own copy of the character looks.
+    seasons: list[Season] = Field(default_factory=list)
+    # what carries across seasons: identity, voices, and how looks evolved
+    canon: Canon = Field(default_factory=Canon)
 
     def character(self, name: str) -> Optional[Character]:
         for c in self.characters:
@@ -296,6 +364,17 @@ class Project(BaseModel):
             if e.index == index:
                 return e
         return None
+
+    def season(self, index: int) -> Optional[Season]:
+        for s in self.seasons:
+            if s.index == index:
+                return s
+        return None
+
+    @property
+    def current_season(self) -> int:
+        """The season being made now: one past the last that exists."""
+        return (max((s.index for s in self.seasons), default=0) + 1)
 
     @property
     def total_shots(self) -> int:

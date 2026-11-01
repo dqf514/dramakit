@@ -1393,8 +1393,21 @@ function renderWorkbench(){
          <span class="mini muted" id="epWantedNote">集数由系统按时长自动分</span>
        </div>
        <button class="btn go" style="width:100%;margin-bottom:6px"
-               onclick="chooseChapters()">▶ 开始制作选中的章节</button>
+               onclick="startSeason()">开始新的一季</button>
        <div class="chap-body" id="chapterList"></div>
+     </div>`;
+  const seasonHtml =
+    `<div class="card" id="work-seasons" style="display:none">
+       <div style="display:flex;align-items:center;gap:8px">
+         <b>制作季</b>
+         <span class="muted" id="seasonHint" style="font-size:11.5px"></span>
+         <span style="flex:1"></span>
+         <span class="mini muted">每季完整跑一遍流水线</span>
+       </div>
+       <div id="seasonList" style="margin-top:8px"></div>
+       <div class="muted" style="font-size:11px;margin-top:8px">
+         选中章节后开始新的一季；已做过的章节不再重复，角色造型默认沿用。
+       </div>
      </div>`;
   const epHtml=eps.map(ep=>`<div class="epcard" data-ep="${ep.index}">
       <div class="eh"><b>第${ep.index}集</b>${badge(ep.status)}<span style="flex:1"></span>
@@ -1439,12 +1452,16 @@ function renderWorkbench(){
       ${runningProgressHtml()}
       <div class="muted" style="font-size:11px;margin-top:8px">阶段按顺序执行；画面/配音可单独重跑。点击阶段跳到流水线并勾选它。</div>
     </div>
+    ${seasonHtml}
     <h2 class="page" style="font-size:14px;margin:14px 0 8px">分集</h2>
     <div class="epgrid">${epHtml||'<div class="empty">还没有分集，先跑导入/分析</div>'}</div>
     </div>
     <div class="wb-rail">${chapterHtml}</div>
   </div>`;
-  if(S.current) loadChapters(S.current).catch(function(){});
+  if(S.current){
+    loadChapters(S.current).catch(function(){});
+    loadSeasons(S.current).catch(function(){});
+  }
 
   $$("#page-workbench .stg").forEach(x=>x.onclick=()=>{
     runSel=new Set([x.dataset.stage]); switchPage("pipeline");
@@ -2671,6 +2688,80 @@ function closeReader(){
   const root=document.getElementById("readerRoot");
   if(root) root.innerHTML="";
   document.removeEventListener("keydown", _rdKey);
+}
+</script>
+
+<script>
+// ---------- production seasons ----------
+// A long book is made a season at a time. This shows what each season
+// took and what it left, and starts a new one over the picked chapters.
+async function loadSeasons(slug){
+  const r = await getJSON("/api/seasons?project="+encodeURIComponent(slug));
+  const box = document.getElementById("seasonList");
+  if(!box) return;
+  if(!r || !r.ok){
+    box.innerHTML = '<div class="muted">读不到季记录</div>';
+    return;
+  }
+  window.__seasons = r.seasons || [];
+  window.__nextSeason = r.current || 1;
+  const card = document.getElementById("work-seasons");
+  if(card) card.style.display = "";
+  const hint = document.getElementById("seasonHint");
+  if(hint) hint.textContent = "已完成 " + (r.chapters_done||0) + " / " +
+      (r.chapters_total||0) + " 章 · 下一季从第 " + (r.next_chapter||1) + " 章起";
+  const rows = (window.__seasons||[]).map(se=>{
+    // what this season covered: the episodes it produced says more than
+    // the chapters it read, and a season made before seasons existed has
+    // only the episodes.
+    let span = "";
+    if(se.episode_range && se.episode_range.length===2){
+      span = "第" + se.episode_range[0] + "~" + se.episode_range[1] + "集";
+    } else if(se.chapters && se.chapters.length){
+      span = "第" + Math.min.apply(null,se.chapters) + "~" +
+             Math.max.apply(null,se.chapters) + "章";
+    } else {
+      span = "来路不明";
+    }
+    const st = se.status==="done" ? "完成" : (se.status==="failed" ? "失败" : "进行中");
+    const tone = se.status==="done" ? "var(--go2)"
+               : (se.status==="failed" ? "var(--danger)" : "var(--warn)");
+    return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;' +
+      'border-bottom:1px solid var(--line)">' +
+      '<b>第' + se.index + '季</b>' +
+      '<span class="mini" style="color:' + tone + '">' + st + '</span>' +
+      '<span class="mini muted">' + span + '</span>' +
+      '<span class="mini muted">' + (se.episodes||0) + ' 集</span>' +
+      (se.synopsis ? '<span class="mini muted" style="flex:1;overflow:hidden;' +
+        'text-overflow:ellipsis;white-space:nowrap">' + esc(se.synopsis) + '</span>'
+        : '<span style="flex:1"></span>') +
+      '</div>';
+  }).join("");
+  box.innerHTML = rows || '<div class="muted">还没有季，选中章节后开始第一季</div>';
+}
+
+// Start a season over whatever is picked. One season is one whole run of
+// the pipeline - analysis through the finished film - not three stages of
+// it, because a batch of chapters is a batch of episodes and half of one
+// is not an episode anyone can watch.
+async function startSeason(){
+  const slug = S.current;
+  if(!slug){ toast("先选一个项目","err"); return; }
+  const chosen = Array.from(_chapChosenSet());
+  if(!chosen.length){ toast("先勾选要做的章节","err"); return; }
+  const season = window.__nextSeason || 1;
+  const r = await postJSON("/api/chapters/choose",{project:slug,chosen:chosen});
+  if(!r || !r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
+  const run = await postJSON("/api/run",{project:slug,season:season,
+                                     stages:STAGES.slice()});
+  if(!run || !run.ok){ toast("启动失败："+esc((run&&run.error)||"未知错误"),"err"); return; }
+  toast("第" + season + "季开始，共 " + chosen.length + " 章","",2400);
+  pollJob(run.job, (res,j)=>{
+    if(!j) return;
+    if(j.status==="error") return;
+    toast("第" + season + "季完成","",3000);
+    selectProject(slug,true).then(()=>renderWorkbench());
+  });
 }
 </script>
 </body>

@@ -18,6 +18,7 @@ from ..config import Config
 from ..models import Character, Location, Status
 from ..project import ProjectStore
 from ..prompts import templates as T
+from ..seasons import LOOK_FIELDS, snapshot_look
 from .base import Context
 
 VIEW_TEXT = {
@@ -39,6 +40,38 @@ FLUX3_VIEW = {
     "three_quarter": "seen from a three-quarter angle, body slightly turned, standing at ease",
     "back": "seen from behind, back turned to the camera, standing at ease",
 }
+
+
+def _has_refs_on_disk(ctx: Context, c: Character) -> bool:
+    """True when this character already has reference pictures on disk."""
+    return any(ctx.store.abs(r).exists() for r in c.refs())
+
+
+def record_season_looks(ctx: Context, chars: list[Character]) -> None:
+    """Write this season's looks into the canon, for the seasons after it.
+
+    The canon is what lets season 3 know that 余飞 was already a tree by the
+    end of season 1, and what voice he has had the whole time. Identity and
+    voice are stored once and carried forward; the look is appended per
+    season, so the evolution is readable rather than lost.
+    """
+    canon = ctx.project.canon
+    season = ctx.season_index
+    for c in chars:
+        # identity + voice travel through unchanged
+        canon.characters[c.name] = {
+            "role": c.role, "gender": c.gender, "aliases": list(c.aliases),
+            "personality": c.personality, "locked": c.locked,
+        }
+        if c.voice_id:
+            canon.voices[c.name] = c.voice_id
+        looks = canon.character_looks.setdefault(c.name, [])
+        look = snapshot_look(c)
+        # one look per season; a rerun of the same season replaces its own
+        pos = season - 1 if season > 0 else len(looks)
+        while len(looks) <= pos:
+            looks.append({})
+        looks[pos] = look
 
 
 def _seed(name: str, view: str) -> int:
@@ -273,11 +306,25 @@ def _view_size(ctx: Context, view: str) -> tuple[int, int]:
 
 
 def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) -> int:
-    """Generate reference portraits for one character. Never raises."""
+    """Generate reference portraits for one character. Never raises.
+
+    The pictures go into this season's own folder, so a look that changed
+    in season 3 does not overwrite the face season 1 was drawn with - an
+    episode keeps the reference it was made with, for as long as anyone
+    wants to re-render it.
+
+    A locked character is skipped: a locked look is the user's decision
+    and its pictures were already made. Re-drawing it would hand back a
+    different face under a name that is supposed to be fixed.
+    """
     cfg = ctx.cfg.characters
+    season = ctx.season_index
     vis = ctx.providers.visual
     if vis is None:
         ctx.log.info("character: 未启用画面 provider，跳过 %s 的三视图", c.name)
+        return 0
+    if c.locked and _has_refs_on_disk(ctx, c):
+        ctx.log.info("character: %s 已锁定且参考图在，跳过重画", c.name)
         return 0
     if hasattr(vis, "ping") and not vis.ping():
         ctx.log.warning("character: ComfyUI 不可达，跳过 %s 的三视图", c.name)
@@ -290,7 +337,7 @@ def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) ->
     made = 0
     master = ""
     for view in views:
-        out = ctx.store.character_ref_path(c.name, view, "png")
+        out = ctx.store.character_ref_path(c.name, view, "png", season=season)
         try:
             # the first view is the master; the other views are made from
             # it, so the four panels are one person
@@ -504,34 +551,40 @@ def run(ctx: Context) -> dict:
     if not chars:
         ctx.log.warning("character: 还没有角色（先跑 analyze）")
         return {"characters": 0, "refs": 0}
+    season = ctx.season
+    season_done = bool(season and season.stage_status.get("character") == Status.DONE)
     anchors_ready = all(c.anchor_prompt or c.locked for c in chars)
     refs_ready = (not cfg.generate_refs) or all(
-        any(ctx.store.abs(r).exists() for r in c.refs()) for c in chars)
+        _has_refs_on_disk(ctx, c) for c in chars)
     locs_ready = (not cfg.generate_location_refs) or all(
         any(ctx.store.abs(r).exists() for r in l.ref_images)
         for l in ctx.project.locations)
     cast_ready = (not cfg.auto_cast) or all(c.voice_id for c in chars)
-    if ctx.project.stage_status.get("character") == Status.DONE and \
-            anchors_ready and refs_ready and locs_ready and cast_ready:
-        ctx.log.info("character: 已完成，跳过")
-        return {"skipped": True}
+    if season_done and anchors_ready and refs_ready and locs_ready and cast_ready:
+        ctx.log.info("character: 第%d季已完成，跳过", ctx.season_index)
+        return {"skipped": True, "season": ctx.season_index}
 
     anchors = build_anchors(ctx, chars)
     # the characters that would come out as copies are changed before the
-    # pictures are made, not after
-    anchors += differentiate_characters(ctx, chars)
+    # pictures are made, not after.  A locked character is left alone: a
+    # locked look is the user's decision, not the casting director's.
+    anchors += differentiate_characters(ctx, [c for c in chars if not c.locked])
     casted = cast_voices(ctx, chars)
     refs = 0
     if cfg.generate_refs:
         refs = sum(generate_refs(ctx, c) for c in chars)
     loc_refs = generate_location_refs(ctx) if cfg.generate_location_refs else 0
+    # this season's looks, written down for the seasons that follow
+    record_season_looks(ctx, chars)
     ctx.save()
     ctx.project.stage_status["character"] = Status.DONE
+    if season is not None:
+        season.stage_status["character"] = Status.DONE
     ctx.save()
-    ctx.log.info("character: %d 个角色，锚点补齐 %d，选角 %d，参考图 %d，场景参考图 %d",
-                 len(chars), anchors, casted, refs, loc_refs)
+    ctx.log.info("character: 第%d季 %d 个角色，锚点补齐 %d，选角 %d，参考图 %d，场景参考图 %d",
+                 ctx.season_index, len(chars), anchors, casted, refs, loc_refs)
     return {"characters": len(chars), "anchors": anchors, "cast": casted,
-            "refs": refs, "location_refs": loc_refs}
+            "refs": refs, "location_refs": loc_refs, "season": ctx.season_index}
 
 
 def generate_for_one(store: ProjectStore, cfg: Config, name: str,

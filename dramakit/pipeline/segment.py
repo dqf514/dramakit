@@ -5,15 +5,16 @@ how long the picked chapters take to read, divided by the target episode
 length, snapped to chapter boundaries where the chapters are big enough.
 A 3-minute chapter is one episode; a 30-minute chapter is six.
 
-A project is made a few chapters at a time, so segment appends.  The
-chapters already cut are remembered in meta.segmented_chapters, and this
-run only turns the remaining picked chapters into episodes - numbered
-after the ones that already exist, leaving their scenes, shots, prompts
-and rendered media exactly as they were.  Picking chapter 7 after
-chapters 1-6 gives you episode 8, not a new episode 1.
+A project is made one season at a time, so segment works on one season's
+chapters and appends to the episodes that already exist.  The chapters
+already cut are remembered in meta.segmented_chapters, and a run only
+turns the remaining picked chapters into episodes - numbered after the
+ones that already exist, leaving their scenes, shots, prompts and
+rendered media exactly as they were.  Picking chapter 7 after chapters
+1-6 gives you episode 8, not a new episode 1.
 
-Text is cut deterministically at sentence/paragraph boundaries; the LLM
-only writes each episode's title / logline / hook / recap.
+Each new episode is stamped with the season it was made in, so that a
+rerun of season 3 never rewrites season 1's episodes.
 """
 from __future__ import annotations
 
@@ -39,7 +40,6 @@ def _episode_count(total_chars: float, cfg, n_chapters: int) -> int:
 
 def _split_blocks(text: str, chapters: list[dict], n: int, cfg) -> list[str]:
     if cfg.respect_chapters and chapters and len(chapters) >= n:
-        # group chapters into n buckets as evenly as possible
         per = len(chapters) / n
         blocks = []
         for i in range(n):
@@ -82,6 +82,7 @@ def run(ctx: Context) -> dict:
     cfg = ctx.cfg.segment
     todo = _chapters_to_cut(ctx)
     meta = ctx.project.meta
+    season_idx = ctx.season_index
 
     # nothing new to cut, and the project already has episodes: done.
     if not todo and ctx.project.episodes:
@@ -89,15 +90,13 @@ def run(ctx: Context) -> dict:
         return {"skipped": True, "episodes": len(ctx.project.episodes)}
 
     if todo:
-        # only the new chapters become episodes; the old ones keep theirs
         parts = [_read_chapter(ctx, c) for c in todo]
         blocks_src = [{"body": b, "index": c.index}
                       for b, c in zip(parts, todo) if b.strip()]
         text = "\n\n".join(b["body"] for b in blocks_src)
-        ctx.log.info("segment: 新切 %d 个章节（%d 字），已有 %d 集",
-                     len(blocks_src), len(text), len(ctx.project.episodes))
+        ctx.log.info("segment: 第%d季 新切 %d 个章节（%d 字），已有 %d 集",
+                     season_idx, len(blocks_src), len(text), len(ctx.project.episodes))
     else:
-        # no chapter picking: the whole cleaned book, cut from scratch
         text = ctx.store.cleaned_text_path().read_text(encoding="utf-8")
         blocks_src = []
         chapters_json = ctx.store.chapters_path()
@@ -109,7 +108,6 @@ def run(ctx: Context) -> dict:
 
     n = _episode_count(len(text), cfg, len(blocks_src))
     if blocks_src and len(blocks_src) >= n:
-        # cut along chapter boundaries
         bodies = [b["body"] for b in blocks_src]
         chapters_for_split = [{"body": b} for b in bodies]
         new_blocks = _split_blocks(text, chapters_for_split, n, cfg)
@@ -128,7 +126,8 @@ def run(ctx: Context) -> dict:
         idx = first_index + j
         ctx.store.episode_source_path(idx).write_text(block, encoding="utf-8")
         ep = Episode(
-            id=f"ep{idx:03d}", index=idx, duration_target=cfg.episode_duration,
+            id=f"ep{idx:03d}", index=idx, season=season_idx,
+            duration_target=cfg.episode_duration,
             source_path=ctx.store.rel(ctx.store.episode_source_path(idx)),
         )
         try:
@@ -155,13 +154,24 @@ def run(ctx: Context) -> dict:
 
     ctx.project.episodes = episodes
 
-    # remember which chapters are now episodes, so the next batch appends
+    # remember which chapters are now episodes, and which season they made
     if todo:
         already = set(meta.segmented_chapters or [])
         already.update(c.index for c in todo)
         meta.segmented_chapters = sorted(already)
-        ctx.log.info("segment: 已记录切过的章节 %d 个", len(meta.segmented_chapters))
+        # the season owns the chapters it was made from
+        season = ctx.seed_season([c.index for c in todo])
+        season.episode_range = [first_index, first_index + total_new - 1]
+        ctx.mark_chapter_season([c.index for c in todo])
+        # canon: what has been made, across all seasons
+        ctx.project.canon.done_chapters = sorted(
+            set(ctx.project.canon.done_chapters or []) | set(meta.segmented_chapters))
+        ctx.log.info("segment: 第%d季 已记录切过的章节 %d 个",
+                     season_idx, len(meta.segmented_chapters))
 
     ctx.project.stage_status["segment"] = "done"
+    season = ctx.season
+    if season is not None:
+        season.stage_status["segment"] = "done"
     ctx.save()
-    return {"episodes": len(episodes), "new": total_new}
+    return {"episodes": len(episodes), "new": total_new, "season": season_idx}

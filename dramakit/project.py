@@ -128,13 +128,25 @@ class ProjectStore:
     def video_path(self, shot_id: str) -> Path:
         return self.root / "video" / f"shot_{shot_id}.mp4"
 
-    def character_dir(self, name: str) -> Path:
-        d = self.root / "characters" / slugify(name)
-        d.mkdir(parents=True, exist_ok=True)
-        return d
+    def character_dir(self, name: str, season: int = 0) -> Path:
+        """Where a character's reference pictures live.
 
-    def character_ref_path(self, name: str, view: str, ext: str = "png") -> Path:
-        return self.character_dir(name) / f"{slugify(view) or 'ref'}.{ext}"
+        A season has its own look. A character can change across a long
+        story - grow up, change sides, be scarred - so each season draws
+        its own reference pictures rather than overwriting the last ones.
+        Season 1 pictures stay where they were, so an episode made in
+        season 1 keeps drawing the face it was made with. Season 0 is the
+        un-seasoned case: a project that predates seasons.
+        """
+        base = self.root / "characters" / slugify(name)
+        if season and season > 1:
+            base = base / f"s{season}"
+        base.mkdir(parents=True, exist_ok=True)
+        return base
+
+    def character_ref_path(self, name: str, view: str, ext: str = "png",
+                           season: int = 0) -> Path:
+        return self.character_dir(name, season) / f"{slugify(view) or 'ref'}.{ext}"
 
     def location_dir(self, name: str) -> Path:
         d = self.root / "locations" / slugify(name)

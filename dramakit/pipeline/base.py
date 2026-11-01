@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import Config
-from ..models import Episode, Line, Project, Scene, Shot, Status, is_narration
+from ..models import (Episode, Line, Project, Scene, Season, Shot, Status,
+                      is_narration)
 from ..project import ProjectStore
 from ..providers import Providers
 from ..utils.text import estimate_reading_seconds
@@ -356,16 +357,63 @@ class Context:
         self.providers = providers or Providers(cfg, store.root)
         self.project: Project = store.load()
         self.log: logging.Logger = logging.getLogger("dramakit")
+        # the season being made.  Every stage works on this season's
+        # chapters and episodes only - a long book is produced a season at
+        # a time, and a rerun of season 3 must not touch season 1.
+        self.season_index: int = self.project.current_season
 
     def save(self) -> None:
         self.store.save(self.project)
 
+    # -- season ---------------------------------------------------------------
+    @property
+    def season(self):
+        """The Season being built, or None when working whole-project."""
+        return self.project.season(self.season_index)
+
+    def use_season(self, index: int) -> None:
+        """Point this run at a season.  Older seasons are opened read-mostly:
+        their episodes stay, only this season's are reworked."""
+        self.season_index = index
+
+    def season_chapters(self) -> list[int]:
+        """The chapter indices this season is made from."""
+        s = self.season
+        return list(s.chapters) if s else []
+
+    def seed_season(self, chapters: list[int]) -> "Season":
+        """Create this season if it does not exist yet, claiming chapters."""
+        s = self.season
+        if s is None:
+            s = Season(index=self.season_index, chapters=list(chapters))
+            self.project.seasons.append(s)
+            self.project.seasons.sort(key=lambda x: x.index)
+        else:
+            s.chapters = sorted(set(s.chapters) | set(chapters))
+        return s
+
+    def mark_chapter_season(self, chapters: list[int]) -> None:
+        """Record which season each chapter belongs to, for the console."""
+        meta = self.project.meta
+        meta.chapter_season = meta.chapter_season or {}
+        for ch in chapters:
+            meta.chapter_season[ch] = self.season_index
+
     # -- episode filtering ---------------------------------------------------
     def target_episodes(self) -> list[Episode]:
+        """The episodes this run may touch.
+
+        Scoped to the season when one is being built, so that making
+        season 3 never rewrites season 1's episodes - their pictures, their
+        voices, their timing.  A whole-project run sees everything.
+        """
+        eps = self.project.episodes
+        if self.season_index:
+            eps = [e for e in eps if getattr(e, "season", 1) == self.season_index]
         only = self.cfg.pipeline.only_episodes
         if not only:
-            return self.project.episodes
-        return [e for e in self.project.episodes if e.index in only]
+            return eps
+        return [e for e in eps if e.index in only]
 
     def timeline(self, ep: Episode) -> Timeline:
         """The one timeline every stage works from.

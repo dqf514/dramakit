@@ -262,10 +262,11 @@ def _do_run(cfg: Config, store: ProjectStore, p: dict) -> dict:
     if p.get("episodes"):
         cfg.pipeline.only_episodes = p["episodes"]
     stages = p.get("stages") or cfg.pipeline.stages_enabled
+    season = p.get("season")
     ctx = make_context(cfg, store)
-    res = run_pipeline(ctx, stages=stages)
+    res = run_pipeline(ctx, stages=stages, season=season)
     return {"ok": True, "project": store.root.name, "stages": stages,
-            "results": {k: str(v)[:200] for k, v in res.items()}}
+            "season": season, "results": {k: str(v)[:200] for k, v in res.items()}}
 
 
 def _do_regen_shot(cfg: Config, store: ProjectStore, p: dict) -> dict:
