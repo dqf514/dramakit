@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Literal, Optional
+from typing import ClassVar, Literal, Optional
 
 import yaml
 from pydantic import BaseModel, Field
@@ -560,12 +560,38 @@ class Config(BaseModel):
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
 
     # ------------------------------------------------------------------ load
+    # where the config file lives, in the order worth tried - a class
+    # constant, not a field, so Pydantic does not read it as settings
+    CANDIDATES: ClassVar[tuple] = (
+        "config/default.yaml", "default.yaml",
+        Path(__file__).resolve().parent.parent / "config" / "default.yaml")
+
+    @classmethod
+    def discover(cls, path: str | Path | None = None) -> Optional[Path]:
+        """The config file to read: an explicit path, then the usual places.
+
+        Returns None when there is none, which is a real answer - the code
+        defaults are then in force, and they are defaults rather than the
+        project's settings.
+        """
+        for cand in ([Path(path)] if path else []) +                 [Path(c) if not isinstance(c, Path) else c for c in cls.CANDIDATES]:
+            try:
+                if cand.exists():
+                    return cand
+            except OSError:  # a path that cannot be stat'd is not the config
+                continue
+        return None
+
     @classmethod
     def load(cls, path: str | Path | None = None) -> "Config":
         """Load YAML config (deep-merged over defaults). Missing file => defaults.
 
         Keys whose value is null (e.g. a dict with only commented-out entries)
         are dropped so the model defaults apply instead of failing validation.
+
+        Called with no path this returns the code's defaults, not the
+        project's settings; use discover() to find the file first, or
+        load(cls.discover()) to get what the console is actually using.
         """
         data: dict = {}
         if path and Path(path).exists():

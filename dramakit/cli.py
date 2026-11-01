@@ -30,15 +30,10 @@ DEFAULT_CONFIG = "config/default.yaml"
 
 
 def _find_config(path: Optional[str]) -> Optional[Path]:
-    cands = []
-    if path:
-        cands.append(Path(path))
-    cands += [Path(DEFAULT_CONFIG), Path("default.yaml"),
-              Path(__file__).parent.parent / DEFAULT_CONFIG]
-    for c in cands:
-        if c.exists():
-            return c
-    return None
+    # Config owns the list of places to look: the CLI and any script both
+    # want the same file, and a second copy of the candidates is a second
+    # thing to keep in step
+    return Config.discover(path)
 
 
 def _open_store(project: str) -> ProjectStore:
@@ -86,8 +81,11 @@ def doctor(config: Optional[str] = typer.Option(None, "--config", "-c", help="�
     # LLM
     try:
         prov = Providers(cfg)
+        # A reasoning model spends tokens thinking before it speaks, so a
+        # budget this small sometimes leaves nothing to answer with - and a
+        # self-check that passes or fails by luck is worse than no check.
         r = prov.llm.complete("You are a test.", "Reply with the single word: OK",
-                              max_tokens=10)
+                              max_tokens=512)
         console.print(f"  LLM ({cfg.llm.model}) : [green]OK[/green] → {r.text.strip()[:20]!r}")
     except Exception as e:  # noqa: BLE001
         console.print(f"  LLM ({cfg.llm.model}) : [red]失败[/red] {str(e)[:80]}")

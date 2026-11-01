@@ -28,6 +28,31 @@ class RetryableLLMError(Exception):
     pass
 
 
+def _shape_error(data: object, budget: int, exc: Optional[Exception]) -> str:
+    """Why an LLM response could not be read, in the reader's terms.
+
+    The endpoint is reachable when this is raised, so the useful answer is
+    what the model actually did - and for a reasoning model the common
+    answer is that it thought for the whole budget and had nothing left to
+    say. That is a budget to raise, not a parser to fix.
+    """
+    if not isinstance(data, dict) or "choices" not in data:
+        return f"Unexpected LLM response shape: {str(data)[:300]}"
+    choices = data.get("choices") or []
+    if not choices:
+        return (f"模型没有返回任何选择（max_tokens={budget}）。"
+                f"推理型模型会先把 token 花在思考上，把 max_tokens 调大再试。")
+    message = (choices[0] or {}).get("message") or {}
+    reason = (choices[0] or {}).get("finish_reason") or ""
+    thinking = len(str(message.get("reasoning_content") or ""))
+    if reason == "length" or (not message.get("content") and thinking):
+        return (f"模型在 {budget} 个 token 内只做了推理（{thinking} 字），没有输出正文"
+                f"（finish_reason={reason or 'length'}）。把 max_tokens 调大再试。")
+    if exc is not None:
+        return f"Unexpected LLM response shape: {str(data)[:300]}"
+    return f"模型返回了空正文: {str(data)[:300]}"
+
+
 class OpenAICompatLLM(BaseLLM):
     def __init__(self, cfg: LLMConfig):
         self.cfg = cfg
@@ -85,10 +110,19 @@ class OpenAICompatLLM(BaseLLM):
         if json_mode and self.cfg.json_mode:
             payload["response_format"] = {"type": "json_object"}
         data = self._post(payload)
+        budget = payload["max_tokens"]
         try:
-            text = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError):
-            raise RuntimeError(f"Unexpected LLM response shape: {str(data)[:300]}")
+            choice = data["choices"][0]
+            message = choice["message"]
+            text = message["content"]
+        except (KeyError, IndexError) as e:
+            raise RuntimeError(_shape_error(data, budget, e)) from e
+        if text is None:
+            # A reasoning model can spend the whole budget thinking and hand
+            # back reasoning_content with no content. finish_reason says so,
+            # and reporting that as a malformed response sends the reader
+            # looking for a parser bug that does not exist.
+            raise RuntimeError(_shape_error(data, budget, None))
         usage = data.get("usage", {}) or {}
         return LLMResponse(
             text=text or "",
