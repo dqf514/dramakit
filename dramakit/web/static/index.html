@@ -496,6 +496,17 @@ try{
 .rd-foot{display:flex;align-items:center;gap:10px;padding:10px 16px;
   border-top:1px solid var(--line);color:var(--fg3);font-size:11.5px}
 .rd-foot .btn{padding:4px 12px;font-size:12px}
+
+<style>
+/* the progress panel: a stage that is running, and how long it has been */
+@keyframes dkspin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);
+  border-top-color:var(--confirm);border-radius:50%;
+  animation:dkspin .9s linear infinite;vertical-align:-1px}
+#progressSlot:empty{display:none}
+.prog-strip{margin-top:9px;font-size:11.5px;line-height:2}
+.prog-strip span{white-space:nowrap;margin-right:9px}
+</style>
 </style>
 </head>
 <body>
@@ -1352,10 +1363,70 @@ function epProgress(ep){
   return Math.round(vals.filter(v=>v==="done").length/STAGES.length*100);
 }
 function runningStageName(){
+  // The project's own stages come first: ingest, analyze and character
+  // belong to the project, not to any episode, so a page that looks only
+  // at the episodes reports nothing running while the cast is being
+  // dressed - which is most of the wait.
+  const proj=(S.detail&&S.detail.stage_status)||{};
+  for(const s of STAGES){ if(proj[s]==="running") return s; }
   const eps=(S.detail&&S.detail.episodes)||[];
-  let runningStage="";
-  for(const ep of eps){ for(const s of STAGES){ if((ep.stage_status||{})[s]==="running") runningStage=s; } }
-  return runningStage;
+  for(const ep of eps){ for(const s of STAGES){ if((ep.stage_status||{})[s]==="running") return s; } }
+  return "";
+}
+
+// how long this stage has been running, as the page has seen it
+let stageWatch={stage:"",since:0};
+function stageElapsed(){
+  const st=runningStageName();
+  if(!st){ stageWatch={stage:"",since:0}; return null; }
+  if(stageWatch.stage!==st){ stageWatch={stage:st,since:Date.now()}; }
+  return Date.now()-stageWatch.since;
+}
+function fmtDur(ms){
+  const t=Math.max(0,Math.round(ms/1000));
+  const h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
+  if(h) return h+" 时 "+m+" 分";
+  if(m) return m+" 分 "+sec+" 秒";
+  return sec+" 秒";
+}
+
+// the panel: which stage, what it is for, and the pipeline lit to here
+function workProgressHtml(){
+  const st=runningStageName();
+  if(!st) return "";
+  const zh=STAGE_ZH[st]||st;
+  const hint=STAGE_HINT[st]||"";
+  const p=(S.progress||{})[st];
+  const ms=stageElapsed();
+  const strip=STAGES.map((x,i)=>{
+    const v=stageState(x);
+    const mark=v==="done"?"●":v==="running"?"◐":"○";
+    const col=v==="done"?"var(--go2)":v==="running"?"var(--confirm)":"var(--fg3)";
+    return `<span style="color:${col}" title="${esc(STAGE_HINT[x]||STAGE_ZH[x])}">${mark} ${i+1} ${esc(STAGE_ZH[x])}</span>`;
+  }).join("");
+  let item="";
+  if(p&&p.total) item=`<span class="mini muted">已完成 ${p.done||0}/${p.total} 项</span>`;
+  return `<div class="card" style="margin-bottom:10px;border-color:var(--confirm)">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span class="spin"></span>
+      <b>${esc(zh)}</b>
+      <span class="mini" style="color:var(--confirm)">进行中</span>
+      ${item}
+      <span style="flex:1"></span>
+      ${ms==null?"":`<span class="mini muted">已运行 ${fmtDur(ms)}</span>`}
+    </div>
+    ${hint?`<div class="muted" style="font-size:11.5px;margin-top:6px">${esc(hint)}</div>`:""}
+    <div class="prog-strip">${strip}</div>
+  </div>`;
+}
+
+// update the panel where it stands: the workbench is not redrawn, so a
+// long chapter list keeps its scroll and its ticks while this moves
+function updateProgressPanel(){
+  const slot=document.getElementById("progressSlot");
+  if(!slot) return false;
+  slot.innerHTML=workProgressHtml();
+  return true;
 }
 function runningProgressHtml(){
   const s=runningStageName();
@@ -1371,20 +1442,22 @@ function startProgressPoll(){
   if(progressPollTimer) clearInterval(progressPollTimer);
   progressPollTimer=setInterval(async ()=>{
     if(!S.current) return;
-    // 只在有阶段 running 且停留在进度相关页时刷新，避免打扰其它操作
-    if(!runningStageName()) return;
-    if(!["workbench","pipeline","board"].includes(S.activePage)) return;
+    // Always ask. The old poll checked whether anything was running before
+    // it fetched, and the only way to learn that is to fetch - so a task
+    // submitted after the page loaded was never seen, and the workbench
+    // stayed silent for the whole run.
     try{
       const d=await getJSON("/api/projects/"+encodeURIComponent(S.current));
-      if(!d.ok) return;
+      if(!d||!d.ok) return;
       S.detail=d;
       const pr=await getJSON("/api/progress?project="+encodeURIComponent(S.current));
       if(pr&&pr.ok) S.progress=pr.progress||{};
-      if(S.activePage==="workbench") renderWorkbench();
-      else if(S.activePage==="pipeline") renderRun();
-      else if(S.activePage==="board") renderBoard();
-    }catch(e){/* 忽略瞬时错误 */}
-  }, 8000);
+      // the panel is updated where it stands: redrawing the workbench
+      // would reset the scroll of a chapter list the user is reading
+      updateProgressPanel();
+      renderHeader(); renderProjects();
+    }catch(e){/* 网络瞬断 */}
+  }, 4000);
 }
 function renderWorkbench(){
   const box=$("#page-workbench");
@@ -1445,7 +1518,8 @@ function renderWorkbench(){
       </div>
     </div>`).join("");
 
-  box.innerHTML=`<div class="wb-layout">
+  box.innerHTML=`<div id="progressSlot">${workProgressHtml()}</div>
+    <div class="wb-layout">
     <div class="wb-main">
     <div class="hero">
       <div class="cover">${firstCover?`<img src="${firstCover}">`:'<div class="empty" style="padding:0;height:100%;display:flex;align-items:center;justify-content:center">无封面</div>'}</div>
