@@ -41,8 +41,9 @@ def run(ctx: Context) -> dict:
     sample = _sample(text, chapters)
 
     llm = ctx.providers.llm_for("analyze")
+    from ..skills import loader
     user = T.render(T.ANALYZE_USER, text=sample, max_characters=12,
-                    max_locations=10, max_props=8)
+                    max_locations=10, max_props=8) + loader.for_stage(ctx, "analyze")
     data = llm.complete_json(T.ANALYZE_SYSTEM, user)
     if isinstance(data, list):
         data = data[0] if data else {}

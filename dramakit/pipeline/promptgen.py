@@ -617,6 +617,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             dlg_text, _ids = _numbered_dialogue(lines)
             note = ("台词必须原样用 <d>[zh-CN]...</d> 包住，不要改写。"
                     + (f"\n{spk_note}" if spk_note else ""))
+        from ..skills import loader as _loader
         h3_user = T.render(
             T.H3_VIDEO_USER,
             shot_type=shot.shot_type.value, camera_move=shot.camera_move,
@@ -631,7 +632,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             references=_reference_jobs(shot, _plan_for(ctx, shot, sc)),
             timeline=_shot_timeline(shot, lines),
             segment_shots=_segment_shots_text(shot),
-            constraints=H3_CONSTRAINTS)
+            constraints=H3_CONSTRAINTS + _loader.for_stage(ctx, "promptgen"))
         h3 = llm.complete_json(T.H3_VIDEO_SYSTEM, h3_user)
         if isinstance(h3, list):
             h3 = h3[0] if h3 else {}
