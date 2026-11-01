@@ -263,6 +263,12 @@ class ProjectMeta(BaseModel):
     chapter_pattern: str = ""
     volume_pattern: str = ""
     chosen_chapters: list[int] = []
+    # the chapters already cut into episodes.  A project is built a few
+    # chapters at a time, and without this the second batch would either be
+    # refused ("segment done") or wipe the first batch's episodes.  Picking
+    # chapters appends to chosen; running segment turns only the ones not
+    # yet segmented into new episodes, after the existing ones.
+    segmented_chapters: list[int] = []
     episodes_wanted: int = 0
     created_at: str = ""
     updated_at: str = ""

@@ -1,18 +1,23 @@
-"""Stage 3 — segment: split the story into episodes with titles and hooks.
+"""Stage 3 — segment: cut the chosen chapters into episodes.
 
-Episode count strategies:
-  fixed_count     exactly cfg.episode_count episodes
-  fixed_duration  total reading time / episode_duration
-  by_chapter      one episode per chapter (or per cfg.episode_count chapters)
-  auto            by duration, but snapped to chapter boundaries when possible
+Episode count is not a question for the user.  It comes from the text:
+how long the picked chapters take to read, divided by the target episode
+length, snapped to chapter boundaries where the chapters are big enough.
+A 3-minute chapter is one episode; a 30-minute chapter is six.
 
-Text is cut deterministically at sentence/paragraph boundaries (cheap, reliable);
-the LLM only writes each episode's title / logline / hook / recap.
+A project is made a few chapters at a time, so segment appends.  The
+chapters already cut are remembered in meta.segmented_chapters, and this
+run only turns the remaining picked chapters into episodes - numbered
+after the ones that already exist, leaving their scenes, shots, prompts
+and rendered media exactly as they were.  Picking chapter 7 after
+chapters 1-6 gives you episode 8, not a new episode 1.
+
+Text is cut deterministically at sentence/paragraph boundaries; the LLM
+only writes each episode's title / logline / hook / recap.
 """
 from __future__ import annotations
 
 import json
-import math
 
 from ..models import Episode, Status
 from ..prompts import templates as T
@@ -29,9 +34,7 @@ def _episode_count(total_chars: float, cfg, n_chapters: int) -> int:
         return max(1, n_chapters)
     total_sec = total_chars / CHARS_PER_SEC
     n = max(1, round(total_sec / max(cfg.episode_duration, 10)))
-    # clamp to sane range
-    n = max(1, min(n, 500))
-    return n
+    return max(1, min(n, 500))
 
 
 def _split_blocks(text: str, chapters: list[dict], n: int, cfg) -> list[str]:
@@ -48,77 +51,117 @@ def _split_blocks(text: str, chapters: list[dict], n: int, cfg) -> list[str]:
                 blocks.append(body)
         if blocks:
             return blocks
-    # char-based split at sentence boundaries
     target = max(200, int(len(text) / max(n, 1)))
     if cfg.max_chars_per_episode > 0:
         target = cfg.max_chars_per_episode
     return chunk_by_chars(text, target)
 
 
+def _chapters_to_cut(ctx: Context) -> list:
+    """The picked chapters that have not been cut into episodes yet.
+
+    Picking chapters appends to chosen; running segment consumes them.  If
+    nothing has been picked, the whole book is the input - the old path,
+    for projects made before chapter picking existed.
+    """
+    meta = ctx.project.meta
+    chosen = list(meta.chosen_chapters or [])
+    done = set(meta.segmented_chapters or [])
+    chapters_meta = list(meta.chapters or [])
+    if not chosen or not chapters_meta:
+        return []
+    return [c for c in chapters_meta if c.index in chosen and c.index not in done]
+
+
+def _read_chapter(ctx: Context, c) -> str:
+    f = (ctx.store.root / c.file) if c.file else None
+    return f.read_text(encoding="utf-8") if f and f.exists() else ""
+
+
 def run(ctx: Context) -> dict:
     cfg = ctx.cfg.segment
-    if ctx.project.episodes and ctx.project.stage_status.get("segment") == "done":
-        ctx.log.info("segment: 已完成，%d 集", len(ctx.project.episodes))
-        return {"skipped": True}
+    todo = _chapters_to_cut(ctx)
+    meta = ctx.project.meta
 
-    # the chapters the user picked, cut into episodes; the whole book is
-    # only what the pick says it is
-    chosen = list(ctx.project.meta.chosen_chapters or [])
-    chapters_meta = ctx.project.meta.chapters or []
-    if chosen and chapters_meta:
-        blocks = []
-        for c in chapters_meta:
-            if c.index not in chosen:
-                continue
-            f = ctx.store.root / c.file if c.file else None
-            if f and f.exists():
-                blocks.append(f.read_text(encoding="utf-8"))
-        text = "\n\n".join(blocks) if blocks else \
-            ctx.store.cleaned_text_path().read_text(encoding="utf-8")
-        ctx.log.info("segment: 用了选中的 %d 个章节（%d 字）",
-                     len(chosen), len(text))
+    # nothing new to cut, and the project already has episodes: done.
+    if not todo and ctx.project.episodes:
+        ctx.log.info("segment: 没有新章节要切，已有 %d 集", len(ctx.project.episodes))
+        return {"skipped": True, "episodes": len(ctx.project.episodes)}
+
+    if todo:
+        # only the new chapters become episodes; the old ones keep theirs
+        parts = [_read_chapter(ctx, c) for c in todo]
+        blocks_src = [{"body": b, "index": c.index}
+                      for b, c in zip(parts, todo) if b.strip()]
+        text = "\n\n".join(b["body"] for b in blocks_src)
+        ctx.log.info("segment: 新切 %d 个章节（%d 字），已有 %d 集",
+                     len(blocks_src), len(text), len(ctx.project.episodes))
     else:
+        # no chapter picking: the whole cleaned book, cut from scratch
         text = ctx.store.cleaned_text_path().read_text(encoding="utf-8")
-    chapters = json.loads(ctx.store.chapters_path().read_text(encoding="utf-8")) \
-        if ctx.store.chapters_path().exists() else []
+        blocks_src = []
+        chapters_json = ctx.store.chapters_path()
+        if chapters_json.exists():
+            raw = json.loads(chapters_json.read_text(encoding="utf-8"))
+            blocks_src = [{"body": c.get("body", ""), "index": i}
+                          for i, c in enumerate(raw, 1)]
+        ctx.log.info("segment: 未选章节，用整本书（%d 字）", len(text))
 
-    n = _episode_count(len(text), cfg, len(chapters))
-    blocks = _split_blocks(text, chapters, n, cfg)
-    total = len(blocks)
-    ctx.log.info("segment: 切成 %d 集（策略=%s）", total, cfg.strategy)
+    n = _episode_count(len(text), cfg, len(blocks_src))
+    if blocks_src and len(blocks_src) >= n:
+        # cut along chapter boundaries
+        bodies = [b["body"] for b in blocks_src]
+        chapters_for_split = [{"body": b} for b in bodies]
+        new_blocks = _split_blocks(text, chapters_for_split, n, cfg)
+    else:
+        new_blocks = _split_blocks(text, [], n, cfg)
+
+    # number after what already exists, so a second batch appends
+    first_index = (max((e.index for e in ctx.project.episodes), default=0) + 1)
+    total_new = len(new_blocks)
+    ctx.log.info("segment: 切成 %d 集（策略=%s），从第 %d 集起",
+                 total_new, cfg.strategy, first_index)
 
     llm = ctx.providers.llm_for("segment")
-    episodes: list[Episode] = []
-    for i, block in enumerate(blocks, 1):
-        # persist the block so script stage can read it back
-        ctx.store.episode_source_path(i).write_text(block, encoding="utf-8")
+    episodes: list[Episode] = list(ctx.project.episodes)
+    for j, block in enumerate(new_blocks):
+        idx = first_index + j
+        ctx.store.episode_source_path(idx).write_text(block, encoding="utf-8")
         ep = Episode(
-            id=f"ep{i:03d}", index=i, duration_target=cfg.episode_duration,
-            source_path=ctx.store.rel(ctx.store.episode_source_path(i)),
+            id=f"ep{idx:03d}", index=idx, duration_target=cfg.episode_duration,
+            source_path=ctx.store.rel(ctx.store.episode_source_path(idx)),
         )
-        # LLM packaging (title/logline/hook) — tolerant of failures
         try:
             dur = estimate_reading_seconds(block, CHARS_PER_SEC)
-            extra = "本集为开场，需冷开场直接抛冲突。" if (i == 1 and cfg.cold_open) else ""
+            extra = "本集为开场，需冷开场直接抛冲突。" if (idx == 1 and cfg.cold_open) else ""
             user = T.render(T.SEGMENT_USER, title=ctx.project.meta.title or "本剧",
-                            ep_index=i, ep_total=total, duration=int(dur),
-                            hook_style=cfg.hook_style, extra_hint=extra, text=block[:6000])
+                            ep_index=idx, ep_total=first_index - 1 + total_new,
+                            duration=int(dur), hook_style=cfg.hook_style,
+                            extra_hint=extra, text=block[:6000])
             data = llm.complete_json(T.SEGMENT_SYSTEM, user)
             if isinstance(data, list):
                 data = data[0] if data else {}
-            ep.title = data.get("title") or f"第{i}集"
+            ep.title = data.get("title") or f"第{idx}集"
             ep.logline = data.get("logline", "")
             ep.hook = data.get("hook", "")
             ep.recap = data.get("recap", "") if cfg.opening_recap else ""
             ep.key_beats = data.get("key_beats", []) or []
         except Exception as e:  # noqa: BLE001
-            ctx.log.warning("segment: 第%d集打包失败(%s)，用占位标题", i, e)
-            ep.title = f"第{i}集"
+            ctx.log.warning("segment: 第%d集打包失败(%s)，用占位标题", idx, e)
+            ep.title = f"第{idx}集"
         ep.duration_target = round(estimate_reading_seconds(block, CHARS_PER_SEC), 1) \
             or cfg.episode_duration
         episodes.append(ep)
 
     ctx.project.episodes = episodes
+
+    # remember which chapters are now episodes, so the next batch appends
+    if todo:
+        already = set(meta.segmented_chapters or [])
+        already.update(c.index for c in todo)
+        meta.segmented_chapters = sorted(already)
+        ctx.log.info("segment: 已记录切过的章节 %d 个", len(meta.segmented_chapters))
+
     ctx.project.stage_status["segment"] = "done"
     ctx.save()
-    return {"episodes": total}
+    return {"episodes": len(episodes), "new": total_new}

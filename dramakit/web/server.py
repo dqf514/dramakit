@@ -276,6 +276,8 @@ def _make_handler(state: State):
                 return self._json(self._api_upload(body))
             if path == "/api/new":
                 return self._json(self._api_new(body))
+            if path == "/api/chapter/read":
+                return self._json(self._api_chapter_read(body))
             if path == "/api/catalog":
                 return self._json(self._api_catalog(body))
             if path == "/api/chapters/choose":
@@ -738,6 +740,40 @@ def _make_handler(state: State):
             except Exception:  # noqa: BLE001
                 pass
             return {"ok": True, "project": slug, "moved_to": str(dest)}
+
+        def _api_chapter_read(self, body: dict) -> dict:
+            """The text of one chapter, by its index in the project's catalogue."""
+            store = state.open_store(body.get("project", ""))
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            try:
+                idx = int(body.get("chapter", -1))
+            except (TypeError, ValueError):
+                return {"ok": False, "error": "chapter must be a number"}
+
+            proj = store.load()
+            ch = next((c for c in proj.meta.chapters if c.index == idx), None)
+            if not ch:
+                return {"ok": False, "error": f"第 {idx} 章不在目录里"}
+
+            rel = (ch.file or "").replace("\\", "/").lstrip("/")
+            if not rel:
+                return {"ok": False, "error": "这一章没有文件"}
+
+            root = store.root.resolve()
+            fpath = (root / rel).resolve()
+            # the file must live inside the project - never read outside it
+            if not str(fpath).startswith(str(root)) or not fpath.is_file():
+                return {"ok": False, "error": f"章节文件缺失：{rel}"}
+
+            try:
+                text = fpath.read_text(encoding="utf-8", errors="replace")
+            except Exception as e:  # noqa: BLE001
+                log.error("chapter read failed: %s", traceback.format_exc())
+                return {"ok": False, "error": f"读取失败：{e}"}
+
+            return {"ok": True, "index": ch.index, "title": ch.title,
+                    "volume": ch.volume, "chars": len(text), "text": text}
 
         def _api_catalog(self, body: dict) -> dict:
             """The table of contents of a project, and its chosen chapters."""

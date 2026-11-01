@@ -480,6 +480,22 @@ try{
 .chap-tile.on .tick{opacity:1}
 .chap-vol{grid-column:1/-1;font-size:10.5px;color:var(--fg3);margin:6px 0 2px;
   border-bottom:1px solid var(--line);padding-bottom:2px;font-weight:600}
+
+/* the reader: a scrim over the page, a sheet of paper on top of it */
+.rd-scrim{position:fixed;inset:0;background:var(--scrim);z-index:80;
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.rd-sheet{background:var(--bg2);border:1px solid var(--line);border-radius:8px;
+  width:min(760px,100%);max-height:100%;display:flex;flex-direction:column;
+  box-shadow:0 18px 60px var(--shadow)}
+.rd-head{display:flex;align-items:center;gap:10px;padding:12px 16px;
+  border-bottom:1px solid var(--line)}
+.rd-head .rd-t{font-weight:650;font-size:14px}
+.rd-head .rd-v{color:var(--fg3);font-size:11.5px}
+.rd-body{overflow:auto;padding:18px 26px;line-height:1.95;font-size:14.5px;
+  white-space:pre-wrap;color:var(--fg)}
+.rd-foot{display:flex;align-items:center;gap:10px;padding:10px 16px;
+  border-top:1px solid var(--line);color:var(--fg3);font-size:11.5px}
+.rd-foot .btn{padding:4px 12px;font-size:12px}
 </style>
 </head>
 <body>
@@ -1374,13 +1390,10 @@ function renderWorkbench(){
          <button class="btn" onclick="setAllChapters(true)">全选</button>
          <button class="btn" onclick="setAllChapters(false)">全不选</button>
          <span class="grow"></span>
-         <label class="mini muted">生成</label>
-         <input type="number" id="epWanted" value="1" min="1" max="50"
-                style="width:52px" title="生成几集">
-         <label class="mini muted">集</label>
+         <span class="mini muted" id="epWantedNote">集数由系统按时长自动分</span>
        </div>
        <button class="btn go" style="width:100%;margin-bottom:6px"
-               onclick="chooseChapters()">按选中章节开始</button>
+               onclick="chooseChapters()">▶ 开始制作选中的章节</button>
        <div class="chap-body" id="chapterList"></div>
      </div>`;
   const epHtml=eps.map(ep=>`<div class="epcard" data-ep="${ep.index}">
@@ -2423,10 +2436,18 @@ window.__chosen = window.__chosen || null;
 window.__chapMode = window.__chapMode || "list";
 
 function _chapChosenSet(){
-  // the set of picked chapter indices, rebuilt from the DOM if we have one
+  // The picked chapters, read from whichever mode is on screen.  List mode
+  // shows checkboxes, icon mode shows tiles; taking only one of them left
+  // the other view picking nothing at all.
   const boxes=[].slice.call(document.querySelectorAll("#chapterList input[type=checkbox]"));
   if(boxes.length){
     window.__chosen=new Set(boxes.filter(b=>b.checked).map(b=>Number(b.dataset.idx)));
+  } else {
+    const tiles=[].slice.call(document.querySelectorAll("#chapterList .chap-tile"));
+    if(tiles.length){
+      window.__chosen=new Set(tiles.filter(t=>t.classList.contains("on"))
+                                   .map(t=>Number(t.dataset.idx)));
+    }
   }
   if(!window.__chosen) window.__chosen=new Set();
   return window.__chosen;
@@ -2480,7 +2501,8 @@ function _renderChapters(){
       out.push('<label style="display:flex;gap:8px;align-items:center;padding:2px 0">' +
         '<input type="checkbox" data-idx="'+c.index+'"'+(chosen.has(c.index)?' checked':'')+
         ' onchange="_chapClick('+c.index+',this.checked)"> ' +
-        '<b>第'+c.index+'章</b> '+esc(c.title||'')+' ' +
+        '<b class="rd-open" onclick="event.stopPropagation();openReader('+c.index+')" ' +
+        'style="cursor:pointer" title="点击阅读">第'+c.index+'章 '+esc(c.title||'')+'</b> ' +
         '<span class="muted">'+Math.round(c.chars/1000)+'k 字</span></label>');
     });
     box.innerHTML=out.join("");
@@ -2493,8 +2515,9 @@ function _renderChapters(){
       }
       out.push('<div class="chap-tile'+(chosen.has(c.index)?' on':'')+'" '+
         'data-idx="'+c.index+'" title="第'+c.index+'章 '+esc(c.title||'')+' · '+
-        Math.round(c.chars/1000)+'k 字" onclick="_chapTile(this)">' +
-        '<span class="tick">✓</span>' +
+        Math.round(c.chars/1000)+'k 字" onclick="openReader('+c.index+')">' +
+        '<span class="tick" onclick="event.stopPropagation();_chapTile(this.parentNode)" ' +
+        'title="选中 / 取消">'+(chosen.has(c.index)?'✓':'')+'</span>' +
         '<span class="cn">'+c.index+'</span>' +
         '<span class="ck">'+Math.round(c.chars/1000)+'k</span></div>');
     });
@@ -2519,13 +2542,21 @@ async function loadChapters(slug){
 }
 async function chooseChapters(){
   const slug = S.current;
-  const chosen = [].slice.call(_chapChosenSet());
-  const want = Number((document.getElementById("epWanted")||{}).value || 0);
-  await postJSON("/api/chapters/choose",{project:slug,chosen:chosen,episodes_wanted:want});
-  toast("已选 "+chosen.length+" 章，按 "+want+" 集生成","",2000);
-  const st = ["segment","script","storyboard"];
-  await postJSON("/api/run",{project:slug,stages:st});
-  toast("剧本与分镜开始…","",2600);
+  const chosen = Array.from(_chapChosenSet());
+  if(!chosen.length){ toast("先勾选要做的章节","err"); return; }
+  const r = await postJSON("/api/chapters/choose",{project:slug,chosen:chosen});
+  if(!r || !r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
+  toast("已选 "+chosen.length+" 章，开始分集与剧本…","",2200);
+  const run = await postJSON("/api/run",{project:slug,
+    stages:["segment","script","storyboard"]});
+  if(!run || !run.ok){ toast("启动失败："+esc((run&&run.error)||"未知错误"),"err"); return; }
+  // follow the job so the user sees it finish, or sees why it did not
+  pollJob(run.job, (res,j)=>{
+    if(!j){ return; }                              // pollJob already said why
+    if(j.status==="error"){ return; }
+    toast("剧本与分镜完成","",2600);
+    renderWorkbench();
+  });
 }
 </script>
 
@@ -2569,5 +2600,78 @@ async function deleteProject(slug){
 })();
 </script>
 
+
+<div id="readerRoot"></div>
+
+<script>
+// ---- chapter reader ----
+function _chapByIndex(idx){
+  return (window.__chapters||[]).find(c=>c.index===idx) || null;
+}
+async function openReader(idx){
+  const slug=S.current;
+  const root=document.getElementById("readerRoot");
+  if(!root) return;
+  // draw the shell first so the click feels instant, then fill it
+  root.innerHTML='<div class="rd-scrim" onclick="if(event.target===this)closeReader()">'+
+    '<div class="rd-sheet">'+
+      '<div class="rd-head">'+
+        '<span class="rd-t" id="rdTitle">读取中…</span>'+
+        '<span class="rd-v" id="rdVol"></span>'+
+        '<span style="flex:1"></span>'+
+        '<span class="rd-v" id="rdPos"></span>'+
+        '<button class="btn ghost" onclick="closeReader()" title="关闭 (Esc)">✕</button>'+
+      '</div>'+
+      '<div class="rd-body" id="rdBody">正在读取正文…</div>'+
+      '<div class="rd-foot">'+
+        '<button class="btn" id="rdPrev" onclick="_rdStep(-1)">← 上一章</button>'+
+        '<button class="btn" id="rdNext" onclick="_rdStep(1)">下一章 →</button>'+
+        '<span style="flex:1"></span>'+
+        '<span id="rdMeta"></span>'+
+      '</div>'+
+    '</div></div>';
+  window.__rdIdx=idx;
+  document.addEventListener("keydown", _rdKey);
+
+  const r=await postJSON("/api/chapter/read",{project:slug,chapter:idx});
+  if(!r||!r.ok){
+    const b=document.getElementById("rdBody");
+    if(b) b.innerHTML='<span class="muted">读不到这一章：'+esc((r&&r.error)||"未知错误")+'</span>';
+    return;
+  }
+  const set=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v||"";};
+  set("rdTitle","第"+r.index+"章 "+(r.title||""));
+  set("rdVol", r.volume||"");
+  set("rdBody", r.text||"");
+  set("rdMeta", Math.round((r.chars||0)/1000)+"k 字");
+  _rdSyncNav();
+}
+function _rdSyncNav(){
+  // grey out the ends of the volume, and say where you are
+  const list=window.__chapters||[];
+  const pos=list.findIndex(c=>c.index===window.__rdIdx);
+  const set=(id,dis)=>{const e=document.getElementById(id); if(e) e.disabled=!!dis;};
+  set("rdPrev", pos<=0);
+  set("rdNext", pos<0 || pos>=list.length-1);
+  const e=document.getElementById("rdPos");
+  if(e && pos>=0) e.textContent="第 "+(pos+1)+" / "+list.length+" 章";
+}
+function _rdStep(dir){
+  const list=window.__chapters||[];
+  const pos=list.findIndex(c=>c.index===window.__rdIdx);
+  const nx=list[pos+dir];
+  if(nx) openReader(nx.index);
+}
+function _rdKey(e){
+  if(e.key==="Escape"){ closeReader(); return; }
+  if(e.key==="ArrowLeft") _rdStep(-1);
+  if(e.key==="ArrowRight") _rdStep(1);
+}
+function closeReader(){
+  const root=document.getElementById("readerRoot");
+  if(root) root.innerHTML="";
+  document.removeEventListener("keydown", _rdKey);
+}
+</script>
 </body>
 </html>
