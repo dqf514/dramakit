@@ -730,7 +730,7 @@ async function selectProject(slug, quiet){
   const pr=await getJSON("/api/progress?project="+encodeURIComponent(slug));
   S.progress=(pr&&pr.ok)?(pr.progress||{}):{};
   if(!S.boardEp || !(d.episodes||[]).some(e=>e.index===S.boardEp)) S.boardEp=(d.episodes[0]||{}).index||0;
-  loadChapters(slug).catch(()=>{});
+  // the workbench asks for the chapters itself, after it draws the card
   renderHeader(); renderProjects(); renderTags();
   renderAllPages();
   if(!quiet) toast("已打开《"+esc(d.meta.title||d.meta.name)+"》","",1600);
@@ -1383,6 +1383,7 @@ function renderWorkbench(){
     </div>
     <h2 class="page" style="font-size:14px;margin:14px 0 8px">分集</h2>
     <div class="epgrid">${epHtml||'<div class="empty">还没有分集，先跑导入/分析</div>'}</div>`;
+  if(slug) loadChapters(slug).catch(function(){});
 
   $$("#page-workbench .stg").forEach(x=>x.onclick=()=>{
     runSel=new Set([x.dataset.stage]); switchPage("pipeline");
