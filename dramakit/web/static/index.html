@@ -497,16 +497,46 @@ try{
   border-top:1px solid var(--line);color:var(--fg3);font-size:11.5px}
 .rd-foot .btn{padding:4px 12px;font-size:12px}
 
-<style>
 /* the progress panel: a stage that is running, and how long it has been */
 @keyframes dkspin{to{transform:rotate(360deg)}}
-.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);
-  border-top-color:var(--confirm);border-radius:50%;
+#progressSlot .spin{display:inline-block;width:11px;height:11px;
+  border:2px solid var(--line);border-top-color:var(--confirm);border-radius:50%;
   animation:dkspin .9s linear infinite;vertical-align:-1px}
 #progressSlot:empty{display:none}
 .prog-strip{margin-top:9px;font-size:11.5px;line-height:2}
 .prog-strip span{white-space:nowrap;margin-right:9px}
-</style>
+
+/* the running stage, made to look like it is running */
+@keyframes dkbreathe{0%,100%{opacity:1}50%{opacity:.45}}
+.pulse{animation:dkbreathe 1.6s ease-in-out infinite}
+@keyframes dkbar{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+.prog-bar{position:relative;height:6px;border-radius:3px;overflow:hidden;
+  background:var(--bg4);margin-top:10px}
+.prog-bar i{display:block;height:100%;border-radius:3px;
+  background:linear-gradient(90deg,var(--confirm),var(--confirm2));
+  transition:width .6s ease}
+/* when a stage says how much is left, the bar says so too; when it does
+   not, an honest crawl is better than a bar frozen at zero */
+.prog-bar.indet i{width:25%;background:linear-gradient(90deg,transparent,var(--confirm),var(--confirm2),transparent);
+  animation:dkbar 1.5s linear infinite}
+
+/* a picture, whole, over the page */
+.lb-scrim{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:120;
+  display:flex;align-items:center;justify-content:center;padding:18px}
+.lb-box{background:var(--bg2);border:1px solid var(--line);border-radius:8px;
+  width:min(1240px,97vw);max-height:97vh;display:flex;flex-direction:column;
+  box-shadow:0 22px 80px rgba(0,0,0,.55)}
+.lb-head{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--line)}
+.lb-head .t{font-weight:650}
+.lb-head .n{color:var(--fg3);font-size:12px}
+.lb-body{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;
+  padding:14px;min-height:220px;cursor:zoom-out}
+.lb-body img{max-width:100%;max-height:calc(97vh - 140px);object-fit:contain;
+  border-radius:4px;background:var(--bg3)}
+.lb-foot{display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border-top:1px solid var(--line);font-size:11.5px}
+.lb-foot .btn{padding:4px 14px}
 </style>
 </head>
 <body>
@@ -1404,18 +1434,28 @@ function workProgressHtml(){
     const col=v==="done"?"var(--go2)":v==="running"?"var(--confirm)":"var(--fg3)";
     return `<span style="color:${col}" title="${esc(STAGE_HINT[x]||STAGE_ZH[x])}">${mark} ${i+1} ${esc(STAGE_ZH[x])}</span>`;
   }).join("");
-  let item="";
-  if(p&&p.total) item=`<span class="mini muted">已完成 ${p.done||0}/${p.total} 项</span>`;
+  let item="", bar="";
+  if(p&&p.total){
+    // the stage counts what it has finished, so the bar can be exact
+    const n=Math.max(0,Math.min(100,Math.round((p.done||0)*100/p.total)));
+    item=`<span class="mini muted">已完成 ${p.done||0}/${p.total} 项</span>`;
+    bar=`<div class="prog-bar"><i style="width:${n}%"></i></div>`;
+  }else{
+    // it does not say how much is left; a bar that crawls says "still
+    // going" more honestly than one stuck at zero
+    bar=`<div class="prog-bar indet"><i></i></div>`;
+  }
   return `<div class="card" style="margin-bottom:10px;border-color:var(--confirm)">
     <div style="display:flex;align-items:center;gap:9px">
       <span class="spin"></span>
       <b>${esc(zh)}</b>
-      <span class="mini" style="color:var(--confirm)">进行中</span>
+      <span class="mini pulse" style="color:var(--confirm)">● 进行中</span>
       ${item}
       <span style="flex:1"></span>
       ${ms==null?"":`<span class="mini muted">已运行 ${fmtDur(ms)}</span>`}
     </div>
     ${hint?`<div class="muted" style="font-size:11.5px;margin-top:6px">${esc(hint)}</div>`:""}
+    ${bar}
     <div class="prog-strip">${strip}</div>
   </div>`;
 }
@@ -1775,20 +1815,46 @@ $("#dClose").onclick=closeDrawer;
 $("#drawerMask").onclick=closeDrawer;
 
 // ---------- cast ----------
+function wireCastViewer(){
+  // delegated, so a re-render does not need rewiring each picture
+  $$("#page-cast .castcard img[data-i]").forEach(img=>{
+    img.style.cursor="zoom-in";
+    img.onclick=()=>{
+      const card=img.closest(".castcard");
+      const name=card?card.dataset.name:"";
+      const list=(window.__castImgs||{})[name]||[];
+      openLightbox(list, Number(img.dataset.i)||0, name||"参考图");
+    };
+  });
+  // scenes the same way: a place is checked by looking at it
+  $$("#page-cast .loc img[data-i]").forEach(img=>{
+    img.style.cursor="zoom-in";
+    img.onclick=()=>{
+      const box=img.closest(".loc");
+      const name=box?box.dataset.loc:"";
+      const list=(window.__locImgs||{})[name]||[];
+      openLightbox(list, Number(img.dataset.i)||0, "场景 · "+(name||"参考图"));
+    };
+  });
+}
 function renderCast(){
   const box=$("#page-cast");
   const d=S.detail;
   if(!d){ box.innerHTML='<div class="empty">选择一个项目</div>'; return; }
   const chars=d.characters||[];
+  // every picture the character has, in one list the viewer can walk
+  window.__castImgs={};
   const cards=chars.map((c,i)=>{
-    const sheet=c.ref_sheet_url||c.ref_urls&&c.ref_urls[0]||"";
+    const imgs=[...new Set([c.ref_sheet_url||"",...(c.ref_urls||[])])].filter(Boolean);
+    window.__castImgs[c.name]=imgs;
+    const sheet=imgs[0]||"";
     return `<div class="castcard" data-name="${attr(c.name)}">
       <div class="casttop">
-        <div class="ref">${sheet?`<img src="${sheet}" loading="lazy">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px">无参考图</div>'}</div>
+        <div class="ref">${sheet?`<img src="${sheet}" loading="lazy" data-i="0">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px">无参考图</div>'}</div>
         <div class="cb">
           <div class="cn">${esc(c.name)} ${c.locked?'<span class="mini" style="color:var(--go2)">已锁定</span>':""}</div>
           <div class="cr">${esc(c.role||"")} · ${esc(c.gender||"")} ${c.age?"· "+esc(c.age):""}</div>
-          <div class="reflist">${(c.ref_urls||[]).slice(0,5).map(u=>`<img src="${u}" loading="lazy">`).join("")}</div>
+          <div class="reflist">${imgs.slice(0,5).map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")}</div>
         </div>
       </div>
       <div class="castbody">
@@ -1818,10 +1884,16 @@ function renderCast(){
     </div>`;
   }).join("");
 
-  const locs=(d.locations||[]).map(l=>`<div class="loc"><b>${esc(l.name)}</b>
+  // a scene is checked by looking at it, so its pictures go in the same
+  // list the viewer walks as the characters'
+  window.__locImgs={};
+  const locs=(d.locations||[]).map(l=>{
+    const imgs=(l.ref_urls||[]).filter(Boolean);
+    window.__locImgs[l.name]=imgs;
+    return `<div class="loc" data-loc="${attr(l.name)}"><b>${esc(l.name)}</b>
     <div class="muted" style="font-size:10.5px;margin-top:2px">${esc((l.description||"").slice(0,44))}</div>
-    <div class="li">${(l.ref_urls||[]).map(u=>`<img src="${u}" loading="lazy">`).join("")||'<span class="muted" style="font-size:10px">无参考图</span>'}</div>
-  </div>`).join("");
+    <div class="li">${imgs.map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")||'<span class="muted" style="font-size:10px">无参考图</span>'}</div>
+  </div>`;}).join("");
 
   box.innerHTML=`
     <h1 class="page">角色库</h1>
@@ -1853,6 +1925,7 @@ function renderCast(){
       });
     };
   });
+  wireCastViewer();
 }
 
 // ---------- assets ----------
@@ -2856,6 +2929,62 @@ async function startSeason(){
     toast("第" + season + "季完成","",3000);
     selectProject(slug,true).then(()=>renderWorkbench());
   });
+}
+</script>
+
+<div id="lightboxRoot"></div>
+<script>
+// ---------- see a picture whole ----------
+// A reference sheet is a thumbnail beside a form, and a face you are meant
+// to be checking has to be checked. This opens it over the page, with the
+// character's other references a key away.
+let lightbox={imgs:[],i:0,label:""};
+function openLightbox(imgs,i,label){
+  const list=(imgs||[]).filter(Boolean);
+  if(!list.length) return;
+  lightbox={imgs:list,i:Math.max(0,Math.min(i||0,list.length-1)),label:label||""};
+  renderLightbox();
+  document.addEventListener("keydown",lightboxKeys);
+}
+function closeLightbox(){
+  const r=document.getElementById("lightboxRoot");
+  if(r) r.innerHTML="";
+  document.removeEventListener("keydown",lightboxKeys);
+}
+function lightboxStep(d){
+  const n=lightbox.i+d;
+  if(n<0||n>=lightbox.imgs.length) return;
+  lightbox.i=n;
+  renderLightbox();
+}
+function lightboxKeys(e){
+  if(e.key==="Escape") closeLightbox();
+  else if(e.key==="ArrowLeft") lightboxStep(-1);
+  else if(e.key==="ArrowRight") lightboxStep(1);
+}
+function renderLightbox(){
+  const root=document.getElementById("lightboxRoot");
+  if(!root) return;
+  const {imgs,i,label}=lightbox;
+  const many=imgs.length>1;
+  root.innerHTML=`<div class="lb-scrim" onclick="if(event.target===this)closeLightbox()">
+    <div class="lb-box">
+      <div class="lb-head">
+        <span class="t">${esc(label)}</span>
+        ${many?`<span class="n">${i+1} / ${imgs.length}</span>`:""}
+        <span style="flex:1"></span>
+        <button class="btn ghost" onclick="closeLightbox()">✕</button>
+      </div>
+      <div class="lb-body" onclick="closeLightbox()">
+        <img src="${imgs[i]}" alt="">
+      </div>
+      <div class="lb-foot">
+        <button class="btn" ${i<=0?"disabled":""} onclick="event.stopPropagation();lightboxStep(-1)">← 上一张</button>
+        <span class="muted">${many?"← → 翻页 · ":""}点击空白处或 Esc 关闭</span>
+        <span style="flex:1"></span>
+        <button class="btn" ${i>=imgs.length-1?"disabled":""} onclick="event.stopPropagation();lightboxStep(1)">下一张 →</button>
+      </div>
+    </div></div>`;
 }
 </script>
 </body>
