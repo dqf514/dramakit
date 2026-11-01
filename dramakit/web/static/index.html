@@ -730,6 +730,7 @@ async function selectProject(slug, quiet){
   const pr=await getJSON("/api/progress?project="+encodeURIComponent(slug));
   S.progress=(pr&&pr.ok)?(pr.progress||{}):{};
   if(!S.boardEp || !(d.episodes||[]).some(e=>e.index===S.boardEp)) S.boardEp=(d.episodes[0]||{}).index||0;
+  loadChapters(slug).catch(()=>{});
   renderHeader(); renderProjects(); renderTags();
   renderAllPages();
   if(!quiet) toast("已打开《"+esc(d.meta.title||d.meta.name)+"》","",1600);
@@ -2370,6 +2371,9 @@ async function loadChapters(slug){
     '</label>').join("") || '<div class="muted">这本书没有切出章节</div>';
   const card = document.getElementById("guide-chapters");
   if(card) card.style.display = "";
+  const hint = document.getElementById("chapterHint");
+  if(hint) hint.textContent = "本项目共 "+window.__chapters.length+" 章" +
+      "，已选 "+(window.__chosen&&window.__chosen.length||window.__chapters.length)+" 章";
 }
 async function chooseChapters(){
   const slug = window.__project;
@@ -2379,7 +2383,8 @@ async function chooseChapters(){
   const want = Number((document.getElementById("epWanted")||{}).value || 0);
   await postJSON("/api/chapters/choose",{project:slug,chosen:chosen,episodes_wanted:want});
   toast("已选 "+chosen.length+" 章，按 "+want+" 集生成","",2000);
-  await postJSON("/api/run",{project:slug,stages:["segment","script","storyboard"]});
+  const st = ["segment","script","storyboard"];
+  await postJSON("/api/run",{project:slug,stages:st});
   toast("剧本与分镜开始…","",2600);
 }
 </script>
