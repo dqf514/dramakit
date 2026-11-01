@@ -58,7 +58,19 @@ def for_stage(ctx, stage: str, *, refs: bool = False) -> str:
     skills that suit the drama.
     """
     cfg = getattr(ctx.cfg, "skills", None)
-    names = list(getattr(cfg, stage, None) or [])
+    # The project's own choice first: two dramas that share a genre word
+    # need not share their rules, and a project that decided against a
+    # skill for this stage means none - which is why the check is for a
+    # key that exists rather than for a list that is full.
+    project_sel = {}
+    try:
+        project_sel = ctx.project.meta.skills or {}
+    except Exception:  # noqa: BLE001
+        project_sel = {}
+    if stage in project_sel:
+        names = list(project_sel.get(stage) or [])
+    else:
+        names = list(getattr(cfg, stage, None) or [])
     genre = ""
     try:
         genre = (ctx.project.art_direction.genre or "").strip()

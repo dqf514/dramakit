@@ -277,6 +277,10 @@ class ProjectMeta(BaseModel):
     # season 2 and not to whatever season is being made now.
     chapter_season: dict[int, int] = {}
     segmented_chapters: list[int] = []
+    # which skills each stage writes with, for this project alone. Empty
+    # means none for that stage - a decision, not an absence - and a stage
+    # with no entry here falls back to the config's list.
+    skills: dict[str, list[str]] = {}
     episodes_wanted: int = 0
     created_at: str = ""
     updated_at: str = ""

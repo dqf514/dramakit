@@ -12,6 +12,7 @@ Design notes:
 """
 from __future__ import annotations
 
+import collections
 import json
 import logging
 import mimetypes
@@ -40,6 +41,40 @@ STATIC_DIR = Path(__file__).parent / "static"
 # --------------------------------------------------------------------------- #
 # Shared server state
 # --------------------------------------------------------------------------- #
+class LogTail(logging.Handler):
+    """The last few hundred log lines, kept in memory for the console.
+
+    The pipeline logs what it is doing - the episode it is on, the shot it
+    is drawing, the call that refused - through one logger. Nothing was
+    reading it, because nothing configured a handler and INFO fell through
+    to the last-resort handler and out of the process. A handler here is
+    enough: the same lines written for a debugging session are the lines a
+    user needs to know that episode 37 is where the run is stuck.
+
+    A deque with a fixed maxlen, so a run that logs for a week holds the
+    last few hundred lines and no more.
+    """
+
+    def __init__(self, capacity: int = 800):
+        super().__init__(level=logging.INFO)
+        self.lines: "deque[dict]" = collections.deque(maxlen=capacity)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self.lines.append({
+                "t": record.created,
+                "lv": record.levelname[:1].lower(),
+                "msg": record.getMessage(),
+            })
+        except Exception:  # noqa: BLE001 - a log handler must never raise
+            pass
+
+    def tail(self, n: int = 120) -> list[dict]:
+        if n <= 0:
+            return list(self.lines)
+        return list(self.lines)[-n:]
+
+
 class State:
     def __init__(self, cfg: Config, config_path: Optional[Path], projects_root: Path):
         self.lock = threading.RLock()
@@ -49,6 +84,8 @@ class State:
         self.catalog: Catalog = open_catalog(cfg, projects_root)
         self.jobs: dict[str, dict] = {}
         self._brain = None
+        # what the run is saying, for the panel to show
+        self.log_tail = LogTail()
 
     # -- lazy brain (recreated when config changes) --
     def brain(self):
@@ -282,6 +319,35 @@ def _make_handler(state: State):
             if path == "/api/tags":
                 slug = (query.get("project") or [""])[0] or None
                 return self._json({"ok": True, "tags": state.catalog.all_tags(slug)})
+            if path == "/api/skills":
+                from ..skills import catalog as skillcat
+                slug = (query.get("project") or [""])[0]
+                sel, costs = {}, {}
+                if slug:
+                    store = state.open_store(slug)
+                    if store:
+                        proj = store.load()
+                        sel = proj.meta.skills or {}
+                from ..config import Config as _C
+                cfg_skills = _C.load(state.config_path).skills
+                if not sel:
+                    # nothing chosen for this project: what the config says
+                    sel = {k: list(getattr(cfg_skills, k) or [])
+                           for k in ("analyze", "script", "storyboard", "promptgen")}
+                costs = skillcat.cost(sel)
+                return self._json({"ok": True,
+                                   "skills": skillcat.catalog(),
+                                   "selection": sel,
+                                   "costs": costs,
+                                   "stages": ["analyze", "script",
+                                              "storyboard", "promptgen"]})
+            if path == "/api/logs":
+                n = (query.get("n") or ["120"])[0]
+                try:
+                    n = int(n)
+                except ValueError:
+                    n = 120
+                return self._json({"ok": True, "lines": state.log_tail.tail(n)})
             if path == "/api/jobs":
                 jid = (query.get("id") or [""])[0]
                 j = state.jobs.get(jid)
@@ -344,6 +410,10 @@ def _make_handler(state: State):
                 return self._json(self._api_ai_run(body))
             if path == "/api/run":
                 return self._json(self._api_run(body))
+            if path == "/api/skills/save":
+                return self._json(self._api_skills_save(body))
+            if path == "/api/skills/recommend":
+                return self._json(self._api_skills_recommend(body))
             if path == "/api/jobs/stop":
                 return self._json(self._api_jobs_stop(body))
             if path == "/api/nodes/sync":
@@ -744,6 +814,106 @@ def _make_handler(state: State):
             if state.stop_job(jid):
                 return {"ok": True, "jobs": [jid], "message": "已请求停止"}
             return {"ok": False, "error": "没有这个任务，或它已经结束"}
+
+        def _api_skills_save(self, body: dict) -> dict:
+            """Write this project's skill choices.
+
+            Onto the project, not the config: a choice made for one drama
+            should not change the next one, and a run that is going cannot
+            be restarted to pick up a config edit anyway.
+            """
+            slug = str(body.get("project") or "").strip()
+            store = state.open_store(slug)
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            sel = body.get("selection")
+            if not isinstance(sel, dict):
+                return {"ok": False, "error": "selection 必须是对象"}
+            from ..skills import catalog as skillcat
+            have = {s["name"] for s in skillcat.catalog()}
+            clean: dict[str, list[str]] = {}
+            for stage in ("analyze", "script", "storyboard", "promptgen"):
+                if stage not in sel:
+                    continue
+                names = sel.get(stage) or []
+                if not isinstance(names, list):
+                    return {"ok": False, "error": f"{stage} 必须是列表"}
+                # only what exists: a name from a deleted skill would be
+                # silently dropped at load time, and better said here
+                clean[stage] = [n for n in names if str(n) in have]
+            proj = store.load()
+            proj.meta.skills = clean
+            store.save(proj)
+            return {"ok": True, "selection": clean,
+                    "costs": skillcat.cost(clean)}
+
+        def _api_skills_recommend(self, body: dict) -> dict:
+            """Which skills suit this project, and why.
+
+            The catalog says what each skill is for in its own words; the
+            model reads those beside the project's genre, synopsis and
+            cast and answers. Only names from the catalog come back - a
+            model that invents a skill would silently send nothing.
+            """
+            slug = str(body.get("project") or "").strip()
+            store = state.open_store(slug)
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            proj = store.load()
+            from ..skills import catalog as skillcat
+            skills = skillcat.catalog()
+
+            lines = []
+            for sk in skills:
+                desc = (sk["description"] or "").replace("\n", " ")[:110]
+                lines.append(f'- {sk["name"]} [{sk["family_zh"]}] '
+                             f'({sk["chars"]}字): {desc}')
+            chars = ", ".join(f"{c.name}({c.role})"
+                              for c in (proj.characters or [])[:12])
+            ad = proj.art_direction
+            ctx_txt = (f"项目: {proj.meta.title or proj.meta.name}\n"
+                       f"题材: {ad.genre} / {ad.style}\n"
+                       f"简介: {(proj.meta.synopsis or '')[:300]}\n"
+                       f"角色: {chars or '（尚未分析）'}\n"
+                       f"已选章节: {proj.meta.chosen_chapters}\n\n"
+                       f"可选技能（只能从下面的 name 里选）:\n"
+                       + "\n".join(lines))
+            sys_prompt = (
+                "你是短剧工厂的技能挑选助手。为这个项目挑选每个阶段该用的技能。\n"
+                "只输出 JSON，格式：{\"analyze\": [skill name...], "
+                "\"script\": [...], \"storyboard\": [...], "
+                "\"promptgen\": [...], \"reasons\": {\"skill name\": \"一句中文理由\"}}\n"
+                "规则：name 必须逐字来自清单；每个阶段至少选 1 个；"
+                "与题材不符的不选（例：古装权谋不需要情景喜剧理论）；"
+                "宁可少选也不要全选——技能越多每次调用越慢。")
+            try:
+                brain = state.brain()
+                data = brain.json(sys_prompt, ctx_txt, role="skills",
+                                  temperature=0.2)
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"推荐失败: {str(e)[:200]}"}
+            if isinstance(data, list):
+                data = data[0] if data else {}
+            if not isinstance(data, dict):
+                return {"ok": False, "error": "模型没有返回对象"}
+
+            have = {sk["name"] for sk in skills}
+            clean: dict[str, list[str]] = {}
+            for stage in ("analyze", "script", "storyboard", "promptgen"):
+                got = data.get(stage) or []
+                if not isinstance(got, list):
+                    continue
+                keep = [str(n) for n in got if str(n) in have]
+                if keep:
+                    clean[stage] = keep
+            if not clean:
+                return {"ok": False, "error": "模型没有选出可用的技能"}
+            reasons = data.get("reasons") or {}
+            if not isinstance(reasons, dict):
+                reasons = {}
+            return {"ok": True, "selection": clean,
+                    "reasons": {k: str(v) for k, v in reasons.items()},
+                    "costs": skillcat.cost(clean)}
 
         def _api_run(self, body: dict) -> dict:
             from ..ai import actions
@@ -1703,6 +1873,13 @@ def serve(cfg: Config, *, config_path: Optional[Path] = None,
     projects_root = Path(cfg.pipeline.output_dir).resolve()
     projects_root.mkdir(parents=True, exist_ok=True)
     state = State(cfg, config_path, projects_root)
+    # The stages log through the package logger and nobody was listening:
+    # with no handler, INFO falls to the last-resort handler and is lost,
+    # which is why the log file was empty while a run was going. One
+    # handler on the package logger captures every stage without touching
+    # any of them, and `dramakit.web` reaches it by propagation.
+    logging.getLogger("dramakit").addHandler(state.log_tail)
+    logging.getLogger("dramakit").setLevel(logging.INFO)
     # a process that died could not say so; settle what it left running
     # before anyone reads the console and believes it
     try:
