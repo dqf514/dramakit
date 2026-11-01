@@ -1388,7 +1388,7 @@ function renderWorkbench(){
     </div>
     <h2 class="page" style="font-size:14px;margin:14px 0 8px">分集</h2>
     <div class="epgrid">${epHtml||'<div class="empty">还没有分集，先跑导入/分析</div>'}</div>`;
-  if(slug) loadChapters(slug).catch(function(){});
+  if(S.current) loadChapters(S.current).catch(function(){});
 
   $$("#page-workbench .stg").forEach(x=>x.onclick=()=>{
     runSel=new Set([x.dataset.stage]); switchPage("pipeline");
