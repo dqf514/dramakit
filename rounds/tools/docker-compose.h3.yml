@@ -14,16 +14,28 @@
 # that is not there, because the pinned card is renumbered to zero inside
 # the container.
 #
-# One card cannot hold two H3 jobs - 15.2G for the diffusion weights plus
-# 14.6G for the text encoder - which is the whole reason there are two
+# One card cannot hold two H3 jobs - 19.5G for the diffusion weights plus
+# 25.3G for the text encoder - which is the whole reason there are two
 # workers rather than one with a deeper queue.
+#
+# --- memory ---------------------------------------------------------------
+# Two workers on one machine is 96 GB of weights on a 121 GB machine, and
+# ComfyUI's own accounting does not know the other worker exists: on Linux
+# it allows itself up to 109 GB of pinned memory per process, because it
+# assumes it has the machine to itself. Pinned pages cannot be swapped, so
+# when the machine runs short the kernel kills a worker instead of slowing
+# one down, and the machine stops answering.
+#
+# So the weights are read from the disk rather than pinned into memory
+# (--fast-disk), the pinned path is off, and the shared memory each
+# container may use is a couple of gigabytes rather than eight.
 
 services:
   comfyui-h3-a:
     image: comfyui-h3:sage
     container_name: comfyui-h3-a
     restart: unless-stopped
-    shm_size: 8gb
+    shm_size: 2gb
     ports:
       - "0.0.0.0:8188:8188"
     environment:
@@ -41,13 +53,16 @@ services:
       - /data/comfyui/output:/opt/ComfyUI/output
       - /data/comfyui/user:/opt/ComfyUI/user
       - /data/comfyui/custom_nodes:/opt/ComfyUI/custom_nodes
-    command: python3 main.py --listen 0.0.0.0 --port 8188 --reserve-vram 1.5 --use-sage-attention
+    command: >-
+      python3 main.py --listen 0.0.0.0 --port 8188
+      --reserve-vram 1.5 --use-sage-attention
+      --fast-disk --disable-pinned-memory
 
   comfyui-h3-b:
     image: comfyui-h3:sage
     container_name: comfyui-h3-b
     restart: unless-stopped
-    shm_size: 8gb
+    shm_size: 2gb
     ports:
       - "0.0.0.0:8189:8189"
     environment:
@@ -65,4 +80,7 @@ services:
       - /data/comfyui/output:/opt/ComfyUI/output
       - /data/comfyui/user:/opt/ComfyUI/user
       - /data/comfyui/custom_nodes:/opt/ComfyUI/custom_nodes
-    command: python3 main.py --listen 0.0.0.0 --port 8189 --reserve-vram 1.5 --use-sage-attention
+    command: >-
+      python3 main.py --listen 0.0.0.0 --port 8189
+      --reserve-vram 1.5 --use-sage-attention
+      --fast-disk --disable-pinned-memory
