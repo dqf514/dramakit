@@ -18,6 +18,7 @@
   let jobsLoading = false;
   let jobsRows = [];
   let jobFilters = {project: "", status: ""};
+  let jobsShell = false;
   let lastDrawerFocus = null;
 
   const jobsPage = document.createElement("section");
@@ -101,6 +102,9 @@
   sideScrim.onclick = closeMobileSide;
   sideClose.onclick = closeMobileSide;
   document.getElementById("brandBtn").onclick = () => switchPage("guide");
+  // On a phone the rail gives up its node-pool slot, so the header has to
+  // offer it - otherwise the page exists but nothing reaches it.
+  document.getElementById("nodesBtnHeader").onclick = () => switchPage("nodes");
   aiToggle.onclick = () => {
     const bar = document.getElementById("cmdbar");
     bar.classList.toggle("open");
@@ -165,18 +169,23 @@
     if (jobsLoading) return;
     jobsLoading = true;
     try {
+      const onJobs = S.activePage === "jobs";
       const project = document.getElementById("jobProject")?.value || jobFilters.project;
       const status = document.getElementById("jobStatus")?.value || jobFilters.status;
       jobFilters = {project, status};
-      const params = new URLSearchParams({limit: "150"});
-      if (project) params.set("project", project);
-      if (status) params.set("status", status);
+      // Off the jobs page only the badge needs updating: asking for 150
+      // stored jobs every few seconds, on every page, is work nobody asked for.
+      const params = new URLSearchParams({limit: onJobs ? "150" : "20"});
+      if (onJobs && project) params.set("project", project);
+      if (onJobs && status) params.set("status", status);
       const response = await getJSON(`/api/jobs?${params}`);
       jobsRows = response.jobs || [];
       const count = document.getElementById("jobCount");
       count.hidden = !response.active;
       count.textContent = response.active || "0";
-      renderJobs();
+      // The badge says how many, so it has to say it in words too.
+      count.setAttribute("aria-label", response.active ? `${response.active} 个任务进行中` : "");
+      if (onJobs) renderJobs();
     } catch (error) {
       if (S.activePage === "jobs") toast(`任务列表加载失败：${esc(error.message)}`, "err");
     } finally {
@@ -187,59 +196,84 @@
   function renderJobs() {
     if (S.activePage !== "jobs") return;
     const active = jobsRows.filter(j => ["queued", "running"].includes(j.status)).length;
-    const failed = jobsRows.filter(j => displayJobStatus(j)[0] === "失败" || displayJobStatus(j)[0] === "部分失败").length;
+    const stalled = jobsRows.filter(j => {
+      const label = displayJobStatus(j)[0];
+      // "needs attention" means anything that did not finish cleanly:
+      // a failure, a half-done result, a stop, or a run a restart left behind.
+      return label === "失败" || label === "部分失败" || label === "已中断" || label === "已取消";
+    }).length;
     const done = jobsRows.filter(j => j.status === "done").length;
-    jobsPage.innerHTML = `
-      <h1 class="page">任务中心</h1>
-      <div class="sub">任务按项目串行执行。状态、进度和结果保存在本地，重启控制台后仍可追溯。</div>
-      <div class="job-overview">
-        <div class="job-stat"><b>${active}</b><span>等待或运行中</span></div>
-        <div class="job-stat"><b>${done}</b><span>已完成</span></div>
-        <div class="job-stat"><b>${failed}</b><span>需要处理</span></div>
-        <div class="job-stat"><b>${jobsRows.length}</b><span>最近任务</span></div>
-      </div>
-      <div class="job-filters">
-        <div class="grow"><label class="fl" for="jobProject">项目</label><select class="f" id="jobProject"><option value="">全部项目</option>${S.projects.map(p => `<option value="${attr(p.slug)}">${esc(p.title)}</option>`).join("")}</select></div>
-        <div><label class="fl" for="jobStatus">状态</label><select class="f" id="jobStatus"><option value="">全部状态</option><option value="running">进行中</option><option value="queued">等待中</option><option value="done">已完成</option><option value="error">失败</option><option value="interrupted">已中断</option></select></div>
-        <button class="btn ghost" id="jobRefresh">刷新</button>
-      </div>
-      <div class="job-list">${jobsRows.length ? jobsRows.map(jobRow).join("") : '<div class="empty">还没有任务记录<button class="btn confirm empty-action" id="jobToStudio">去制作</button></div>'}</div>
-      <details class="fold" style="margin-top:16px"><summary>查看最近系统日志</summary><div class="inner"><div class="log-panel" id="jobLogs">读取中…</div></div></details>`;
-    document.getElementById("jobProject").value = jobFilters.project;
+    if (!jobsShell) {
+      // The frame is drawn once. Redrawing it on every poll closed the
+      // log panel the user had just opened and dropped the scroll
+      // position every three seconds.
+      jobsPage.innerHTML = `
+        <h1 class="page">任务中心</h1>
+        <div class="sub">任务按项目串行执行。状态、进度和结果保存在本地，重启控制台后仍可追溯。</div>
+        <div class="job-overview" id="jobStats"></div>
+        <div class="job-filters">
+          <div class="grow"><label class="fl" for="jobProject">项目</label><select class="f" id="jobProject"><option value="">全部项目</option>${S.projects.map(p => `<option value="${attr(p.slug)}">${esc(p.title)}</option>`).join("")}</select></div>
+          <div><label class="fl" for="jobStatus">状态</label><select class="f" id="jobStatus"><option value="">全部状态</option><option value="running">进行中</option><option value="queued">等待中</option><option value="done">已完成</option><option value="error">失败</option><option value="interrupted">已中断</option></select></div>
+          <button class="btn ghost" id="jobRefresh">刷新</button>
+        </div>
+        <div class="job-list" id="jobList"></div>
+        <details class="fold" style="margin-top:16px"><summary>查看最近系统日志</summary><div class="inner"><div class="log-panel" id="jobLogs">展开时读取</div></div></details>`;
+      jobsShell = true;
+      document.getElementById("jobProject").onchange = loadJobs;
+      document.getElementById("jobStatus").onchange = loadJobs;
+      document.getElementById("jobRefresh").onclick = loadJobs;
+      const logDetails = jobsPage.querySelector("details");
+      logDetails.addEventListener("toggle", async () => {
+        if (!logDetails.open) return;
+        const r = await getJSON("/api/logs?n=160");
+        const box = document.getElementById("jobLogs");
+        if (box) box.textContent = (r.lines || []).map(x => `${whenStr(x.t)}  ${x.msg}`).join("\n") || "暂无日志";
+      });
+    }
+    const projectBox = document.getElementById("jobProject");
+    // A project created after the frame was built still has to appear in
+    // the filter, so the options are rebuilt each time; the chosen one is
+    // put back after.
+    projectBox.innerHTML = `<option value="">全部项目</option>${S.projects.map(p => `<option value="${attr(p.slug)}">${esc(p.title)}</option>`).join("")}`;
+    projectBox.value = jobFilters.project;
     document.getElementById("jobStatus").value = jobFilters.status;
-    document.getElementById("jobProject").onchange = loadJobs;
-    document.getElementById("jobStatus").onchange = loadJobs;
-    document.getElementById("jobRefresh").onclick = loadJobs;
+    document.getElementById("jobStats").innerHTML = `
+      <div class="job-stat"><b>${active}</b><span>等待或运行中</span></div>
+      <div class="job-stat"><b>${done}</b><span>已完成</span></div>
+      <div class="job-stat"><b>${stalled}</b><span>需要处理</span></div>
+      <div class="job-stat"><b>${jobsRows.length}</b><span>最近任务</span></div>`;
+    const list = document.getElementById("jobList");
+    list.innerHTML = jobsRows.length ? jobsRows.map(jobRow).join("")
+      : '<div class="empty">还没有任务记录<button class="btn confirm empty-action" id="jobToStudio">去制作</button></div>';
     document.getElementById("jobToStudio")?.addEventListener("click", () => switchPage("board"));
-    jobsPage.querySelectorAll("[data-job-stop]").forEach(btn => btn.onclick = async () => {
+    list.querySelectorAll("[data-job-stop]").forEach(btn => btn.onclick = async () => {
       btn.disabled = true;
       const r = await postJSON("/api/jobs/stop", {job: btn.dataset.jobStop});
       toast(r.ok ? "已请求停止，当前调用结束后会保留已完成内容" : (r.error || "无法停止"), r.ok ? "ok" : "err");
       await loadJobs();
     });
-    jobsPage.querySelectorAll("[data-job-project]").forEach(btn => btn.onclick = async () => {
+    list.querySelectorAll("[data-job-project]").forEach(btn => btn.onclick = async () => {
       await selectProject(btn.dataset.jobProject, true);
       switchPage("workbench");
     });
-    const logDetails = jobsPage.querySelector("details");
-    logDetails.addEventListener("toggle", async () => {
-      if (!logDetails.open) return;
-      const r = await getJSON("/api/logs?n=160");
-      document.getElementById("jobLogs").textContent = (r.lines || []).map(x => `${whenStr(x.t)}  ${x.msg}`).join("\n") || "暂无日志";
-    }, {once: true});
   }
 
   function jobRow(job) {
     const [label, cls] = displayJobStatus(job);
     const project = S.projects.find(p => p.slug === job.project);
     const progress = job.progress || {};
-    const pct = progress.total ? Math.min(100, Math.round((progress.done || 0) * 100 / progress.total)) : (progress.percent || 0);
+    const known = progress.total ? Math.min(100, Math.round((progress.done || 0) * 100 / progress.total)) : (progress.percent || 0);
     const active = ["queued", "running"].includes(job.status);
+    // A running job that has not reported a count gets the crawl bar,
+    // not an invented percentage: the console cannot know how far along
+    // it is, and a made-up number reads as a measurement.
+    const bar = known ? `<div class="job-progress"><i style="width:${known}%"></i></div>`
+      : (active && job.status === "running" ? '<div class="job-progress indet"><i></i></div>' : "");
     return `<article class="job-row ${active ? "active" : ""}">
       <div><div class="job-title">${esc(jobNames[job.kind] || job.kind)}</div><div class="job-sub">#${esc(job.id)} · ${esc(job.kind)}</div></div>
       <div class="job-project">${project ? `<button class="btn xs ghost" data-job-project="${attr(job.project)}">${esc(project.title)}</button>` : '<span class="muted">系统任务</span>'}</div>
       <div><span class="badge ${cls}">${esc(label)}</span></div>
-      <div class="job-progress-wrap"><div class="job-time">${fmtJobTime(job)}</div>${active || pct ? `<div class="job-progress"><i style="width:${pct || (job.status === "running" ? 8 : 0)}%"></i></div>` : ""}</div>
+      <div class="job-progress-wrap"><div class="job-time">${fmtJobTime(job)}</div>${bar}</div>
       <div class="job-actions">${active ? `<button class="btn xs danger" data-job-stop="${attr(job.id)}">停止</button>` : ""}${job.kind === "run_pipeline" && !active && job.project ? `<button class="btn xs ghost" data-job-project="${attr(job.project)}">打开项目</button>` : ""}</div>
       ${job.error ? `<div class="job-error">${esc(job.error)}</div>` : ""}
     </article>`;
@@ -253,11 +287,14 @@
     return new Promise(resolve => {
       const dialog = document.createElement("dialog");
       dialog.className = "dk-dialog";
+      dialog.setAttribute("aria-modal", "true");
+      dialog.setAttribute("aria-labelledby", "preflightTitle");
+      const before = document.activeElement;
       const project = S.projects.find(p => p.slug === (body.project || S.current));
       const episodes = body.episodes?.length ? body.episodes.join("、") : "全部集数";
       const chapters = body.chapters?.length ? body.chapters.join("、") : "按项目当前选择";
       const config = S.state?.config_summary || {};
-      dialog.innerHTML = `<div class="dialog-head"><h2>确认执行${esc(label || "制作任务")}</h2><div class="muted">检查范围与外部服务后再开始，避免重复生成和意外覆盖。</div></div>
+      dialog.innerHTML = `<div class="dialog-head"><h2 id="preflightTitle">确认执行${esc(label || "制作任务")}</h2><div class="muted">检查范围与外部服务后再开始，避免重复生成和意外覆盖。</div></div>
         <div class="dialog-body"><dl class="preflight-grid">
           <dt>项目</dt><dd>${esc(project?.title || body.project || S.current)}</dd>
           <dt>处理范围</dt><dd>${esc(episodes)} · ${esc(chapters)}</dd>
@@ -271,25 +308,33 @@
       const finish = value => {
         if (dialog.open) dialog.close();
         dialog.remove();
+        // the caret goes back where the button that opened this was
+        before?.focus?.();
         resolve(value);
       };
       dialog.querySelector("[data-cancel]").onclick = () => finish(false);
       dialog.querySelector("[data-confirm]").onclick = () => finish(true);
       dialog.addEventListener("cancel", event => { event.preventDefault(); finish(false); });
       dialog.showModal();
-      dialog.querySelector("[data-confirm]").focus();
+      /* focus the way out, not the way in: this dialog precedes a run
+        that can spend money and overwrite assets, and a stray Enter
+        should not start it */
+      dialog.querySelector("[data-cancel]").focus();
     });
   };
 
   async function renderConfigHistory() {
-    const host = document.getElementById("tab-settings");
-    if (!host) return;
+    const shell = document.getElementById("page-settings");
+    if (!shell) return;
+    // The card lives beside the settings tab, not inside it: the tab is
+    // rewritten from scratch on every visit, and a card living in it was
+    // thrown away and rebuilt each time the page opened.
     let card = document.getElementById("configHistoryCard");
     if (!card) {
       card = document.createElement("div");
       card.className = "card";
       card.id = "configHistoryCard";
-      host.appendChild(card);
+      shell.appendChild(card);
       const tools = document.createElement("div");
       tools.className = "management-actions";
       tools.innerHTML = '<button class="btn ghost" id="openSkillsSettings">技能配置</button><button class="btn ghost" id="openGuideSettings">新手导引与接入手册</button>';
@@ -368,7 +413,9 @@
       const r = await postJSON("/api/projects/manage", {action: "stats", project: S.current});
       if (r.ok) document.getElementById("projectStorage").textContent = `当前项目占用 ${fmtBytes(r.bytes)}`;
     };
-    details.addEventListener("toggle", () => { if (details.open) renderTrash(); }, {once: true});
+    // Every time it opens, not the first: a project deleted since the
+    // last visit would otherwise stay invisible until the page was rebuilt.
+    details.addEventListener("toggle", () => { if (details.open) renderTrash(); });
   }
 
   function renderFilmStrip() {
@@ -381,28 +428,45 @@
     const strip = document.createElement("div");
     strip.className = "film-strip";
     strip.setAttribute("aria-label", `第${ep.index}集场次带`);
-    strip.innerHTML = ep.scenes.map(sc => `<button class="film-scene" data-scene="${attr(sc.id)}"><b>SC ${String(sc.index).padStart(2, "0")} · ${sc.shots.length} 镜</b><span>${esc(sc.location || "未命名场景")}</span><span>${esc(sc.time_of_day || sc.time || "")}</span></button>`).join("");
+    strip.innerHTML = ep.scenes.map(sc => `<button class="film-scene" data-scene="${attr(sc.id)}"><b>SC ${String(sc.index).padStart(2, "0")} · ${sc.shots.length} 镜</b><span>${esc(sc.location || "未命名场景")}</span><span>${esc(sc.time || "")}</span></button>`).join("");
     box.querySelector(".boardbar").after(strip);
     strip.querySelectorAll("[data-scene]").forEach(btn => btn.onclick = () => {
-      box.querySelector(`[data-sc="${CSS.escape(btn.dataset.scene)}"]`)?.scrollIntoView({behavior: "smooth", block: "start"});
+      const target = box.querySelector(`[data-sc="${CSS.escape(btn.dataset.scene)}"]`);
+      if (!target) {
+        // The board can be filtered down to one kind of scene, and then
+        // there is nothing to jump to. Saying so beats scrolling nowhere.
+        toast("这个场次被当前筛选挡住了，先清除筛选", "", 2400);
+        return;
+      }
+      target.scrollIntoView({behavior: "smooth", block: "start"});
     });
   }
 
+  let fieldSeq = 0;
   function enhanceA11y(root = document) {
-    root.querySelectorAll(".chip,.tg,.proj,.stg,.pcard,.shotcard,.epcard,.anode,.mini[onclick]").forEach(node => {
+    // Each node is tagged once. Without the tag the observer re-walked
+    // every card in the page on every DOM change, regenerating field ids
+    // that already had one. Only the things that are not already controls
+    // get a role: a native button does not need to be told it is one.
+    const nodes = root.querySelectorAll('.chip:not(button),.tg:not(button),.proj,.stg,.pcard,.shotcard,.epcard,.anode,.mini[onclick]');
+    nodes.forEach(node => {
+      if (node.dataset.dkA11y) return;
+      node.dataset.dkA11y = "1";
       if (!node.getAttribute("role")) node.setAttribute("role", "button");
       if (!node.hasAttribute("tabindex")) node.tabIndex = 0;
     });
-    root.querySelectorAll("svg").forEach(svg => {
+    root.querySelectorAll("svg:not([aria-hidden])").forEach(svg => {
       if (!svg.getAttribute("aria-label")) svg.setAttribute("aria-hidden", "true");
     });
-    root.querySelectorAll("input.f,select.f,textarea.f").forEach((field, index) => {
+    root.querySelectorAll("input.f,select.f,textarea.f").forEach(field => {
       if (field.getAttribute("aria-label") || field.getAttribute("aria-labelledby")) return;
       const label = field.closest("div")?.querySelector(":scope > label.fl") || field.previousElementSibling;
-      if (label?.tagName === "LABEL") {
-        if (!field.id) field.id = `dk-field-${index}-${Math.random().toString(36).slice(2, 7)}`;
-        label.htmlFor = field.id;
+      if (label?.tagName !== "LABEL") return;
+      if (!field.id) {
+        fieldSeq += 1;
+        field.id = `dk-field-${fieldSeq}`;
       }
+      label.htmlFor = field.id;
     });
   }
 

@@ -1,53 +1,7 @@
-:root {
-  --bg: #f6f7f9;
-  --bg2: #ffffff;
-  --bg3: #eef1f5;
-  --bg4: #e2e7ed;
-  --line: #dfe4ea;
-  --line2: #c7d0da;
-  --fg: #1c2632;
-  --fg2: #4e5c6d;
-  --fg3: #647184;
-  --confirm: #3267d6;
-  --confirm2: #2858ba;
-  --go: #16877b;
-  --go2: #16877b;
-  --warn: #b87820;
-  --rail: #f0f2f5;
-  --rail-on: #e5ecfa;
-  --proj-on: #e9effa;
-  --proj-on-line: #b9c9e7;
-  --pcard-on: #e9effa;
-  --r: 8px;
-  --shadow: rgba(28, 38, 50, .16);
-  --monitor: #151a21;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-}
-
-html[data-theme="dark"] {
-  --bg: #11151a;
-  --bg2: #191f27;
-  --bg3: #222a34;
-  --bg4: #2c3642;
-  --line: #303a46;
-  --line2: #465363;
-  --fg: #edf1f5;
-  --fg2: #b0bdca;
-  --fg3: #8c9aaa;
-  --confirm: #6290e8;
-  --confirm2: #8eaff0;
-  --go: #32a394;
-  --go2: #65c4b6;
-  --rail: #0e1217;
-  --rail-on: #202c3d;
-  --proj-on: #202c3d;
-  --proj-on-line: #3f587d;
-  --pcard-on: #202c3d;
-}
+/* No palette lives here. The tokens are declared once, in the console's
+   own :root, so this sheet only says how the pieces are shaped and where
+   they sit - a second copy of the colour list is how a console ends up
+   with two greens and two blues. */
 
 body {
   font-family: "MiSans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -66,9 +20,9 @@ textarea:focus-visible, summary:focus-visible, [role="button"]:focus-visible {
 
 #rail { width: 76px; padding: 12px 0; gap: 7px; }
 .brand { border: 0; cursor: pointer; background: var(--confirm); box-shadow: none; font-family: "JetBrains Mono", var(--mono); }
-.railbtn { width: 60px; min-height: 52px; font-size: 11px; position: relative; }
+.railbtn { width: 60px; min-height: 52px; font-size: 12px; position: relative; }
 .railbtn.on::before { width: 3px; height: 28px; left: 0; }
-.job-count { position: absolute; top: 2px; right: 3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--danger2); color: white; font: 10px/17px var(--mono); }
+.job-count { position: absolute; top: 2px; right: 3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--count-bg); color: var(--count-fg); font: 11px/18px var(--mono); font-weight: 700; }
 header { height: 52px; padding: 0 18px; }
 .crumb b { font-size: 15px; }
 #cmdbar { display: none; padding: 10px 18px; }
@@ -77,25 +31,17 @@ header { height: 52px; padding: 0 18px; }
 #main { padding: 20px 22px 32px; }
 #side { width: 248px; padding: 12px; }
 
+/* Type sizes live in the console's own sheet; only the pieces this sheet
+   adds are sized here, so a number is not written twice in two places. */
 h1.page, .hero .ht { font-size: 22px; line-height: 1.3; letter-spacing: -.015em; }
-.sub { font-size: 13px; max-width: 880px; }
 .card, .fold, .scblock, .castcard, .asset, .epcard { border-radius: var(--r); }
 .card { padding: 16px; margin-bottom: 16px; }
-.card h3 { font-size: 14px; }
-.btn { min-height: 34px; padding: 6px 14px; font-size: 13px; font-weight: 600; }
-.btn.sm { min-height: 30px; }
-.btn.xs { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .btn.go { background: var(--go); border-color: var(--go); }
 .btn.confirm { background: var(--confirm); border-color: var(--confirm); }
 .btn.ghost { background: transparent; }
-input.f, textarea.f, select.f { min-height: 36px; font-size: 13px; }
-label.fl { font-size: 12px; margin-bottom: 5px; }
-.badge, .mini { font-size: 11px; }
-.muted, .stat span, .proj .pm, .hero .hm { font-size: 12px; }
 .empty { min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .empty-action { margin-top: 8px; }
-.toast { font-size: 13px; border-radius: 8px; z-index: 400; }
-.toast.err { border-left-width: 4px; }
+.toast { z-index: 400; }
 
 .guide-hero { border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
 .guide-hero h1 { font-size: 25px; letter-spacing: -.025em; }
@@ -119,12 +65,12 @@ label.fl { font-size: 12px; margin-bottom: 5px; }
 .film-scene:hover, .film-scene:focus-visible { border-color: #8eaff0; }
 .film-scene b, .film-scene span { display: block; }
 .film-scene b { font: 11px var(--mono); color: #8eaff0; }
-.film-scene span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.film-scene span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .shotcard .media, .asset .am, .hero .cover, .casttop .ref { background: var(--monitor); }
 .shotcard { border-radius: 8px; }
 .shotcard:focus-visible, .epcard:focus-visible, .proj:focus-visible { outline: 3px solid color-mix(in srgb, var(--confirm) 45%, transparent); outline-offset: 2px; }
 .result-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.run-result pre { max-height: 320px; overflow: auto; font: 11px/1.5 var(--mono); white-space: pre-wrap; }
+.run-result pre { max-height: 320px; overflow: auto; font: 12px/1.55 var(--mono); white-space: pre-wrap; }
 .run-result.fail { border-color: var(--danger2); }
 
 .job-overview { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: 10px; margin-bottom: 16px; }
@@ -137,12 +83,15 @@ label.fl { font-size: 12px; margin-bottom: 5px; }
 .job-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) minmax(150px, 1fr) 110px minmax(150px, 1fr) auto; align-items: center; gap: 12px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg2); }
 .job-row.active { border-color: color-mix(in srgb, var(--confirm) 55%, var(--line)); }
 .job-title { font-weight: 650; }
-.job-sub, .job-time { color: var(--fg3); font-size: 11px; }
+.job-sub, .job-time { color: var(--fg3); font-size: 12px; }
 .job-error { grid-column: 1 / -1; padding: 8px 10px; border-left: 3px solid var(--danger2); background: color-mix(in srgb, var(--danger2) 7%, transparent); color: var(--danger2); font-size: 12px; }
 .job-progress { height: 5px; margin-top: 6px; overflow: hidden; border-radius: 3px; background: var(--bg4); }
-.job-progress i { display: block; height: 100%; background: var(--confirm); }
+.job-progress i { display: block; height: 100%; background: var(--confirm); transition: width .6s ease; }
+/* a job that has not reported a count gets the crawl, not a made-up
+   percentage: the same honest bar the pipeline panel uses */
+.job-progress.indet i { width: 25%; background: linear-gradient(90deg, transparent, var(--confirm), var(--confirm2), transparent); animation: dkbar 1.5s linear infinite; }
 .job-actions { display: flex; gap: 5px; }
-.log-panel { max-height: 300px; overflow: auto; padding: 12px; border-radius: 7px; background: var(--monitor); color: #c9d4df; font: 11px/1.6 var(--mono); white-space: pre-wrap; }
+.log-panel { max-height: 300px; overflow: auto; padding: 12px; border-radius: 7px; background: var(--monitor); color: #c9d4df; font: 12px/1.6 var(--mono); white-space: pre-wrap; }
 
 .management-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
 .management-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
@@ -166,6 +115,10 @@ dialog.dk-dialog::backdrop { background: rgba(10, 16, 24, .58); backdrop-filter:
 .dsec h4 { font-size: 12px; }
 #sideScrim, .mobile-side-close, .mobile-side-toggle { display: none; }
 
+/* the node pool is reachable from the header only where the rail has to
+   give up a slot; on a wide screen it lives in the rail and not here */
+.header-nodes { display: none; }
+
 @media (max-width: 1180px) {
   .mobile-side-toggle { display: inline-flex; }
   .mobile-side-close { display: block; width: 100%; margin-bottom: 10px; text-align: left; }
@@ -187,8 +140,11 @@ dialog.dk-dialog::backdrop { background: rgba(10, 16, 24, .58); backdrop-filter:
 @media (max-width: 700px) {
   #app { flex-direction: column; }
   #shell { height: calc(100% - 64px); }
+  /* a bottom bar that fits six destinations fits none of them well: the
+     rail keeps five and the node pool moves up into the header */
   #rail { order: 2; width: 100%; height: 64px; padding: 4px 6px; flex-direction: row; justify-content: space-around; border-top: 1px solid var(--line); border-right: 0; }
-  #rail .brand, #rail .rail-sp, #healthBtn { display: none; }
+  #rail .brand, #rail .rail-sp, #healthBtn, #rail [data-page="nodes"] { display: none; }
+  .header-nodes { display: inline-flex; }
   .railbtn { flex: 1; max-width: 90px; min-height: 52px; padding: 4px 0; }
   .railbtn.on::before { top: -4px; left: 25%; width: 50%; height: 3px; }
   header { height: 48px; padding: 0 10px; gap: 6px; }

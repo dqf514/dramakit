@@ -410,7 +410,38 @@ class Context:
         # serialised on the write, not on the work: the lanes still run
         # together, only the moment the file changes takes turns
         with self._save_lock:
+            self._adopt_finished_clips()
             self.store.save(self.project)
+
+    def _adopt_finished_clips(self) -> None:
+        """Take in any clip that is on the disk but that this copy does not know.
+
+        The console can redraw a shot while a run is going - that is what
+        the redraw button is for, and it is the only way to fix one
+        camera without waiting for the run to reach it. That work is
+        written to the project by the console, but a run holds the
+        project in memory and writes it whole, so without this the run
+        writes over the console's change: the shot goes back to "not
+        done" while its clip is sitting on the disk, and the run draws
+        the same clip a second time.
+
+        The file is the truth here, not the record: a clip that is on
+        the disk was made, and the record that says otherwise is the
+        thing that is out of date. What the run has drawn itself is
+        left alone - it is newer, and it knows the details.
+        """
+        for ep in self.project.episodes:
+            for sc in ep.scenes:
+                for shot in sc.shots:
+                    if not shot.video_path:
+                        path = self.store.video_path(shot.id)
+                        if path.exists() and path.stat().st_size > 0:
+                            shot.video_path = self.store.rel(path)
+                            shot.status = Status.DONE
+                    if not shot.image_path:
+                        path = self.store.image_path(shot.id)
+                        if path.exists() and path.stat().st_size > 0:
+                            shot.image_path = self.store.rel(path)
 
     # -- season ---------------------------------------------------------------
     @property

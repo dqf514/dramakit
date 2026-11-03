@@ -11,55 +11,69 @@ try{
 }catch(e){}
 </script>
 <style>
+  /* One token layer, one palette. Everything the sheets paint with is
+     here: light and dark values of the same names, so a component cannot
+     pick a colour that only exists in one theme. Contrast for text is
+     checked against the surface it actually sits on. */
   :root{
     color-scheme:light;
-    --bg:#f4f6f9; --bg2:#ffffff; --bg3:#eef2f7; --bg4:#dfe6ee;
-    --line:#dbe2ea; --line2:#c3ceda;
-    --fg:#1b2733; --fg2:#475569; --fg3:#64748b;
-    --go:#1a7f37; --go2:#238636; --danger:#cf222e; --danger2:#c4302b;
-    --confirm:#0969da; --confirm2:#0969da; --warn:#9a6700; --ai:#8250df;
-    --chip:#eef2f7; --r:6px;
-    --rail:#f9fbfd; --rail-on:#e8f1ff;
-    --proj-on:#e8f1ff; --proj-on-line:#b9d4f7;
-    --ai-soft-bg:#f4efff; --ai-soft-line:#dcccf8; --ai-soft-fg:#6b46c1;
+    --bg:#f6f7f9; --bg2:#ffffff; --bg3:#eef1f5; --bg4:#e2e7ed;
+    --line:#dfe4ea; --line2:#c7d0da;
+    --fg:#1c2632; --fg2:#4e5c6d; --fg3:#5c6a7c;
+    --go:#16877b; --go2:#127065; --danger:#cf222e; --danger2:#b42318;
+    --confirm:#3267d6; --confirm2:#2858ba; --warn:#8a5a10; --ai:#6b46c1;
+    --chip:#eef1f5; --r:8px;
+    --rail:#f0f2f5; --rail-on:#e5ecfa;
+    --proj-on:#e9effa; --proj-on-line:#b9c9e7;
+    --ai-soft-bg:#f4efff; --ai-soft-line:#dcccf8; --ai-soft-fg:#5b3fbf;
     --ai-btn-bg:#f1eaff; --ai-btn-line:#cbb6f2; --ai-btn-fg:#5b3fbf;
-    --pcard-on:#edf5ff;
-    --done-bg:#e9f7ee; --done-line:#b5e2c0; --done-fg:#17692f;
-    --partial-bg:#fff7e0; --partial-line:#ebd49c; --partial-fg:#7a5600;
+    --pcard-on:#e9effa;
+    --done-bg:#e9f7ee; --done-line:#b5e2c0; --done-fg:#12612b;
+    --partial-bg:#fff7e0; --partial-line:#ebd49c; --partial-fg:#6b4a00;
     --badge-done-line:#b5e2c0; --badge-run-line:#b3d4f7; --badge-fail-line:#f0b8b4;
-    --flf-bg:#f3edff; --flf-line:#d8c6f7; --flf-fg:#6b46c1;
-    --media-bg:#e6ecf3; --ph1:#edf1f6; --ph2:#f7f9fb;
+    --flf-bg:#f3edff; --flf-line:#d8c6f7; --flf-fg:#5b3fbf;
+    --media-bg:#e6ecf3; --monitor:#151a21; --ph1:#edf1f6; --ph2:#f7f9fb;
     --dash:#e4eaf1; --scrim:rgba(0,0,0,.62); --overlay:rgba(15,23,42,.32);
-    --shadow:rgba(15,23,42,.18); --scroll:#c3ceda;
+    --shadow:rgba(28,38,50,.16); --scroll:#c3ceda;
+    --count-bg:#b42318; --count-fg:#ffffff;
+    /* text that sits on a filled accent. White clears the light accents
+      but only about 3:1 on the brighter dark-mode ones, so dark mode
+      paints them with ink instead. */
+    --on-accent:#ffffff;
     --ai-focus:rgba(130,80,223,.18); --brand-shadow:rgba(58,110,240,.25);
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px;
     --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
   }
   html[data-theme="dark"]{
     color-scheme:dark;
-    --bg:#0c1015; --bg2:#121820; --bg3:#1a222c; --bg4:#202b37;
-    --line:#27313d; --line2:#334250;
-    --fg:#e8eef5; --fg2:#9fb0c1; --fg3:#697b8d;
-    --go:#248a3d; --go2:#3fb950; --danger:#c93636; --danger2:#f0645c;
-    --confirm:#1f6feb; --confirm2:#4c9aff; --warn:#c9971c; --ai:#8b5cf6;
-    --chip:#1d2732;
-    --rail:#090d11; --rail-on:#17222e;
-    --proj-on:#17222e; --proj-on-line:#2b4a70;
-    --ai-soft-bg:#201735; --ai-soft-line:#4b3a7a; --ai-soft-fg:#b79cff;
+    --bg:#11151a; --bg2:#191f27; --bg3:#222a34; --bg4:#2c3642;
+    --line:#303a46; --line2:#465363;
+    --fg:#edf1f5; --fg2:#b0bdca; --fg3:#8c9aaa;
+    --go:#32a394; --go2:#65c4b6; --danger:#e0574f; --danger2:#f0645c;
+    --confirm:#6290e8; --confirm2:#8eaff0; --warn:#d9a441; --ai:#a374f5;
+    --chip:#222a34;
+    --rail:#0e1217; --rail-on:#202c3d;
+    --proj-on:#202c3d; --proj-on-line:#3f587d;
+    --ai-soft-bg:#201735; --ai-soft-line:#4b3a7a; --ai-soft-fg:#c4a5ff;
     --ai-btn-bg:#3b2a63; --ai-btn-line:#5b3fa0; --ai-btn-fg:#d8c9ff;
-    --pcard-on:#16233a;
+    --pcard-on:#202c3d;
     --done-bg:#122117; --done-line:#2a5533; --done-fg:#9be2a8;
     --partial-bg:#1e1a10; --partial-line:#574a22; --partial-fg:#f0d38a;
     --badge-done-line:#264d2e; --badge-run-line:#243b5e; --badge-fail-line:#5e2626;
     --flf-bg:#201735; --flf-line:#4b3a7a; --flf-fg:#c4a5ff;
-    --media-bg:#000000; --ph1:#11161d; --ph2:#151b23;
+    --media-bg:#000000; --monitor:#0a0e13; --ph1:#11161d; --ph2:#151b23;
     --dash:#1e262f; --scrim:rgba(0,0,0,.72); --overlay:rgba(4,7,11,.5);
     --shadow:rgba(0,0,0,.55); --scroll:#2b3745;
+    /* the alert chip flips instead of reusing white: white on the lighter
+      dark-mode red is only about 3:1 */
+    --count-bg:#f0645c; --count-fg:#1b0b0b;
+    --on-accent:#0b1220;
     --ai-focus:rgba(139,92,246,.15); --brand-shadow:rgba(58,110,240,.35);
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--fg);
-    font:13px/1.45 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
     overflow:hidden}
   a{color:var(--confirm2);text-decoration:none}
   ::-webkit-scrollbar{width:9px;height:9px}
@@ -76,7 +90,7 @@ try{
     letter-spacing:.5px;color:#fff;margin-bottom:10px;box-shadow:0 4px 14px var(--brand-shadow)}
   .railbtn{width:54px;padding:7px 0 5px;border:0;background:transparent;color:var(--fg3);
     display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:8px;
-    cursor:pointer;font-size:10px;font-family:inherit}
+    cursor:pointer;font-size:12px;font-family:inherit}
   .railbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;
     stroke-linecap:round;stroke-linejoin:round}
   .railbtn:hover{background:var(--bg3);color:var(--fg2)}
@@ -91,10 +105,10 @@ try{
     padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--line)}
   .crumb{display:flex;align-items:baseline;gap:8px;min-width:0}
   .crumb b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
-  .crumb span{font-size:11px;color:var(--fg3);white-space:nowrap}
+  .crumb span{font-size:12px;color:var(--fg3);white-space:nowrap}
   .hchips{display:flex;gap:6px;align-items:center;flex:1;overflow:hidden}
   .hchip{background:var(--chip);border:1px solid var(--line);border-radius:20px;
-    padding:2px 9px;font-size:11px;color:var(--fg2);white-space:nowrap}
+    padding:2px 9px;font-size:12px;color:var(--fg2);white-space:nowrap}
   .hchip b{color:var(--fg);font-weight:600}
   .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
   .dot.ok{background:var(--go2)} .dot.bad{background:var(--danger2)}
@@ -106,7 +120,7 @@ try{
   /* ---------- AI command bar ---------- */
   #cmdbar{display:flex;gap:8px;padding:7px 14px;background:var(--bg2);
     border-bottom:1px solid var(--line);align-items:center;flex:0 0 auto}
-  #cmdbar .lbl{font-size:11px;color:var(--ai);font-weight:650;white-space:nowrap;
+  #cmdbar .lbl{font-size:12px;color:var(--ai);font-weight:650;white-space:nowrap;
     border:1px solid var(--ai-soft-line);background:var(--ai-soft-bg);color:var(--ai-soft-fg);border-radius:4px;padding:2px 7px}
   #cmd{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--fg);
     border-radius:var(--r);padding:7px 11px;font-size:12.5px;outline:none;font-family:inherit}
@@ -125,86 +139,120 @@ try{
   #side.hide .side-content{display:none}
   #side.hide #sideToggle span:last-child{display:none}
   #main{flex:1;min-width:0;overflow-y:auto;padding:16px 18px}
-  .side-h{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);
+  .side-h{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);
     margin:12px 0 6px;font-weight:700;display:flex;justify-content:space-between}
   .side-h:first-child{margin-top:0}
   .proj{padding:7px 9px;border-radius:var(--r);cursor:pointer;border:1px solid transparent;
-    margin-bottom:3px}
+    margin-bottom:3px;position:relative}
   .proj:hover{background:var(--bg3)}
   .proj.on{background:var(--proj-on);border-color:var(--proj-on-line)}
-  .proj .pn{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .proj .pm{color:var(--fg3);font-size:10.5px;margin-top:1px}
-  .tagfilter{display:flex;flex-wrap:wrap;gap:4px}
+  .proj .pn{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    padding-right:26px}
+  .proj .pm{color:var(--fg3);font-size:12px;margin-top:1px}
+  /* Deleting a project is a real button: reachable by Tab, big enough to
+    hit, and it says which project it means. */
+  .proj-del{position:absolute;top:4px;right:4px;width:30px;height:30px;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid transparent;border-radius:6px;background:transparent;
+    color:var(--fg3);font-size:15px;line-height:1;cursor:pointer;padding:0;
+    transition:background .14s ease,color .14s ease,border-color .14s ease}
+  .proj-del:hover,.proj-del:focus-visible{background:color-mix(in srgb,var(--danger2) 12%,transparent);
+    border-color:var(--danger2);color:var(--danger2)}
+  .tagfilter{display:flex;flex-wrap:wrap;gap:6px}
+  /* a filter you can actually hit: 24px tall, 8px apart, and it answers
+    the pointer instead of changing all at once */
   .tg{background:var(--chip);border:1px solid var(--line);color:var(--fg2);
-    border-radius:12px;padding:1px 7px;font-size:10.5px;cursor:pointer}
+    border-radius:12px;min-height:26px;padding:3px 11px;font-size:12.5px;cursor:pointer;
+    transition:background .14s ease,border-color .14s ease,color .14s ease}
   .tg:hover{border-color:var(--fg3)}
-  .tg.on{background:var(--confirm);border-color:var(--confirm);color:#fff}
+  .tg.on{background:var(--confirm);border-color:var(--confirm);color:var(--on-accent)}
 
   /* ---------- buttons ---------- */
   .btn{border:1px solid var(--line);background:var(--bg3);color:var(--fg);
-    border-radius:var(--r);padding:6px 13px;font-size:12.5px;cursor:pointer;
-    font-weight:550;white-space:nowrap;font-family:inherit}
-  .btn:hover{filter:brightness(1.14)}
-  .btn:disabled{opacity:.45;cursor:not-allowed}
-  .btn.go{background:var(--go);border-color:var(--go);color:#fff}
-  .btn.confirm{background:var(--confirm);border-color:var(--confirm);color:#fff}
-  .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+    border-radius:var(--r);min-height:34px;padding:6px 14px;font-size:13px;cursor:pointer;
+    font-weight:600;white-space:nowrap;font-family:inherit;
+    transition:background .14s ease,border-color .14s ease,color .14s ease,transform .1s ease}
+  .btn:hover{background:var(--bg4);border-color:var(--line2)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.go{background:var(--go);border-color:var(--go);color:var(--on-accent)}
+  .btn.go:hover{background:var(--go2);border-color:var(--go2)}
+  .btn.confirm{background:var(--confirm);border-color:var(--confirm);color:var(--on-accent)}
+  .btn.confirm:hover{background:var(--confirm2);border-color:var(--confirm2)}
+  .btn.danger{background:var(--danger);border-color:var(--danger);color:var(--on-accent)}
+  .btn.danger:hover{background:var(--danger2);border-color:var(--danger2)}
   .btn.ghost{background:transparent}
+  .btn.ghost:hover{background:var(--bg3)}
   .btn.ai{background:var(--ai-btn-bg);border-color:var(--ai-btn-line);color:var(--ai-btn-fg)}
-  .btn.sm{padding:3px 9px;font-size:11.5px}
-  .btn.xs{padding:1px 7px;font-size:10.5px;border-radius:4px}
-  #themeBtn{display:flex;align-items:center;justify-content:center;width:30px;padding:0}
+  .btn.sm{min-height:30px;padding:3px 10px;font-size:12.5px}
+  .btn.xs{min-height:26px;padding:2px 9px;font-size:12px;border-radius:5px}
+  /* an icon-only button is square, carries its own name for readers, and
+    draws the mark as an svg rather than a character someone typed */
+  .btn.icon{width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+  .btn.icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .btn.sm.icon{width:32px}
+  .btn.xs.icon{width:28px}
+  #themeBtn{display:flex;align-items:center;justify-content:center;width:34px;min-height:34px;padding:0}
   #themeBtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
   html[data-theme="light"] #themeBtn .ico-sun{display:none}
   html[data-theme="dark"] #themeBtn .ico-moon{display:none}
 
   /* ---------- general ---------- */
-  h1.page{font-size:17px;margin:0 0 3px;font-weight:700;letter-spacing:.2px}
-  .sub{color:var(--fg2);font-size:12px;margin-bottom:14px;line-height:1.55}
+  h1.page{font-size:19px;margin:0 0 4px;font-weight:700;letter-spacing:-.01em}
+  .sub{color:var(--fg2);font-size:13.5px;margin-bottom:14px;line-height:1.55;max-width:880px}
   .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
-    padding:14px;margin-bottom:12px}
-  .card h3{margin:0 0 10px;font-size:12.5px;font-weight:700;display:flex;
+    padding:16px;margin-bottom:14px}
+  .card h3{margin:0 0 10px;font-size:14px;font-weight:700;display:flex;
     align-items:center;gap:8px;justify-content:space-between}
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .grow{flex:1;min-width:180px}
-  label.fl{display:block;font-size:10.5px;color:var(--fg2);margin-bottom:3px}
+  /* a field label is read before the field is filled in, so it is not a
+    footnote: 12px minimum, and it stays the same size everywhere */
+  label.fl{display:block;font-size:12px;color:var(--fg2);margin-bottom:5px;font-weight:600}
   input.f,textarea.f,select.f{width:100%;background:var(--bg);border:1px solid var(--line);
-    color:var(--fg);border-radius:var(--r);padding:6px 9px;font-size:12.5px;outline:none;
+    color:var(--fg);border-radius:var(--r);min-height:36px;padding:7px 10px;font-size:13.5px;outline:none;
     font-family:inherit}
-  input.f:focus,textarea.f:focus,select.f:focus{border-color:var(--confirm)}
-  textarea.f{resize:vertical;min-height:54px}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+  input.f:focus,textarea.f:focus,select.f:focus{border-color:var(--confirm);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--confirm) 18%,transparent)}
+  textarea.f{resize:vertical;min-height:60px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
   .chip{background:var(--chip);border:1px solid var(--line);color:var(--fg2);
-    border-radius:14px;padding:3px 10px;font-size:11.5px;cursor:pointer}
+    border-radius:14px;min-height:28px;padding:4px 11px;font-size:12px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:5px;
+    transition:background .14s ease,border-color .14s ease,color .14s ease}
   .chip:hover{border-color:var(--fg3)}
-  .chip.on{background:var(--confirm);border-color:var(--confirm);color:#fff}
+  .chip.on{background:var(--confirm);border-color:var(--confirm);color:var(--on-accent)}
   .pcard{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r);
-    padding:9px 12px;cursor:pointer;min-width:120px}
+    padding:10px 12px;cursor:pointer;min-width:120px;min-height:44px}
   .pcard:hover{border-color:var(--fg3)}
   .pcard.on{border-color:var(--confirm);background:var(--pcard-on)}
-  .pcard .pl{font-weight:650;font-size:12.5px}
-  .pcard .pd{color:var(--fg3);font-size:10.5px;margin-top:1px}
+  .pcard .pl{font-weight:650;font-size:13px}
+  .pcard .pd{color:var(--fg3);font-size:12.5px;margin-top:2px}
   .preset{display:flex;gap:8px;flex-wrap:wrap}
-  .badge{font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);
-    color:var(--fg2);background:var(--chip)}
-  .badge.done{color:var(--go2);border-color:var(--badge-done-line)}
+  .badge{font-size:12.5px;min-height:22px;padding:2px 9px;border-radius:11px;border:1px solid var(--line);
+    color:var(--fg2);background:var(--chip);display:inline-flex;align-items:center}
+  .badge.done{color:var(--done-fg);border-color:var(--done-line);background:var(--done-bg)}
   .badge.run{color:var(--confirm2);border-color:var(--badge-run-line)}
-  .badge.fail{color:var(--danger2);border-color:var(--badge-fail-line)}
+  .badge.fail{color:var(--danger2);border-color:var(--badge-fail-line);
+    background:color-mix(in srgb,var(--danger2) 8%,var(--bg2))}
   .badge.flf{color:var(--flf-fg);border-color:var(--flf-line);background:var(--flf-bg)}
+  /* a status is never colour alone: the word is already in the badge, and
+    the dot in front of it carries the shape as well as the hue */
   .muted{color:var(--fg3)}
-  .empty{color:var(--fg3);text-align:center;padding:38px 10px;font-size:12.5px}
-  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--fg3);
+  .empty{color:var(--fg3);text-align:center;padding:38px 10px;font-size:13.5px}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--fg3);
     border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
   @keyframes sp{to{transform:rotate(360deg)}}
-  code,.kv{font-family:var(--mono);font-size:11px;background:var(--bg);
-    border:1px solid var(--line);border-radius:3px;padding:1px 5px}
-  .mini{font-size:9.5px;background:var(--chip);border:1px solid var(--line);
-    border-radius:9px;padding:0 6px;color:var(--fg3);display:inline-block}
+  code,.kv{font-family:var(--mono);font-size:12px;background:var(--bg);
+    border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+  .mini{font-size:12px;background:var(--chip);border:1px solid var(--line);
+    border-radius:9px;padding:2px 7px;color:var(--fg2);display:inline-block;line-height:1.35}
   .toast{position:fixed;bottom:18px;right:18px;background:var(--bg3);border:1px solid var(--line);
-    border-left:3px solid var(--confirm2);border-radius:var(--r);padding:10px 15px;
-    font-size:12.5px;max-width:380px;box-shadow:0 6px 24px var(--shadow);z-index:200;
-    opacity:0;transform:translateY(8px);transition:.2s}
+    border-left:4px solid var(--confirm2);border-radius:var(--r);padding:11px 15px;
+    font-size:13.5px;max-width:380px;box-shadow:0 6px 24px var(--shadow);z-index:200;
+    opacity:0;transform:translateY(8px);transition:opacity .2s ease,transform .2s ease}
   .toast.show{opacity:1;transform:none}
   .toast.err{border-left-color:var(--danger2)}
   .toast.ok{border-left-color:var(--go2)}
@@ -221,23 +269,30 @@ try{
   .stat{background:var(--bg2);border:1px solid var(--line);border-radius:6px;
     padding:7px 11px;min-width:92px}
   .stat b{display:block;font-size:17px;line-height:1.2}
-  .stat span{font-size:10.5px;color:var(--fg3)}
+  .stat span{font-size:12px;color:var(--fg3)}
   .stagebar{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
   .stg{display:flex;align-items:center;gap:5px;background:var(--bg2);
-    border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11.5px;
+    border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:12.5px;
     color:var(--fg2);cursor:pointer}
   .stg:hover{border-color:var(--fg3)}
   .stg.done{color:var(--done-fg);border-color:var(--done-line);background:var(--done-bg)}
   .stg.partial{color:var(--partial-fg);border-color:var(--partial-line);background:var(--partial-bg)}
   .stg.pending{color:var(--fg2)}
-  .stg .num{font-family:var(--mono);font-size:10px;opacity:.7}
+  /* stopped and failed look different from each other and from pending:
+    one wants a resume, one wants a look at the log, one wants a first run */
+  .stg.interrupted{color:var(--partial-fg);border-color:var(--warn);
+    background:color-mix(in srgb,var(--warn) 12%,var(--bg2));border-style:dashed}
+  .stg.failed{color:var(--danger2);border-color:var(--danger2);
+    background:color-mix(in srgb,var(--danger2) 10%,var(--bg2))}
+  .stg.running{color:var(--confirm);border-color:var(--badge-run-line)}
+  .stg .num{font-family:var(--mono);font-size:12px;opacity:.7}
   .epgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
   .epcard{background:var(--bg2);border:1px solid var(--line);border-radius:7px;
     padding:11px;cursor:pointer;transition:border-color .12s}
   .epcard:hover{border-color:var(--line2)}
   .epcard .eh{display:flex;align-items:center;gap:7px;margin-bottom:5px}
   .epcard .eh b{font-size:13px}
-  .epcard .el{color:var(--fg2);font-size:11.5px;line-height:1.45;
+  .epcard .el{color:var(--fg2);font-size:12.5px;line-height:1.45;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .epcard .ef{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
   .epcard .ebar{height:3px;background:var(--bg4);border-radius:2px;margin-top:8px;overflow:hidden}
@@ -260,7 +315,7 @@ try{
   .sch{display:flex;align-items:center;gap:9px;padding:8px 12px;background:var(--bg3);
     border-bottom:1px solid var(--line);flex-wrap:wrap}
   .sch .t{font-weight:650;font-size:12.5px}
-  .sch .m{color:var(--fg3);font-size:11px}
+  .sch .m{color:var(--fg3);font-size:12px}
   .shotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
     gap:8px;padding:10px 12px}
   .shotcard{background:var(--bg);border:1px solid var(--line);border-radius:6px;
@@ -269,24 +324,24 @@ try{
   .shotcard .media{height:200px;background:var(--media-bg);position:relative}
   .shotcard .media img,.shotcard .media video{width:100%;height:100%;object-fit:cover;display:block}
   .shotcard .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-    color:var(--fg3);font-size:11px;
+    color:var(--fg3);font-size:12px;
     background:repeating-linear-gradient(45deg,var(--ph1),var(--ph1) 6px,var(--ph2) 6px,var(--ph2) 12px)}
-  .shotcard .cap{padding:5px 7px;font-size:10.5px;color:var(--fg2);line-height:1.35}
-  .shotcard .cap b{color:var(--fg);font-weight:600;font-size:11px}
+  .shotcard .cap{padding:5px 7px;font-size:12px;color:var(--fg2);line-height:1.35}
+  .shotcard .cap b{color:var(--fg);font-weight:600;font-size:12px}
   .shotcard .sidx{position:absolute;left:5px;top:5px;background:var(--scrim);
-    color:#fff;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:3px}
+    color:#fff;font-family:var(--mono);font-size:12px;padding:1px 6px;border-radius:3px}
   .shotcard .sfl{position:absolute;right:5px;top:5px;background:var(--flf-bg);
-    color:var(--flf-fg);border:1px solid var(--flf-line);font-size:9.5px;padding:1px 6px;border-radius:3px}
+    color:var(--flf-fg);border:1px solid var(--flf-line);font-size:12.5px;padding:1px 6px;border-radius:3px}
   .shotcard .sst{position:absolute;right:5px;bottom:5px}
   .lines{padding:0 12px 10px}
   .line{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed var(--dash);font-size:12px;
     align-items:flex-start}
   .line:last-child{border-bottom:0}
-  .line .sp{color:var(--confirm2);min-width:58px;font-weight:600;font-size:11.5px}
+  .line .sp{color:var(--confirm2);min-width:58px;font-weight:600;font-size:12.5px}
   .line .tx{flex:1;color:var(--fg2)}
-  .line .au{color:var(--fg3);font-size:10.5px;cursor:pointer;white-space:nowrap}
+  .line .au{color:var(--fg3);font-size:12px;cursor:pointer;white-space:nowrap}
   .line .au:hover{color:var(--fg)}
-  .lineedit{background:transparent;border:0;color:var(--fg3);cursor:pointer;font-size:10.5px;
+  .lineedit{background:transparent;border:0;color:var(--fg3);cursor:pointer;font-size:12px;
     padding:0 4px}
   .lineedit:hover{color:var(--confirm2)}
 
@@ -302,16 +357,16 @@ try{
   .casttop .ref img{width:100%;height:100%;object-fit:contain;display:block}
   .casttop .cb{flex:1;min-width:0}
   .casttop .cn{font-size:14px;font-weight:700}
-  .casttop .cr{color:var(--fg2);font-size:11.5px;margin:2px 0 6px}
+  .casttop .cr{color:var(--fg2);font-size:12.5px;margin:2px 0 6px}
   .reflist{display:flex;gap:4px;flex-wrap:wrap}
   .reflist img{width:64px;height:32px;object-fit:contain;border-radius:3px;border:1px solid var(--line)}
   .castbody{padding:10px}
-  .castbody textarea{min-height:64px;font-size:11.5px}
+  .castbody textarea{min-height:64px;font-size:12.5px}
   .lockrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;
-    font-size:11.5px;color:var(--fg2)}
+    font-size:12.5px;color:var(--fg2)}
   .lockrow input[type=checkbox]{accent-color:var(--confirm)}
   .locgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-  .loc{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11.5px}
+  .loc{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:12.5px}
   .loc .li{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
   .loc .li img{width:44px;height:60px;object-fit:cover;border-radius:3px}
 
@@ -320,26 +375,26 @@ try{
   .asset{background:var(--bg2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
   .asset .am{height:180px;background:var(--media-bg);display:flex;align-items:center;justify-content:center}
   .asset .am img,.asset .am video{width:100%;height:100%;object-fit:cover}
-  .asset .am .at{color:var(--fg3);font-size:11px;text-align:center;padding:6px}
+  .asset .am .at{color:var(--fg3);font-size:12px;text-align:center;padding:6px}
   .asset .ab{padding:6px 8px}
-  .asset .an{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .asset .ameta{font-size:10px;color:var(--fg3);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap}
+  .asset .an{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .asset .ameta{font-size:12px;color:var(--fg3);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap}
   .res{display:flex;gap:10px;padding:9px;border:1px solid var(--line);border-radius:var(--r);
     margin-bottom:7px;background:var(--bg2);align-items:flex-start}
   .res .thumb{width:56px;height:80px;flex:0 0 auto;border-radius:4px;overflow:hidden;background:var(--media-bg)}
   .res .thumb img,.res .thumb video{width:100%;height:100%;object-fit:cover}
   .res .rb{flex:1;min-width:0}
   .res .rt{font-weight:600;font-size:12.5px}
-  .res .rx{color:var(--fg2);font-size:11.5px;margin:2px 0;overflow:hidden;
+  .res .rx{color:var(--fg2);font-size:12.5px;margin:2px 0;overflow:hidden;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .res .rtags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
 
   /* ---------- settings / models ---------- */
   .health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px}
   .hc{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:10px}
-  .hc .hn{font-size:10px;color:var(--fg3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+  .hc .hn{font-size:12px;color:var(--fg3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
   .hc .hv{font-size:12.5px;font-weight:600}
-  .hc .hd{font-size:10.5px;color:var(--fg2);margin-top:3px;word-break:break-all}
+  .hc .hd{font-size:12px;color:var(--fg2);margin-top:3px;word-break:break-all}
   .prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
   .switch{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg2);
     margin-top:6px;cursor:pointer}
@@ -353,7 +408,7 @@ try{
   .guide-hero .gh-side{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
   .guide-stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px}
   .guide-stats b{display:block;font-size:16px;line-height:1.2}
-  .guide-stats span{font-size:10.5px;color:var(--fg3)}
+  .guide-stats span{font-size:12px;color:var(--fg3)}
   .gab{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--ai-soft-bg);
     border:1px solid var(--ai-soft-line);color:var(--ai-soft-fg);border-radius:6px;
     padding:8px 11px;font-size:12px;margin-bottom:10px}
@@ -361,14 +416,14 @@ try{
   .arch-lane{display:flex;align-items:stretch;gap:4px;flex-wrap:wrap;background:var(--bg);
     border:1px solid var(--line);border-radius:7px;padding:7px}
   .arch-lbl{flex:0 0 44px;display:flex;align-items:center;justify-content:center;
-    font-size:10px;font-weight:700;color:var(--fg3);background:var(--bg3);border-radius:5px;
+    font-size:12px;font-weight:700;color:var(--fg3);background:var(--bg3);border-radius:5px;
     letter-spacing:.5px;text-align:center}
   .anode{flex:1 1 88px;min-width:84px;background:var(--bg2);border:1px solid var(--line);
     border-radius:6px;padding:6px 8px;cursor:pointer;position:relative;transition:border-color .12s}
   .anode:hover{border-color:var(--confirm2)}
-  .anode .ai{font-family:var(--mono);font-size:9px;color:var(--fg3)}
-  .anode b{display:block;font-size:11.5px;margin:1px 0}
-  .anode small{display:block;font-size:9.5px;color:var(--fg3);line-height:1.3}
+  .anode .ai{font-family:var(--mono);font-size:12px;color:var(--fg3)}
+  .anode b{display:block;font-size:12.5px;margin:1px 0}
+  .anode small{display:block;font-size:12.5px;color:var(--fg3);line-height:1.3}
   .anode .adot{position:absolute;right:7px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--fg3)}
   .anode.done{border-color:var(--done-line);background:var(--done-bg)}
   .anode.done .adot{background:var(--go2)}
@@ -376,12 +431,12 @@ try{
   .anode.partial .adot{background:var(--warn)}
   .anode.out{flex:1 1 110px;cursor:default;background:var(--bg3);border-style:dashed}
   .anode.out:hover{border-color:var(--line)}
-  .aarrow{display:flex;align-items:center;color:var(--fg3);font-size:11px;padding:0 1px}
+  .aarrow{display:flex;align-items:center;color:var(--fg3);font-size:12px;padding:0 1px}
   .arch-base{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-  .basechip{font-size:10.5px;color:var(--fg2);background:var(--bg3);border:1px solid var(--line);
+  .basechip{font-size:12px;color:var(--fg2);background:var(--bg3);border:1px solid var(--line);
     border-radius:12px;padding:2px 9px}
   .basechip b{color:var(--fg);font-weight:600}
-  .arch-note{font-size:11.5px;color:var(--fg2);line-height:1.6;margin-top:9px;
+  .arch-note{font-size:12.5px;color:var(--fg2);line-height:1.6;margin-top:9px;
     background:var(--bg);border-left:2px solid var(--ai-soft-line);padding:7px 10px;border-radius:0 5px 5px 0}
   .gsteps{display:flex;flex-direction:column;gap:7px}
   .gstep{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;
@@ -389,17 +444,17 @@ try{
   .gstep.done{border-color:var(--done-line);background:var(--done-bg)}
   .gstep.cur{border-color:var(--confirm);box-shadow:0 0 0 2px var(--ai-focus)}
   .gnum{width:25px;height:25px;border-radius:50%;background:var(--bg4);color:var(--fg2);
-    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px}
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px}
   .gstep.done .gnum{background:var(--go);color:#fff}
   .gstep.cur .gnum{background:var(--confirm);color:#fff}
   .gstep .gt{font-weight:650;font-size:12.5px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-  .gstep .gd{color:var(--fg3);font-size:11px;margin-top:1px;line-height:1.5}
+  .gstep .gd{color:var(--fg3);font-size:12px;margin-top:1px;line-height:1.5}
   .gstep .ga{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .gbar{height:3px;background:var(--bg4);border-radius:2px;margin-top:6px;overflow:hidden;
     width:min(260px,100%)}
   .gbar i{display:block;height:100%;background:var(--go2)}
   .gstep.cur .gbar i{background:var(--confirm2)}
-  .envchip{font-size:10px;border:1px solid var(--line);border-radius:10px;padding:1px 7px;
+  .envchip{font-size:12px;border:1px solid var(--line);border-radius:10px;padding:1px 7px;
     color:var(--fg3);background:var(--bg2)}
   .envchip.ok{color:var(--done-fg);border-color:var(--done-line);background:var(--done-bg)}
   .envchip.bad{color:var(--danger2);border-color:var(--badge-fail-line)}
@@ -407,29 +462,29 @@ try{
   .intg{background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:12px}
   .intg .ih{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
   .intg .ih b{font-size:13px}
-  .intg .im{font-size:11px;color:var(--fg3);word-break:break-all;margin-bottom:6px;line-height:1.5}
-  .intg ol{margin:6px 0 0;padding-left:17px;font-size:11.5px;color:var(--fg2);line-height:1.6}
+  .intg .im{font-size:12px;color:var(--fg3);word-break:break-all;margin-bottom:6px;line-height:1.5}
+  .intg ol{margin:6px 0 0;padding-left:17px;font-size:12.5px;color:var(--fg2);line-height:1.6}
   .intg ol li{margin-bottom:2px}
-  .intg code{font-size:10.5px;word-break:break-all}
-  .intg-note{font-size:11px;color:var(--fg3);background:var(--bg);border-left:2px solid var(--line2);
+  .intg code{font-size:12px;word-break:break-all}
+  .intg-note{font-size:12px;color:var(--fg3);background:var(--bg);border-left:2px solid var(--line2);
     padding:6px 8px;margin-top:8px;line-height:1.55;border-radius:0 4px 4px 0}
   .intg-err{border-left-color:var(--danger2);color:var(--danger2)}
   .cibox{margin-top:8px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:9px 10px}
   .cibox .cirow{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap}
   .cibox .cirow .grow{flex:1;min-width:170px}
-  .cibox .f{padding:5px 7px;font-size:11px}
-  .cibox .fl{font-size:10.5px;margin-bottom:2px}
+  .cibox .f{padding:5px 7px;font-size:12px}
+  .cibox .fl{font-size:12px;margin-bottom:2px}
   .cibox .cigrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px;margin-top:8px}
-  .cibox .fw{font-size:10.5px;color:var(--fg3);margin-top:7px;line-height:1.55}
-  .cibox .cierr{color:var(--danger2);font-size:11px;line-height:1.55;margin-top:6px}
+  .cibox .fw{font-size:12px;color:var(--fg3);margin-top:7px;line-height:1.55}
+  .cibox .cierr{color:var(--danger2);font-size:12px;line-height:1.55;margin-top:6px}
   .cimap{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;min-height:14px}
-  .cimap span{font-size:9.5px;background:var(--bg3);border:1px solid var(--line);border-radius:3px;
+  .cimap span{font-size:12.5px;background:var(--bg3);border:1px solid var(--line);border-radius:3px;
     padding:0 5px;color:var(--fg3);font-family:var(--mono)}
   .cimap span.muted{border:0;background:none;padding:0}
   .flowgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:9px}
   .flow{background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:10px 12px}
   .flow b{font-size:12px;display:block;margin-bottom:3px}
-  .flow span{font-size:11.5px;color:var(--fg2);line-height:1.55}
+  .flow span{font-size:12.5px;color:var(--fg2);line-height:1.55}
   .newform{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end}
   .newform .grow{min-width:190px}
   @media(max-width:760px){ .gstep{grid-template-columns:26px 1fr} .gstep .ga{grid-column:2;justify-content:flex-start} }
@@ -452,10 +507,10 @@ try{
     border:1px solid var(--line);position:relative}
   .dprev .dp img,.dprev .dp video{width:100%;height:100%;object-fit:cover}
   .dprev .dp span{position:absolute;left:3px;top:3px;background:var(--scrim);
-    font-size:9px;color:#fff;padding:0 4px;border-radius:2px}
+    font-size:12px;color:#fff;padding:0 4px;border-radius:2px}
   .dsec{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
   .dsec:first-child{border-top:0;margin-top:0;padding-top:0}
-  .dsec h4{margin:0 0 8px;font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.5px}
+  .dsec h4{margin:0 0 8px;font-size:12px;color:var(--fg3);text-transform:uppercase;letter-spacing:.5px}
 
   @media(max-width:1180px){ #side{display:none} }
   @media(max-width:900px){ #cmdproj{display:none} .hero .cover{display:none} }
@@ -470,7 +525,7 @@ try{
 /* the chapter rail card */
 #work-chapters{margin-bottom:0}
 .chap-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0}
-.chap-tools .btn{padding:3px 9px;font-size:11.5px}
+.chap-tools .btn{padding:3px 9px;font-size:12.5px}
 .chap-tools .grow{flex:1}
 .chap-body{max-height:calc(100vh - 210px);overflow:auto;margin-top:6px}
 
@@ -478,15 +533,15 @@ try{
 .chap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px}
 .chap-tile{position:relative;border:1px solid var(--line);background:var(--bg3);
   border-radius:var(--r);padding:6px 3px;text-align:center;cursor:pointer;
-  font-size:10.5px;line-height:1.25;user-select:none;transition:.12s}
+  font-size:12px;line-height:1.25;user-select:none;transition:.12s}
 .chap-tile .cn{font-weight:650;color:var(--fg2);display:block}
-.chap-tile .ck{color:var(--fg3);font-size:9px;display:block;margin-top:1px}
+.chap-tile .ck{color:var(--fg3);font-size:12px;display:block;margin-top:1px}
 .chap-tile.on{background:var(--pcard-on);border-color:var(--proj-on-line)}
 .chap-tile.on .cn{color:var(--confirm)}
 .chap-tile:hover{border-color:var(--confirm)}
-.chap-tile .tick{position:absolute;top:1px;right:3px;font-size:9px;color:var(--confirm);opacity:0}
+.chap-tile .tick{position:absolute;top:1px;right:3px;font-size:12px;color:var(--confirm);opacity:0}
 .chap-tile.on .tick{opacity:1}
-.chap-vol{grid-column:1/-1;font-size:10.5px;color:var(--fg3);margin:6px 0 2px;
+.chap-vol{grid-column:1/-1;font-size:12px;color:var(--fg3);margin:6px 0 2px;
   border-bottom:1px solid var(--line);padding-bottom:2px;font-weight:600}
 
 /* the reader: a scrim over the page, a sheet of paper on top of it */
@@ -498,11 +553,11 @@ try{
 .rd-head{display:flex;align-items:center;gap:10px;padding:12px 16px;
   border-bottom:1px solid var(--line)}
 .rd-head .rd-t{font-weight:650;font-size:14px}
-.rd-head .rd-v{color:var(--fg3);font-size:11.5px}
+.rd-head .rd-v{color:var(--fg3);font-size:12.5px}
 .rd-body{overflow:auto;padding:18px 26px;line-height:1.95;font-size:14.5px;
   white-space:pre-wrap;color:var(--fg)}
 .rd-foot{display:flex;align-items:center;gap:10px;padding:10px 16px;
-  border-top:1px solid var(--line);color:var(--fg3);font-size:11.5px}
+  border-top:1px solid var(--line);color:var(--fg3);font-size:12.5px}
 .rd-foot .btn{padding:4px 12px;font-size:12px}
 
 /* the progress panel: a stage that is running, and how long it has been */
@@ -511,7 +566,7 @@ try{
   border:2px solid var(--line);border-top-color:var(--confirm);border-radius:50%;
   animation:dkspin .9s linear infinite;vertical-align:-1px}
 #progressSlot:empty{display:none}
-.prog-strip{margin-top:9px;font-size:11.5px;line-height:2}
+.prog-strip{margin-top:9px;font-size:12.5px;line-height:2}
 .prog-strip span{white-space:nowrap;margin-right:9px}
 
 /* the running stage, made to look like it is running */
@@ -543,25 +598,28 @@ try{
 .lb-body img{max-width:100%;max-height:calc(97vh - 140px);object-fit:contain;
   border-radius:4px;background:var(--bg3)}
 .lb-foot{display:flex;align-items:center;gap:12px;padding:10px 14px;
-  border-top:1px solid var(--line);font-size:11.5px}
+  border-top:1px solid var(--line);font-size:12.5px}
 .lb-foot .btn{padding:4px 14px}
 
-<style>
 /* the skills page: what each stage writes with, and what it costs */
-.sk-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;
+.sk-row{display:flex;gap:12px;align-items:flex-start;padding:11px 0;
   border-bottom:1px solid var(--line)}
 .sk-row:last-child{border-bottom:0}
-.sk-name{font-weight:650;font-size:12.5px;white-space:nowrap}
-.sk-size{color:var(--fg3);font-size:10.5px;white-space:nowrap;
+.sk-name{font-weight:650;font-size:13.5px;white-space:nowrap}
+.sk-size{color:var(--fg3);font-size:12px;white-space:nowrap;
   min-width:78px;text-align:right}
-.sk-desc{color:var(--fg2);font-size:11.5px;line-height:1.55;flex:1;min-width:0}
+.sk-desc{color:var(--fg2);font-size:13px;line-height:1.55;flex:1;min-width:0}
 .sk-pick{border:1px solid var(--line);background:var(--bg3);color:var(--fg2);
-  border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;
-  white-space:nowrap;font-family:inherit}
+  border-radius:6px;min-height:28px;padding:4px 10px;font-size:12px;cursor:pointer;
+  white-space:nowrap;font-family:inherit;
+  transition:background .14s ease,border-color .14s ease,color .14s ease}
 .sk-pick:hover{border-color:var(--confirm);color:var(--confirm)}
-.sk-pick.on{background:var(--confirm);border-color:var(--confirm);color:#fff}
+.sk-pick.on{background:var(--confirm);border-color:var(--confirm);color:var(--on-accent)}
 .sk-cost{font-variant-numeric:tabular-nums}
-</style>
+/* the cross on a selected skill is a mark, not a second control: the
+  whole chip is one button and the mark only shows where it leads */
+.chip .sk-x{opacity:.7;font-size:13px;line-height:1}
+.chip.on:hover .sk-x{opacity:1}
 </style>
 <link rel="stylesheet" href="/modern.css">
 </head>
@@ -608,8 +666,15 @@ try{
         <svg class="ico-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"/></svg>
         <svg class="ico-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
-      <button class="btn sm ghost mobile-side-toggle" id="mobileSideToggle" title="打开项目栏" aria-label="打开项目栏" aria-controls="side" aria-expanded="false">☰</button>
-      <button class="btn sm ghost" id="refreshBtn" title="刷新">⟳</button>
+      <button class="btn sm ghost icon header-nodes" id="nodesBtnHeader" title="节点池" aria-label="节点池">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </button>
+      <button class="btn sm ghost icon mobile-side-toggle" id="mobileSideToggle" title="打开项目栏" aria-label="打开项目栏" aria-controls="side" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <button class="btn sm ghost icon" id="refreshBtn" title="刷新全部数据" aria-label="刷新全部数据">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6M20 5v6h-6"/></svg>
+      </button>
     </header>
 
     <div id="cmdbar">
@@ -623,7 +688,9 @@ try{
     <div id="body">
       <aside id="side">
         <div class="side-content">
-          <div class="side-h">项目 <button class="btn xs ghost" id="newProj">＋</button></div>
+          <div class="side-h">项目 <button class="btn xs ghost icon" id="newProj" title="新建项目" aria-label="新建项目">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button></div>
           <div id="projlist"></div>
           <div class="side-h">标签 <span class="muted" id="tagCount"></span></div>
           <div class="tagfilter" id="tagfilter"></div>
@@ -669,9 +736,12 @@ try{
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
-const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+// Both quotes get escaped: a value that lands inside an inline handler is
+// written between single quotes, and a name with an apostrophe in it would
+// otherwise close the string and break the click.
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const num = (v,d)=>{const x=parseFloat(v);return Number.isFinite(x)?x:d;};
-const attr = s => esc(s).replace(/'/g,"&#39;");
+const attr = s => esc(s);
 
 // A node's address is worth clicking: it is the card that is doing the
 // work, and its own console says what it is doing right now. Only a
@@ -681,7 +751,7 @@ const nodeLink = (url, label)=>{
   const u=String(url||"").trim();
   if(!/^https?:\/\/[^\s"'<>]+$/i.test(u)) return esc(label||u);
   return `<a href="${attr(u)}" target="_blank" rel="noopener noreferrer" `
-       + `style="font-size:11px;text-decoration:underline;text-underline-offset:2px">`
+       + `style="font-size:12px;text-decoration:underline;text-underline-offset:2px">`
        + `${esc(label||u)}</a>`;
 };
 
@@ -735,8 +805,9 @@ async function boot(){
   if(!S.current || !S.projects.some(p=>p.slug===S.current)) S.current=st.current_project||(S.projects[0]&&S.projects[0].slug)||"";
   if(!S.templates) S.templates=await getJSON("/api/templates");
   renderHeader(); renderCmdProj(); renderProjects(); renderTags();
+  // selectProject renders every page itself, so the second call here only
+  // drew the same pages twice on every load.
   if(S.current) await selectProject(S.current, true); else { S.detail=null; renderAllPages(); }
-  renderAllPages();
   if(!S.booted){
     // a refresh lands where the user was: #project/page in the address
     let pg="", pj="";
@@ -812,7 +883,7 @@ applyTheme(document.documentElement.dataset.theme||"light");
 // ---------- sidebar ----------
 function renderProjects(){
   const box=$("#projlist");
-  if(!S.projects.length){ box.innerHTML='<div class="muted" style="font-size:11.5px">暂无项目</div>'; return; }
+  if(!S.projects.length){ box.innerHTML='<div class="muted" style="font-size:12.5px">暂无项目</div>'; return; }
   box.innerHTML=S.projects.map(p=>{
     const isCur=p.slug===S.current&&S.detail;
     let pct=0;
@@ -821,11 +892,16 @@ function renderProjects(){
       pct=d.total?Math.round(d.done/d.total*100):0;
     }
     return `<div class="proj ${p.slug===S.current?"on":""}" data-slug="${esc(p.slug)}">
-      <div class="pn">${esc(p.title)}<span class="mini" title="删除项目" style="float:right;cursor:pointer;opacity:.5;margin-left:6px" onclick="event.stopPropagation();deleteProject('${esc(p.slug)}')">×</span></div>
+      <div class="pn">${esc(p.title)}</div>
+      <button type="button" class="proj-del" data-del="${esc(p.slug)}" title="删除项目" aria-label="删除项目 ${attr(p.title)}">×</button>
       <div class="pm">${esc(p.genre||"")} · ${p.episodes}集 · ${p.shots}镜${isCur?" · "+pct+"%":""}</div>
     </div>`;
   }).join("");
   $$("#projlist .proj").forEach(x=>x.onclick=()=>selectProject(x.dataset.slug));
+  // Deleting is a button of its own, not a glyph inside the title: the
+  // click has to be reachable by keyboard, and it must not select the
+  // project it is deleting.
+  $$("#projlist .proj-del").forEach(b=>b.onclick=e=>{e.stopPropagation();deleteProject(b.dataset.del);});
 }
 function stageSummary(slug){
   // A stage counts as done when the project says so, or when the episode
@@ -855,7 +931,7 @@ async function renderTags(){
   const keys=Object.keys(S.tags).slice(0,44);
   $("#tagCount").textContent=keys.length?Object.keys(S.tags).length+" 个":"";
   const box=$("#tagfilter");
-  if(!keys.length){ box.innerHTML='<span class="muted" style="font-size:11px">运行或索引后出现</span>'; return; }
+  if(!keys.length){ box.innerHTML='<span class="muted" style="font-size:12px">运行或索引后出现</span>'; return; }
   box.innerHTML=keys.map(t=>`<span class="tg ${S.tagSel.has(t)?"on":""}" data-tag="${esc(t)}">${esc(t)} <b style="opacity:.65">${S.tags[t]}</b></span>`).join("");
   $$("#tagfilter .tg").forEach(c=>c.onclick=()=>{
     const t=c.dataset.tag; S.tagSel.has(t)?S.tagSel.delete(t):S.tagSel.add(t);
@@ -932,7 +1008,7 @@ function gStepHTML(o){
     <div class="gnum">${st.state==="done"?"✓":o.n}</div>
     <div>
       <div class="gt">${esc(o.title)} ${badge(bst)}
-        <span class="muted" style="font-weight:400;font-size:10.5px">${st.state==="done"?"本段完成":(st.done?`${st.done}/${st.total} 阶段完成`:`${st.total} 个阶段`)}</span></div>
+        <span class="muted" style="font-weight:400;font-size:12px">${st.state==="done"?"本段完成":(st.done?`${st.done}/${st.total} 阶段完成`:`${st.total} 个阶段`)}</span></div>
       <div class="gd">${o.desc}</div>
       ${o.extra||""}
       <div class="gbar"><i style="width:${pct}%"></i></div>
@@ -970,7 +1046,7 @@ function renderGuide(){
 
   const envChip=(name,ok)=>`<span class="envchip ${env.checked?(ok?"ok":"bad"):""}">${name} ${env.checked?(ok?"✓":"✗"):"·"}</span>`;
   const envChips=`<div class="chips" style="margin-top:5px">${envChip("ffmpeg",env.ff)}${envChip("大模型",env.llm)}${envChip("ComfyUI",env.comfy)}${envChip("TTS",env.tts)}
-    <span class="muted" style="font-size:10.5px;align-self:center">${env.checked?"上次探测结果":"还没探测，点「开始自检」"}</span></div>`;
+    <span class="muted" style="font-size:12px;align-self:center">${env.checked?"上次探测结果":"还没探测，点「开始自检」"}</span></div>`;
 
   const runBtn=(label,stages)=>gbtn(label,"run","go",`data-stages="${stages.join(",")}" data-label="${label}" ${dis}`);
   const steps=[
@@ -1029,7 +1105,7 @@ function renderGuide(){
     ${busy?`<div class="gab"><span class="spin"></span> 正在后台运行：<b>${esc(S.guideBusy.label||"")}</b>。可以切到别的页面，任务不会中断。</div>`:""}
 
     <div class="card">
-      <h3>整体架构 <span class="muted" style="font-weight:400;font-size:11px">一条文本链 → 三条生成链 → 一条合成链</span></h3>
+      <h3>整体架构 <span class="muted" style="font-weight:400;font-size:12px">一条文本链 → 三条生成链 → 一条合成链</span></h3>
       ${gLane("文本",["ingest","analyze","character","segment","script","storyboard","promptgen"])}
       ${gLane("生成",["visual","voice","subtitle","music"])}
       ${gLane("后期",["compose"],'<div class="anode out"><b>成片 mp4</b><small>9:16 · 硬字幕 · 封面 · srt</small></div>')}
@@ -1043,18 +1119,18 @@ function renderGuide(){
     </div>
 
     <div class="card">
-      <h3>从小说到成片 · 7 步 <span class="muted" style="font-weight:400;font-size:11px">跟着高亮走；每步都可单独重跑</span></h3>
+      <h3>从小说到成片 · 7 步 <span class="muted" style="font-weight:400;font-size:12px">跟着高亮走；每步都可单独重跑</span></h3>
       <div class="gsteps">${steps.map(gStepHTML).join("")}</div>
     </div>
 
     <div class="card" id="guide-new">
-      <h3>新建项目 · 导入小说 <span class="muted" style="font-weight:400;font-size:11px">先选小说，项目名会自动填入，可随时修改</span></h3>
+      <h3>新建项目 · 导入小说 <span class="muted" style="font-weight:400;font-size:12px">先选小说，项目名会自动填入，可随时修改</span></h3>
       <div class="newform">
-        <div class="grow" style="flex:2"><label class="fl">小说 / 剧本文件</label><input class="f" id="gSource" placeholder="选本地文件，或填服务器上的路径"><input type="file" id="gFilePicker" accept=".txt,.md" style="display:none"><button type="button" class="btn ghost" id="gFileButton" onclick="document.getElementById('gFilePicker').click()">选择本地文件</button><span id="gFileName" class="muted" style="margin-left:8px;font-size:11.5px"></span></div>
+        <div class="grow" style="flex:2"><label class="fl">小说 / 剧本文件</label><input class="f" id="gSource" placeholder="选本地文件，或填服务器上的路径"><input type="file" id="gFilePicker" accept=".txt,.md" style="display:none"><button type="button" class="btn ghost" id="gFileButton" onclick="document.getElementById('gFilePicker').click()">选择本地文件</button><span id="gFileName" class="muted" style="margin-left:8px;font-size:12.5px"></span></div>
         <div class="grow"><label class="fl">项目名</label><input class="f" id="gName" placeholder="选择文件后自动填入，可手动修改"></div>
         <button class="btn go" id="gCreate">创建并导入</button>
       </div>
-      <div class="muted" style="font-size:11px;margin-top:7px">支持 .txt / .md；.docx 需安装 <code>pip install -e ".[docx]"</code>。文件会复制进项目 <code>source/</code>，原文件不动。</div>
+      <div class="muted" style="font-size:12px;margin-top:7px">支持 .txt / .md；.docx 需安装 <code>pip install -e ".[docx]"</code>。文件会复制进项目 <code>source/</code>，原文件不动。</div>
     </div><h2 class="page" style="font-size:14px;margin:16px 0 8px">外挂程序怎么接</h2>
     <div class="sub" style="margin-bottom:9px">系统不绑定任何一家：Provider 层把「大模型 / 画面 / 配音 / 配乐 / 合成」全部抽象成可替换适配器。换服务只改配置，不改代码。</div>
     <div class="gcols">
@@ -1161,7 +1237,7 @@ function renderGuide(){
 
     <details class="fold" style="margin-top:12px"><summary>CLI 等价命令（不想开控制台时）</summary>
       <div class="inner">
-        <pre style="font-family:var(--mono);font-size:11px;line-height:1.7;margin:0;overflow:auto">dj serve                                   # 打开本控制台
+        <pre style="font-family:var(--mono);font-size:12px;line-height:1.7;margin:0;overflow:auto">dj serve                                   # 打开本控制台
 dj new 我的短剧 --source D:/novels/x.txt   # 建项目并复制小说
 dj run projects/我的短剧 --stop-after storyboard
 dj run projects/我的短剧 --stages voice,subtitle,compose --episodes 1-3
@@ -1249,7 +1325,7 @@ const CI_LABEL={positive:"正向",negative:"负向",seed:"种子",width:"宽",he
   fps:"帧率",ref_image:"参考图",output:"输出"};
 function ciChips(map){
   const keys=Object.keys(map||{}).filter(k=>map[k]);
-  if(!keys.length) return `<span class="muted" style="font-size:10px">未识别到节点</span>`;
+  if(!keys.length) return `<span class="muted" style="font-size:12px">未识别到节点</span>`;
   return keys.map(k=>`<span>${esc(CI_LABEL[k]||k)} #${esc(map[k])}</span>`).join("");
 }
 function ciPickInit(r){
@@ -1276,7 +1352,7 @@ function renderComfyPanel(){
     <div class="grow"><label class="fl">ComfyUI 地址</label>
       <input class="f" id="ciUrl" value="${attr(url)}" placeholder="http://127.0.0.1:8188"></div>
     <button class="btn sm confirm" data-gact="cinspect" ${busy?"disabled":""}>${busy?"识别中…":"自动识别"}</button>
-    ${busy?'<span class="muted" style="font-size:10.5px;padding-bottom:7px"><span class="spin"></span> 连接并扫描工作流…</span>':""}
+    ${busy?'<span class="muted" style="font-size:12px;padding-bottom:7px"><span class="spin"></span> 连接并扫描工作流…</span>':""}
   </div>`;
   if(!r) return `<div class="cibox">${head}
     <div class="fw">不用手填节点：自动扫描 <code>config/comfyui/*.json</code> 和已配置的工作流，推断正向/负向/seed/宽高/采样器/Checkpoint/LoadImage 等编号并校验；确认后一键写入配置。</div></div>`;
@@ -1316,7 +1392,7 @@ function renderComfyPanel(){
     <div class="cirow" style="margin-top:9px">
       <button class="btn sm go" data-gact="capply" ${S.comfyApplying?"disabled":""}>${S.comfyApplying?"写入中…":"应用并启用"}</button>
       <button class="btn sm ghost" data-gact="cinspect">重新识别</button>
-      <span class="muted" style="font-size:10.5px;align-self:center">节点编号自动写入；工作流改编号后也会自动修复。</span>
+      <span class="muted" style="font-size:12px;align-self:center">节点编号自动写入；工作流改编号后也会自动修复。</span>
     </div>
   </div>`;
 }
@@ -1459,14 +1535,26 @@ if(picked){
 function stageState(stage){
   const eps=(S.detail&&S.detail.episodes)||[];
   const proj=(S.detail&&S.detail.stage_status)||{};
-  const pv=String(proj[stage]||"");
-  if(pv==="done") return "done";      // the project level stages (import, analyse, cast, split)
+  const pv=String(proj[stage]||"");     // the project level stages (import, analyse, cast, split)
+  // A stopped stage is not a pending one. The runner writes "interrupted"
+  // where it stopped, and a console that calls that "pending" tells the
+  // user to start the whole run again instead of resuming it.
+  if(pv==="done") return "done";
   if(pv==="running") return "running";
-  if(!eps.length) return "pending";
-  let done=0, run=0;
-  eps.forEach(ep=>{const v=(ep.stage_status||{})[stage]; if(v==="done")done++; else if(v==="running")run++;});
+  if(pv==="interrupted") return "interrupted";
+  if(pv==="failed") return "failed";
+  if(!eps.length) return pv||"pending";
+  let done=0, run=0, stop=0, bad=0;
+  eps.forEach(ep=>{
+    const v=String((ep.stage_status||{})[stage]||"");
+    if(v==="done")done++; else if(v==="running")run++;
+    else if(v==="interrupted")stop++; else if(v==="failed")bad++;
+  });
   if(done===eps.length) return "done";
-  if(done||run) return "partial";
+  if(run) return "partial";
+  if(stop) return "interrupted";
+  if(bad && !done) return "failed";
+  if(done) return "partial";
   return "pending";
 }
 function epProgress(ep){
@@ -1541,7 +1629,7 @@ function workProgressHtml(){
       <button class="btn ghost" id="stopRunBtn" onclick="stopRun()"
               title="当前这一步的调用结束后停下（约 1 分钟内），已完成的保留">停止</button>
     </div>
-    ${hint?`<div class="muted" style="font-size:11.5px;margin-top:6px">${esc(hint)}</div>`:""}
+    ${hint?`<div class="muted" style="font-size:12.5px;margin-top:6px">${esc(hint)}</div>`:""}
     ${bar}
     <div class="prog-strip">${strip}</div>
   </div>`;
@@ -1597,14 +1685,14 @@ function renderWorkbench(){
   const shots=eps.reduce((a,e)=>a+e.scenes.reduce((x,s)=>x+s.shots.length,0),0);
   const firstCover=eps.map(e=>e.cover).find(Boolean)||"";
   const doneStages=STAGES.filter(s=>stageState(s)==="done").length;
-  const stageHtml=STAGES.map((s,i)=>`<span class="stg ${stageState(s)}" data-stage="${s}" title="点击去流水线重跑">
-    <span class="dot ${stageState(s)==="done"?"ok":stageState(s)==="partial"?"warn":"na"}"></span>
-    <span class="num">${i+1}</span> ${STAGE_ZH[s]}</span>`).join("");
+  const stageHtml=STAGES.map((s,i)=>{const v=stageState(s);return `<span class="stg ${v}" data-stage="${s}" title="点击去流水线重跑">
+    <span class="dot ${v==="done"?"ok":(v==="partial"||v==="interrupted")?"warn":v==="failed"?"bad":"na"}"></span>
+    <span class="num">${i+1}</span> ${STAGE_ZH[s]}</span>`;}).join("");
   const chapterHtml =
     `<div class="card" id="work-chapters" style="display:none">
        <div style="display:flex;align-items:center;gap:8px">
          <b>章节目录</b>
-         <span class="muted" id="chapterHint" style="font-size:11.5px"></span>
+         <span class="muted" id="chapterHint" style="font-size:12.5px"></span>
          <span style="flex:1"></span>
          <span class="mini" id="chapMode" style="cursor:pointer;user-select:none"
                onclick="toggleChapMode()" title="切换 列表 / 图标">☰ 列表</span>
@@ -1623,24 +1711,24 @@ function renderWorkbench(){
     `<div class="card" id="work-seasons" style="display:none">
        <div style="display:flex;align-items:center;gap:8px">
          <b>制作季</b>
-         <span class="muted" id="seasonHint" style="font-size:11.5px"></span>
+         <span class="muted" id="seasonHint" style="font-size:12.5px"></span>
          <span style="flex:1"></span>
          <span class="mini muted">每季完整跑一遍流水线</span>
        </div>
        <div id="seasonList" style="margin-top:8px"></div>
-       <div class="muted" style="font-size:11px;margin-top:8px">
+       <div class="muted" style="font-size:12px;margin-top:8px">
          选中章节后开始新的一季；已做过的章节不再重复，角色造型默认沿用。
        </div>
      </div>`;
   const epHtml=eps.map(ep=>`<div class="epcard" data-ep="${ep.index}">
       <div class="eh"><b>第${ep.index}集</b>${badge(ep.status)}<span style="flex:1"></span>
-        <span class="muted" style="font-size:10.5px">${ep.scenes.length}场 · ${ep.scenes.reduce((a,s)=>a+s.shots.length,0)}镜</span></div>
+        <span class="muted" style="font-size:12px">${ep.scenes.length}场 · ${ep.scenes.reduce((a,s)=>a+s.shots.length,0)}镜</span></div>
       <div class="el">${esc(ep.logline||ep.title||"（暂无简介）")}</div>
       <div class="ebar"><i style="width:${epProgress(ep)}%"></i></div>
       <div class="ef">
         <span class="mini">${epProgress(ep)}% 完成</span>
         ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ↗</a>':""}
-      ${ep.video_mtime?`<span class="muted" style="font-size:10.5px">${ago(ep.video_mtime)}</span>`:""}
+      ${ep.video_mtime?`<span class="muted" style="font-size:12px">${ago(ep.video_mtime)}</span>`:""}
         ${ep.nle?'<a class="mini" href="'+ep.nle+'" target="_blank">FCPXML ↗</a>':""}
         ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ↗</a>':""}
         ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:var(--go2)">有视频</span>':""}
@@ -1674,7 +1762,7 @@ function renderWorkbench(){
     <div class="card"><h3>制作阶段 <span class="muted" style="font-weight:400">完成 ${doneStages}/${STAGES.length}</span></h3>
       <div class="stagebar">${stageHtml}</div>
       ${runningProgressHtml()}
-      <div class="muted" style="font-size:11px;margin-top:8px">阶段按顺序执行；画面/配音可单独重跑。点击阶段跳到流水线并勾选它。</div>
+      <div class="muted" style="font-size:12px;margin-top:8px">阶段按顺序执行；画面/配音可单独重跑。点击阶段跳到流水线并勾选它。</div>
     </div>
     ${seasonHtml}
     <h2 class="page" style="font-size:14px;margin:14px 0 8px">分集</h2>
@@ -1728,7 +1816,7 @@ function renderBoard(){
     const shotHtml=shots.map(sh=>shotCard(sh)).join("");
     const lines=(sc.lines||[]).map(l=>`<div class="line">
         <span class="sp">${esc(l.speaker)}</span>
-        <span class="tx">${esc(l.text)} <span class="muted" style="font-size:10px">${l.kind==="narration"?"旁白":l.kind==="monologue"?"独白":l.kind==="caption"?"字幕卡":""}${l.duration?" · "+l.duration.toFixed(1)+"s":""}</span></span>
+        <span class="tx">${esc(l.text)} <span class="muted" style="font-size:12px">${l.kind==="narration"?"旁白":l.kind==="monologue"?"独白":l.kind==="caption"?"字幕卡":""}${l.duration?" · "+l.duration.toFixed(1)+"s":""}</span></span>
         ${l.audio?`<span class="au" data-audio="${attr(l.audio)}">试听</span>`:""}
         <button class="lineedit" data-line="${attr(l.id)}">编辑</button>
       </div>`).join("");
@@ -1737,7 +1825,7 @@ function renderBoard(){
         <span class="m">${esc(sc.location||"")} · ${esc(sc.time||"")} · ${esc(sc.mood||"")}</span>
         <span class="m" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sc.summary||"")}</span>
         ${badge(sc.status)}<span class="mini">${sc.shots.length} 镜</span></div>
-      <div class="shotgrid">${shotHtml||'<span class="muted" style="font-size:11.5px">该场景没有镜头</span>'}</div>
+      <div class="shotgrid">${shotHtml||'<span class="muted" style="font-size:12.5px">该场景没有镜头</span>'}</div>
       ${lines?`<div class="lines">${lines}</div>`:""}
     </div>`;
   }).join("");
@@ -1754,9 +1842,9 @@ function renderBoard(){
         <button class="btn sm ghost" id="boardRefresh">⟳ 刷新</button>
       </div>
     </div>
-    <div class="muted" style="font-size:11.5px;margin-bottom:10px">第 ${ep.index} 集 · ${ep.scenes.length} 场 · ${shotCount} 镜
+    <div class="muted" style="font-size:12.5px;margin-bottom:10px">第 ${ep.index} 集 · ${ep.scenes.length} 场 · ${shotCount} 镜
       ${ep.video?`<a class="mini" href="${ep.video}" target="_blank" style="margin-left:6px">▶ 成片</a>`:""}
-      ${ep.video_mtime?`<span class="muted" style="font-size:11px;margin-left:6px">${ep.video_seconds?ep.video_seconds+"s · ":""}最后生成 ${ago(ep.video_mtime)}（${whenStr(ep.video_mtime)}）</span>`:""}
+      ${ep.video_mtime?`<span class="muted" style="font-size:12px;margin-left:6px">${ep.video_seconds?ep.video_seconds+"s · ":""}最后生成 ${ago(ep.video_mtime)}（${whenStr(ep.video_mtime)}）</span>`:""}
       ${ep.nle?`<a class="mini" href="${ep.nle}" target="_blank" style="margin-left:6px">FCPXML ↗</a>`:""}
       ${qcBadge(ep.qc)}</div>
     <div id="boardBlocks">${blocks||'<div class="empty">本集还没有分镜</div>'}</div>`;
@@ -1806,7 +1894,7 @@ function openShotDrawer(ep,sc,sh){
   if(sh.end_image) prev.push(`<div class="dp"><img src="${sh.end_image}"><span>尾帧</span></div>`);
   if(sh.video) prev.push(`<div class="dp"><video src="${sh.video}" muted loop autoplay></video><span>视频</span></div>`);
   const types=["特写","近景","中景","全景","远景","过肩","主观","空镜"];
-  $("#dTitle").innerHTML=`镜 #${sh.index||""} <span class="muted" style="font-size:11px">${esc(sc.location||"")}</span>`;
+  $("#dTitle").innerHTML=`镜 #${sh.index||""} <span class="muted" style="font-size:12px">${esc(sc.location||"")}</span>`;
   $("#dBody").innerHTML=`
     ${prev.length?`<div class="dprev">${prev.join("")}</div>`:""}
     <div class="dsec">
@@ -1827,7 +1915,7 @@ function openShotDrawer(ep,sc,sh){
       <label class="switch"><input type="checkbox" id="edFlf" ${sh.flf===true?"checked":""} ${sh.flf==null?"data-mixed=1":""}>强制首尾帧（不勾＝跟随全局）</label>
     </div>
     <div class="dsec"><h4>生成信息</h4>
-      <div class="muted" style="font-size:11px">${esc(JSON.stringify(sh.gen_meta||{},null,0))||"—"}</div>
+      <div class="muted" style="font-size:12px">${esc(JSON.stringify(sh.gen_meta||{},null,0))||"—"}</div>
     </div>`;
   $("#dFoot").innerHTML=`
     <button class="btn go" id="edSave">保存</button>
@@ -1877,7 +1965,7 @@ async function regenShot(mode){
 function openLineDrawer(ep,sc,line){
   S.drawer={kind:"line",ep,sc,shot:null,line};
   const kinds=[["dialogue","对白"],["narration","旁白"],["monologue","独白"],["caption","字幕卡"]];
-  $("#dTitle").innerHTML=`台词 <span class="muted" style="font-size:11px">${esc(sc.location||"")}</span>`;
+  $("#dTitle").innerHTML=`台词 <span class="muted" style="font-size:12px">${esc(sc.location||"")}</span>`;
   $("#dBody").innerHTML=`
     <div class="dsec">
       <div class="row">
@@ -1886,7 +1974,7 @@ function openLineDrawer(ep,sc,line){
         <div style="width:110px"><label class="fl">情绪</label><input class="f" id="lnEmotion" value="${attr(line.emotion||"")}"></div>
       </div>
       <div style="margin-top:8px"><label class="fl">台词内容</label><textarea class="f" id="lnText" style="min-height:100px">${esc(line.text||"")}</textarea></div>
-      <div class="muted" style="font-size:11px;margin-top:6px">改台词会清空这句的配音并标记配音/字幕/合成待重跑。</div>
+      <div class="muted" style="font-size:12px;margin-top:6px">改台词会清空这句的配音并标记配音/字幕/合成待重跑。</div>
     </div>
     ${line.audio?`<div class="dsec"><h4>当前配音</h4><audio controls src="${line.audio}" style="width:100%"></audio></div>`:""}`;
   $("#dFoot").innerHTML=`<button class="btn go" id="lnSave">保存</button>
@@ -1904,8 +1992,11 @@ function openLineDrawer(ep,sc,line){
 }
 function showDrawer(){ $("#drawer").classList.add("show"); $("#drawerMask").classList.add("show"); }
 function closeDrawer(){ $("#drawer").classList.remove("show"); $("#drawerMask").classList.remove("show"); }
-$("#dClose").onclick=closeDrawer;
-$("#drawerMask").onclick=closeDrawer;
+// Called through a wrapper on purpose: the file that adds the focus
+// return replaces closeDrawer later, and a handler bound to the original
+// would close the drawer without ever putting the caret back.
+$("#dClose").onclick=()=>closeDrawer();
+$("#drawerMask").onclick=()=>closeDrawer();
 
 // ---------- cast ----------
 function wireCastViewer(){
@@ -1943,7 +2034,7 @@ function renderCast(){
     const sheet=imgs[0]||"";
     return `<div class="castcard" data-name="${attr(c.name)}">
       <div class="casttop">
-        <div class="ref">${sheet?`<img src="${sheet}" loading="lazy" data-i="0">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px">无参考图</div>'}</div>
+        <div class="ref">${sheet?`<img src="${sheet}" loading="lazy" data-i="0">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:12px">无参考图</div>'}</div>
         <div class="cb">
           <div class="cn">${esc(c.name)} ${c.locked?'<span class="mini" style="color:var(--go2)">已锁定</span>':""}</div>
           <div class="cr">${esc(c.role||"")} · ${esc(c.gender||"")} ${c.age?"· "+esc(c.age):""}</div>
@@ -1984,8 +2075,8 @@ function renderCast(){
     const imgs=(l.ref_urls||[]).filter(Boolean);
     window.__locImgs[l.name]=imgs;
     return `<div class="loc" data-loc="${attr(l.name)}"><b>${esc(l.name)}</b>
-    <div class="muted" style="font-size:10.5px;margin-top:2px">${esc((l.description||"").slice(0,44))}</div>
-    <div class="li">${imgs.map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")||'<span class="muted" style="font-size:10px">无参考图</span>'}</div>
+    <div class="muted" style="font-size:12px;margin-top:2px">${esc((l.description||"").slice(0,44))}</div>
+    <div class="li">${imgs.map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")||'<span class="muted" style="font-size:12px">无参考图</span>'}</div>
   </div>`;}).join("");
 
   box.innerHTML=`
@@ -1993,7 +2084,7 @@ function renderCast(){
     <div class="sub">先定妆再分镜：角色锚点会前置注入每个镜头，三视图作为参考图喂给出图工作流，跨集保持同一张脸。</div>
     ${cards?`<div class="castgrid">${cards}</div>`:'<div class="empty">还没有角色，先跑“分析”阶段</div>'}
     <h2 class="page" style="font-size:14px;margin:18px 0 8px">场景参考</h2>
-    ${locs?`<div class="locgrid">${locs}</div>`:'<div class="muted" style="font-size:11.5px">尚未识别场景参考</div>'}`;
+    ${locs?`<div class="locgrid">${locs}</div>`:'<div class="muted" style="font-size:12.5px">尚未识别场景参考</div>'}`;
 
   $$("#page-cast .castcard").forEach(card=>{
     const name=card.dataset.name;
@@ -2032,7 +2123,7 @@ function qcBadge(qc){
   if(m.true_peak_dbfs!==undefined) bits.push(`峰值 ${m.true_peak_dbfs.toFixed(1)}dB`);
   if(m.av_drift!==undefined) bits.push(`声画差 ${m.av_drift.toFixed(2)}s`);
   const cls=ok?(warns.length?"warn":"ok"):"bad";
-  const col=ok?(warns.length?"var(--warn,#d99)":"var(--go2)"):"var(--danger2)";
+  const col=ok?(warns.length?"var(--warn)":"var(--go2)"):"var(--danger2)";
   const tip=(errs.concat(warns)).join("\n");
   return `<span class="envchip ${cls}" style="color:${col}" title="${attr(tip)}">QC ${ok?"通过":"未通过"}${bits.length?" · "+esc(bits.join(" · ")):""}</span>`;
 }
@@ -2045,7 +2136,7 @@ function renderAssetsPage(){
       <input class="f grow" id="searchq" placeholder="例如：夜戏里男主的特写 / 所有打斗分镜 / 悲伤的台词">
       <button class="btn confirm" id="searchGo">AI 检索</button>
     </div>
-    <div id="searchmeta" class="muted" style="font-size:11.5px;margin-bottom:9px"></div>
+    <div id="searchmeta" class="muted" style="font-size:12.5px;margin-bottom:9px"></div>
     <div id="searchres"></div>
     <div id="assetSection">
       <div class="boardbar">
@@ -2109,7 +2200,7 @@ function resultCard(a){
   const murl=a.media_url||"";
   if((a.kind==="image"||a.kind==="cover")&&murl) thumb=`<img src="${murl}" loading="lazy">`;
   else if(a.kind==="video"&&murl) thumb=`<video src="${murl}" muted preload="metadata"></video>`;
-  else thumb=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px">${esc(a.kind)}</div>`;
+  else thumb=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:12px">${esc(a.kind)}</div>`;
   d.innerHTML=`<div class="thumb">${thumb}</div>
     <div class="rb">
       <div class="rt">${esc(a.title||a.kind)} <span class="mini">${esc(a.kind)}</span>
@@ -2152,7 +2243,7 @@ function renderRun(){
         <span class="muted" id="runStat"></span>
       </div>
     </div>
-    <div class="card"><h3>节点池 <span class="muted" style="font-weight:400;font-size:11px">ComfyUI 渲染节点 · 自检与模型同步</span>
+    <div class="card"><h3>节点池 <span class="muted" style="font-weight:400;font-size:12px">ComfyUI 渲染节点 · 自检与模型同步</span>
       <span style="flex:1"></span>
       <button class="btn xs" onclick="switchPage('nodes')">管理节点池 →</button></h3>
       <div id="nodeBox"><div class="empty"><span class="spin"></span> 探测节点…</div></div>
@@ -2180,22 +2271,22 @@ async function loadNodes(){
       <b>${esc(n.name)}</b>
       <span class="mini" style="color:var(--go2)">${esc(roles)}</span>
       ${nodeLink(n.base_url)}
-      ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${depth?` · 队列 ${depth}`:""}</span>`:`<span class="mini" style="color:var(--danger2)">离线</span>`}
-      ${miss.length?`<span class="mini" style="color:var(--warn,#d99)">缺 ${miss.length} 个模型</span>
-        <span class="muted" style="font-size:10.5px">${miss.slice(0,4).map(esc).join("、")}${miss.length>4?" …":""}</span>`:`<span class="mini" style="color:var(--go2)">模型齐全</span>`}
+      ${n.online?`<span class="muted" style="font-size:12px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${depth?` · 队列 ${depth}`:""}</span>`:`<span class="mini" style="color:var(--danger2)">离线</span>`}
+      ${miss.length?`<span class="mini" style="color:var(--warn)">缺 ${miss.length} 个模型</span>
+        <span class="muted" style="font-size:12px">${miss.slice(0,4).map(esc).join("、")}${miss.length>4?" …":""}</span>`:`<span class="mini" style="color:var(--go2)">模型齐全</span>`}
       <span style="flex:1"></span>
       ${n.online&&miss.length?`<button class="btn xs confirm" data-sync="${attr(n.name)}">同步模型</button>`:""}
     </div>`;
   }).join("");
   box.innerHTML=(rows||'<div class="empty">没有节点</div>')
-    +`<div class="muted" style="font-size:10.5px;margin-top:6px">清单来自工作流：${(r.models||[]).length} 个模型文件 · 角色 t2i/i2v 决定派发，队列深度决定先后</div>`
+    +`<div class="muted" style="font-size:12px;margin-top:6px">清单来自工作流：${(r.models||[]).length} 个模型文件 · 角色 t2i/i2v 决定派发，队列深度决定先后</div>`
     +`<div id="nodeProg"></div>`;
   $$("#nodeBox [data-sync]").forEach(b=>b.onclick=()=>syncNodes(b.dataset.sync,b));
 }
 function syncNodes(name,btn){
   btn.disabled=true; btn.textContent="同步中…";
   const out=$("#nodeProg");
-  out.innerHTML='<div class="muted" style="font-size:11px;margin-top:6px">正在准备…</div>';
+  out.innerHTML='<div class="muted" style="font-size:12px;margin-top:6px">正在准备…</div>';
   postJSON("/api/nodes/sync",{node:name}).then(r=>{
     if(!r.ok){ out.innerHTML=`<div class="mini" style="color:var(--danger2)">${esc(r.error||"失败")}</div>`; btn.disabled=false; btn.textContent="同步模型"; return; }
     const t=setInterval(async ()=>{
@@ -2204,9 +2295,9 @@ function syncNodes(name,btn){
       const job=j.job, p=job.progress||{};
       if(p.file||p.phase){
         const pct=p.percent||0, barLen=20, filled=Math.round(barLen*pct/100);
-        out.innerHTML=`<div style="margin-top:8px;font-size:11px">
+        out.innerHTML=`<div style="margin-top:8px;font-size:12px">
           <div style="letter-spacing:1px">${"█".repeat(filled)}${"░".repeat(barLen-filled)} ${pct.toFixed(1)}%</div>
-          <div class="muted" style="font-size:10.5px">${esc(p.file||"")} · ${((p.bytes_done||0)/1024**3).toFixed(2)}/${((p.bytes_total||0)/1024**3).toFixed(2)} GB · ${(p.speed_mb||0).toFixed(1)} MB/s · ETA ${p.eta||0}s</div>
+          <div class="muted" style="font-size:12px">${esc(p.file||"")} · ${((p.bytes_done||0)/1024**3).toFixed(2)}/${((p.bytes_total||0)/1024**3).toFixed(2)} GB · ${(p.speed_mb||0).toFixed(1)} MB/s · ETA ${p.eta||0}s</div>
         </div>`;
       }
       if(job.status!=="running"){
@@ -2236,12 +2327,12 @@ let NODE_DIRTY = {};
 
 function nodeRoleChips(roles){
   const rs=(roles&&roles.length)?roles:["any"];
-  return rs.map(r=>`<span class="chip ${r==="any"?"":"on"}" style="font-size:10px">${esc(r==="any"?"任意":r)}</span>`).join(" ");
+  return rs.map(r=>`<span class="chip ${r==="any"?"":"on"}" style="font-size:12px">${esc(r==="any"?"任意":r)}</span>`).join(" ");
 }
 async function renderNodes(){
   const box=$("#page-nodes");
   box.innerHTML=`<div class="card"><h3>节点池</h3>
-    <div class="muted" style="font-size:11.5px">远程 ComfyUI 渲染节点。角色决定派发（t2i 出图 / i2v 出视频），
+    <div class="muted" style="font-size:12.5px">远程 ComfyUI 渲染节点。角色决定派发（t2i 出图 / i2v 出视频），
     队列深度决定先后；每台机器可以用自己的工作流和权重。</div>
     <div id="nodeList"><div class="empty"><span class="spin"></span> 探测节点…</div></div></div>`;
   await loadNodesPage();
@@ -2268,11 +2359,11 @@ async function loadNodesPage(){
         ${nodeRoleChips(roles)}
         ${nodeLink(n.base_url)}
         <span style="flex:1"></span>
-        ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${n.depth?` · 队列 ${n.depth}`:""}</span>`
+        ${n.online?`<span class="muted" style="font-size:12px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${n.depth?` · 队列 ${n.depth}`:""}</span>`
                   :`<span class="mini" style="color:var(--danger2)">离线</span>`}
       </h3>
-      <div class="muted" style="font-size:11px;margin:-4px 0 8px">
-        ${(n.missing||[]).length?`<span style="color:var(--warn,#d99)">缺 ${n.missing.length} 个模型：${esc((n.missing||[]).slice(0,4).join("、"))}${n.missing.length>4?" …":""}</span>`
+      <div class="muted" style="font-size:12px;margin:-4px 0 8px">
+        ${(n.missing||[]).length?`<span style="color:var(--warn)">缺 ${n.missing.length} 个模型：${esc((n.missing||[]).slice(0,4).join("、"))}${n.missing.length>4?" …":""}</span>`
           :`<span style="color:var(--go2)">权重齐全</span>`}
       </div>
       <details ${NODE_DIRTY[n.name]?"open":""}>
@@ -2280,9 +2371,9 @@ async function loadNodesPage(){
         <div style="margin-top:8px">
           <div class="fl">节点设置</div>
           <div class="row" style="flex-wrap:wrap;gap:8px">
-            <label style="display:flex;align-items:center;gap:5px;font-size:11px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px">
               <input type="checkbox" data-nf="enabled" ${c.enabled?"checked":""}> 启用</label>
-            <label style="font-size:11px">角色
+            <label style="font-size:12px">角色
               <input class="f" data-nf="roles" value="${attr((roles||[]).join(","))}"
                      placeholder="i2v" style="width:120px"></label>
             ${(c.primary?[]:[
@@ -2301,25 +2392,25 @@ async function loadNodesPage(){
               const v=c[k]==null?"":String(c[k]);
               if(kind.startsWith("select:")){
                 const opts=kind.slice(7).split("|");
-                return `<label style="font-size:11px">${label}
+                return `<label style="font-size:12px">${label}
                   <select class="f" data-nf="${attr(k)}" style="width:150px">
                     ${opts.map(o=>`<option value="${attr(o)}" ${v===o?"selected":""}>${esc(o||"(空)")}</option>`).join("")}
                   </select></label>`;
               }
-              return `<label style="font-size:11px">${label}
+              return `<label style="font-size:12px">${label}
                 <input class="f" data-nf="${attr(k)}" value="${attr(v)}" style="width:190px"></label>`;
             }).join("")}
           </div>
           <div class="fl" style="margin-top:9px">模型设置（这台机器用哪些权重）</div>
-          <div data-models="${attr(n.name)}" class="muted" style="font-size:11px">读取中…</div>
+          <div data-models="${attr(n.name)}" class="muted" style="font-size:12px">读取中…</div>
           <div class="fl" style="margin-top:9px">工作流设置（这台机器跑哪个工作流）</div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
-            <label style="font-size:11px">t2i
+            <label style="font-size:12px">t2i
               <select class="f" data-wf="t2i" style="width:230px">
                 <option value="">(用全局的)</option>
                 ${NODE_WFS.map(w=>`<option value="${attr(w)}" ${wf.t2i===w?"selected":""}>${esc(w)}</option>`).join("")}
               </select></label>
-            <label style="font-size:11px">i2v
+            <label style="font-size:12px">i2v
               <select class="f" data-wf="i2v" style="width:230px">
                 <option value="">(用全局的)</option>
                 ${NODE_WFS.map(w=>`<option value="${attr(w)}" ${wf.i2v===w?"selected":""}>${esc(w)}</option>`).join("")}
@@ -2371,7 +2462,7 @@ async function loadNodeModels(name){
       return `<div style="margin-bottom:5px">#${esc(id)} ${esc(cls)} · ${esc(field)} =
         <code>${esc(val)}</code> <span class="muted">（这台机器上没有可选项）</span></div>`;
     }
-    return `<div style="margin-bottom:5px;display:flex;align-items:center;gap:7px;font-size:11px">
+    return `<div style="margin-bottom:5px;display:flex;align-items:center;gap:7px;font-size:12px">
       <span style="min-width:170px">#${esc(id)} ${esc(cls)} · ${esc(field)}</span>
       <select class="f" data-ov="${attr(id)}" data-ovf="${attr(field)}" data-ovn="${attr(name)}" style="width:330px">
         ${opts.map(o=>`<option value="${attr(o)}" ${o===val?"selected":""}>${esc(o)}</option>`).join("")}
@@ -2542,9 +2633,9 @@ async function loadSettings(){
     <h1 class="page">设置</h1>
     <div class="sub">模型按优先级与角色分配；没被勾选的任务由默认模型兜底。保存会原位写回 YAML，注释保留。</div>
     <div class="card">
-      <h3>模型清单 <span class="muted" id="mCount" style="font-weight:400;font-size:11px">${S.modelEntries.length} 个 · 顺序＝优先级</span></h3>
+      <h3>模型清单 <span class="muted" id="mCount" style="font-weight:400;font-size:12px">${S.modelEntries.length} 个 · 顺序＝优先级</span></h3>
       <div class="chips" style="margin-bottom:10px">
-        <span class="muted" style="font-size:11px;align-self:center">添加：</span>
+        <span class="muted" style="font-size:12px;align-self:center">添加：</span>
         <span class="chip" id="addOneAll" style="border-color:var(--confirm);color:var(--confirm)" title="新增一个勾选全部任务的模型并置顶设为默认：它一个人负责分析/分集/剧本/分镜/提示词/配置/动作/检索/打标。下方已有卡片原样保留，随时可改回分工模式">⚡ 一个模型跑全部</span>
         <span class="muted" style="align-self:center;color:var(--line)">|</span>
         ${provs.map(p=>`<span class="chip" data-add="${esc(p.id)}" title="${esc(p.hint||"")}">${esc(p.label)}</span>`).join("")}
@@ -2552,7 +2643,7 @@ async function loadSettings(){
       <div id="modelList"></div>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
         <button class="btn go" id="mSave">保存模型清单</button>
-        <span class="muted" style="font-size:11px">↑↓ 调整优先级；默认模型负责未勾选的任务</span>
+        <span class="muted" style="font-size:12px">↑↓ 调整优先级；默认模型负责未勾选的任务</span>
         <span class="muted" id="mSaveOut"></span>
       </div>
     </div>
@@ -2571,7 +2662,7 @@ async function loadSettings(){
     </div>
     <div class="card">
       <h3>环境自检 <button class="btn sm ghost" id="probeBtn">开始探测</button></h3>
-      <div class="muted" id="setupStat" style="font-size:11.5px"></div>
+      <div class="muted" id="setupStat" style="font-size:12.5px"></div>
       <div id="setupOut"></div>
     </div>`;
   $$("[data-add]",box).forEach(c=>c.onclick=()=>addModel(c.dataset.add,provs));
@@ -2596,7 +2687,7 @@ function renderModelList(){
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span class="badge" title="优先级">#${i+1}</span>
         <input class="f" data-f="label" value="${attr(m.label||"")}" placeholder="备注名" style="width:190px">
-        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:${isDef?"var(--go2)":"var(--fg2)"};cursor:pointer">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:${isDef?"var(--go2)":"var(--fg2)"};cursor:pointer">
           <input type="radio" name="mdef" value="${esc(m.id)}" ${isDef?"checked":""}> 默认兜底</label>
         <span style="flex:1"></span>
         <button class="btn xs ghost" data-act="up" ${i===0?"disabled":""}>↑</button>
@@ -2615,17 +2706,17 @@ function renderModelList(){
           <div style="display:flex;gap:6px;align-items:center">
             <input class="f" type="password" data-f="api_key" placeholder="${keyPh}" style="flex:1">
             <button class="btn xs ghost" data-act="key">显示</button>
-            ${m.api_key_set?'<label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--fg2);white-space:nowrap"><input type="checkbox" data-f="clear_key">清除</label>':""}
+            ${m.api_key_set?'<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--fg2);white-space:nowrap"><input type="checkbox" data-f="clear_key">清除</label>':""}
           </div></div>
         <div style="width:82px"><label class="fl">temperature</label><input class="f" data-f="temperature" value="${m.temperature}"></div>
         <div style="width:92px"><label class="fl">max_tokens</label><input class="f" data-f="max_tokens" value="${m.max_tokens}"></div>
         <div style="width:84px"><label class="fl">超时(秒)</label><input class="f" data-f="timeout" value="${m.timeout}"></div>
-        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--fg2);margin-top:16px"><input type="checkbox" data-f="use_proxy" ${m.use_proxy?"checked":""}>代理</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--fg2);margin-top:16px"><input type="checkbox" data-f="use_proxy" ${m.use_proxy?"checked":""}>代理</label>
       </div>
       <div style="margin-top:8px"><label class="fl">负责的任务（全不勾＝只做默认兜底）</label>
         <div class="chips">${roles.map(role=>`<span class="chip ${(m.roles||[]).includes(role.id)?"on":""}" data-role="${esc(role.id)}" title="${esc(role.desc||"")}">${esc(role.label)}</span>`).join("")}</div>
       </div>
-      <div class="muted" data-out="test" style="font-size:11px;margin-top:6px"></div>
+      <div class="muted" data-out="test" style="font-size:12px;margin-top:6px"></div>
       <div class="chips" data-out="models"></div>
     </div>`;
   }).join("");
@@ -2712,7 +2803,7 @@ async function testModel(i){
   const models=r.models||[];
   if(models.length){
     const dl=$(`datalist#ml${i}`); if(dl) dl.innerHTML=models.map(x=>`<option value="${esc(x)}">`).join("");
-    chipsBox.innerHTML='<span class="muted" style="font-size:10.5px">端点模型（点击选用）：</span>'+
+    chipsBox.innerHTML='<span class="muted" style="font-size:12px">端点模型（点击选用）：</span>'+
       models.slice(0,30).map(x=>`<span class="chip" data-pick="${esc(x)}">${esc(x)}</span>`).join("");
     $$(".chip",chipsBox).forEach(c=>c.onclick=()=>{ $('[data-f="model"]',card).value=c.dataset.pick; });
   } else chipsBox.innerHTML="";
@@ -2800,7 +2891,7 @@ function renderSetup(){
     <textarea class="f" id="extra" placeholder="例如：男主是军人气质；每集结尾必须留悬念；不要血腥画面"></textarea>
     <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
       <button class="btn go" id="doSetup">AI 生成并写入配置</button>
-      <span class="muted" id="setupWizStat" style="font-size:11.5px"></span>
+      <span class="muted" id="setupWizStat" style="font-size:12.5px"></span>
     </div>
     <div id="setupWizOut"></div>`;
   $$("#presetBox .pcard").forEach(c=>c.onclick=()=>{
@@ -2826,7 +2917,7 @@ async function doSetup(){
     if(!res){ stat.textContent=""; return; }
     stat.innerHTML=res.used_llm?'<span style="color:var(--go2)">✓ 已由 AI 生成并写入</span>':'<span style="color:var(--warn)">✓ 已写入（未连到大模型，用模板规则生成）</span>';
     $("#setupWizOut").innerHTML=`<div class="card" style="margin-top:9px"><h3>写入 ${esc(res.written||"config/default.yaml")}</h3>
-      <pre style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-family:var(--mono);font-size:10.5px;margin:0">${esc(JSON.stringify(res.overrides||{},null,1))}</pre></div>`;
+      <pre style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-family:var(--mono);font-size:12px;margin:0">${esc(JSON.stringify(res.overrides||{},null,1))}</pre></div>`;
     toast("配置已更新","ok"); boot(); loadProduction();
   });
 }
@@ -2849,7 +2940,7 @@ function showPreview(a,instr){
   p.style.cssText="display:flex;gap:12px;align-items:flex-start;background:var(--bg2);border-bottom:1px solid var(--ai-soft-line);padding:9px 14px";
   p.innerHTML=`<div style="flex:1;min-width:0">
       <div style="font-weight:700;font-size:12.5px">${esc(a.title)} ${a.note?`<span class="muted" style="font-weight:400">· ${esc(a.note)}</span>`:""}</div>
-      <div class="muted" style="font-size:11.5px;margin:2px 0 5px">${esc(a.confirm_msg||"")} · 原话：“${esc(instr)}”</div>
+      <div class="muted" style="font-size:12.5px;margin:2px 0 5px">${esc(a.confirm_msg||"")} · 原话：“${esc(instr)}”</div>
       <div>${pstr||'<span class="muted">（无参数）</span>'}</div></div>
     <button class="btn ${a.needs_confirm?"confirm":"go"} sm" id="pvOk">${a.needs_confirm?"确认执行":"执行"}</button>
     <button class="btn ghost sm" id="pvNo">取消</button>`;
@@ -2896,8 +2987,16 @@ $("#newProj").onclick=()=>{
 $("#refreshBtn").onclick=()=>boot();
 $("#healthBtn").onclick=()=>{ switchPage("guide"); probeGuide(); };
 document.addEventListener("keydown",e=>{
-  if(e.key==="/"&&document.activeElement.tagName!=="INPUT"&&document.activeElement.tagName!=="TEXTAREA"){
-    e.preventDefault(); $("#cmd").focus();
+  const t=e.target||{};
+  const typing=t.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(t.tagName||"");
+  if(e.key==="/"&&!typing){
+    e.preventDefault();
+    // the bar is hidden until it is opened: focusing the box inside a
+    // display:none bar focuses nothing, which is what the "/" hint
+    // promised and silently did not do.
+    const bar=$("#cmdbar");
+    if(bar){ bar.classList.add("open"); }
+    $("#cmd").focus();
   }
   if(e.key==="Escape"){ closeDrawer(); $("#preview").style.display="none"; }
 });
@@ -3056,8 +3155,13 @@ async function deleteProject(slug){
   if(!r || !r.ok){ toast((r&&r.error)||"删除失败","",2600); return; }
   toast("已移到 projects/_trash/","",2600);
   S.projects = (S.projects||[]).filter(x=>x.slug!==slug);
-  renderProjects();
-  if(S.current===slug){ S.current = ""; S.detail = null; }
+  // A project that is gone has to leave every page, not only the list:
+  // the sidebar, the header, the workbench and the address bar all still
+  // name it otherwise, and the next click then loads a project that is
+  // not there.
+  if(S.current===slug){ S.current=""; S.detail=null; }
+  renderProjects(); renderCmdProj(); renderHeader();
+  switchPage(S.projects.length ? (S.activePage||"workbench") : "guide", true);
 }
 </script>
 
@@ -3141,8 +3245,13 @@ function _rdStep(dir){
   const nx=list[pos+dir];
   if(nx) openReader(nx.index);
 }
+function _rdTyping(e){
+  const t=e.target||{};
+  return t.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(t.tagName||"");
+}
 function _rdKey(e){
   if(e.key==="Escape"){ closeReader(); return; }
+  if(_rdTyping(e)) return;              // arrows belong to the field being typed in
   if(e.key==="ArrowLeft") _rdStep(-1);
   if(e.key==="ArrowRight") _rdStep(1);
 }
@@ -3253,6 +3362,8 @@ function lightboxStep(d){
   renderLightbox();
 }
 function lightboxKeys(e){
+  const t=e.target||{};
+  if(t.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(t.tagName||"")) return;
   if(e.key==="Escape") closeLightbox();
   else if(e.key==="ArrowLeft") lightboxStep(-1);
   else if(e.key==="ArrowRight") lightboxStep(1);
@@ -3305,8 +3416,6 @@ toast("已请求停止：当前这一步的调用结束后停下（约 1 分钟�
 }
 </script>
 
-<style>
-</style>
 <script>
 // ---------- the skills: what each stage writes with ----------
 // The stages send their skills with every model call, so a list that
@@ -3338,8 +3447,8 @@ function renderSkills(){
   const stageHtml=SK_STAGES.map(([k,zh])=>{
     const names=sel[k]||[];
     const chips=names.length
-      ? names.map(n=>`<span class="chip on" title="${esc((byName[n]||{}).description||"")}"
-            onclick="skillPick('${esc(k)}','${esc(n)}')">${esc((byName[n]||{}).title||n)} ×</span>`).join("")
+      ? names.map(n=>`<button type="button" class="chip on" title="${esc((byName[n]||{}).description||"")}"
+            aria-label="${attr(((byName[n]||{}).title||n))}，从${esc(zh)}移出" data-skill="${esc(n)}" data-stage="${esc(k)}">${esc((byName[n]||{}).title||n)}<span class="sk-x" aria-hidden="true">×</span></button>`).join("")
       : '<span class="muted">不使用技能（用内置规矩）</span>';
     return `<div class="card" style="margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:8px">
@@ -3359,7 +3468,7 @@ function renderSkills(){
     const list=fams[fam];
     const total=list.reduce((a,x)=>a+x.chars,0);
     return `<h3 class="page" style="font-size:13px;margin:16px 0 6px">${esc(fam)}
-        <span class="muted" style="font-weight:400;font-size:11px">${list.length} 个 · ${fmtChars(total)}</span></h3>
+        <span class="muted" style="font-weight:400;font-size:12px">${list.length} 个 · ${fmtChars(total)}</span></h3>
       <div class="card" style="padding:4px 14px">${list.map(x=>skillRow(x,sel)).join("")}</div>`;
   }).join("");
 
@@ -3370,22 +3479,27 @@ function renderSkills(){
       <span class="mini muted">当前项目</span>
       <b>${esc((S.detail&&S.detail.meta&&(S.detail.meta.title||S.detail.meta.name))||S.current||"（未选项目）")}</b>
       <span style="flex:1"></span>
-      <button class="btn ai" id="skReco" onclick="recommendSkills()">✦ 让 AI 按本项目挑</button>
-      <button class="btn go" onclick="saveSkills()">保存到本项目</button>
+      <button class="btn ai" id="skReco">让 AI 按本项目挑</button>
+      <button class="btn go" id="skSave">保存到本项目</button>
     </div>
     <div id="skRecoBox"></div>
     <h2 class="page" style="font-size:14px;margin:14px 0 8px">各阶段在用</h2>
     ${stageHtml}
     <h2 class="page" style="font-size:14px;margin:16px 0 8px">全部技能
-      <span class="muted" style="font-weight:400;font-size:11px">点右边的阶段名加入或移出</span></h2>
+      <span class="muted" style="font-weight:400;font-size:12px">点右边的阶段名加入或移出</span></h2>
     ${rows}`;
+  // wired after the draw, and through data attributes: an inline handler
+  // carrying a skill name is a handler that breaks on an apostrophe
+  $("#skReco").onclick=recommendSkills;
+  $("#skSave").onclick=saveSkills;
+  $$("[data-skill]",box).forEach(b=>b.onclick=()=>skillPick(b.dataset.stage,b.dataset.skill));
 }
 
 function skillRow(x, sel){
   const picks=SK_STAGES.map(([k,zh])=>{
     const on=(sel[k]||[]).indexOf(x.name)>=0;
-    return `<button class="sk-pick ${on?"on":""}"
-      onclick="skillPick('${esc(k)}','${esc(x.name)}')">${esc(zh)}</button>`;
+    return `<button type="button" class="sk-pick ${on?"on":""}" data-skill="${esc(x.name)}" data-stage="${esc(k)}"
+      aria-pressed="${on?"true":"false"}" title="${on?"从":"加入"}${esc(zh)}">${esc(zh)}</button>`;
   }).join("");
   const desc=(x.description||"").replace(/\s+/g," ").slice(0,150);
   return `<div class="sk-row">
@@ -3395,30 +3509,39 @@ function skillRow(x, sel){
       <div class="sk-desc" title="${esc(x.description||"")}">${esc(desc)}${(x.description||"").length>150?"…":""}</div>
       ${x.refs?`<div class="mini muted" style="margin-top:3px">另有 ${x.refs} 个深参考（${fmtChars(x.ref_chars)}，当前不注入）</div>`:""}
     </div>
-    <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${picks}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${picks}</div>
   </div>`;
 }
 
 function skillPick(stage,name){
-  if(!SK) return;
+  if(!SK||!SK.selection) return;
   const list=SK.selection[stage]=SK.selection[stage]||[];
   const i=list.indexOf(name);
+  // the cost is what the catalog says the selected skills add, summed
+  // again after each change - not a running total that drifts when a
+  // name is added twice or a catalog entry is edited
   if(i>=0) list.splice(i,1); else list.push(name);
-  // the cost moves with the choice, so the multiplier is never a surprise
+  const byName={}; (SK.skills||[]).forEach(x=>byName[x.name]=x);
   SK.costs=SK.costs||{};
-  SK.costs[stage]=(SK.costs[stage]||0)+(i>=0?-(SK.skills.find(x=>x.name===name)||{chars:0}).chars
-                                             :(SK.skills.find(x=>x.name===name)||{chars:0}).chars);
-  if(SK.costs[stage]<0) SK.costs[stage]=0;
+  SK.costs[stage]=list.reduce((a,n)=>a+((byName[n]||{}).chars||0),0);
+  // the page is redrawn, so the scroll position is put back where it was
+  const scroll=($("#main")||{}).scrollTop||0;
   renderSkills();
+  $("#main").scrollTop=scroll;
 }
 
 async function saveSkills(){
   if(!S.current){ toast("先选一个项目","err"); return; }
   const r=await postJSON("/api/skills/save",{project:S.current,selection:SK.selection});
   if(!r||!r.ok){ toast("保存失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
+  // what comes back is what was stored: the server drops names that are
+  // no longer in the catalog, and the page must show the stored list
+  SK.selection=r.selection||SK.selection;
   SK.costs=r.costs||SK.costs;
   toast("已保存。下次跑流水线生效（正在跑的不受影响）","ok",4000);
+  const scroll=($("#main")||{}).scrollTop||0;
   renderSkills();
+  $("#main").scrollTop=scroll;
 }
 
 async function recommendSkills(){
