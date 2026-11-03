@@ -186,6 +186,44 @@ comfyui:
   models_dir: E:\\ComfyUI\\models
 ```
 
+### 6.1 16GB 卡上的启动参数
+
+本机的 5080 是 **16GB**（不是 32GB），H3 的权重刚好顶到边：
+
+```bat
+E:\ComfyUI\venv\Scripts\python.exe main.py --port 8188 --vram-headroom 0.5
+```
+
+`--vram-headroom` 的单位是 **GB**。留 1.5GB 的话可用显存只剩 14.5GB，
+而 H3 的文本编码器是 14.61GB —— 差一点点放不下，编码就被拆到 CPU 上跑，
+一段视频要多花好几分钟。
+
+### 6.2 音乐模型（ACE-Step 1.5）
+
+配乐也在本机跑，和出图出视频共用 ComfyUI：
+
+| 文件 | 目录 | 体积 |
+|---|---|---|
+| `acestep_v1.5_turbo.safetensors` | `models/diffusion_models/` | 4.46 GiB |
+| `qwen_0.6b_ace15.safetensors` | `models/text_encoders/` | 1.11 GiB |
+| `qwen_1.7b_ace15.safetensors` | `models/text_encoders/` | 3.45 GiB |
+| `ace_1.5_vae.safetensors` | `models/vae/` | 0.31 GiB |
+
+```bat
+curl -L -o models\diffusion_models\acestep_v1.5_turbo.safetensors ^
+  https://hf-mirror.com/Comfy-Org/ACE-Step-1.5/resolve/main/split_files/diffusion_models/acestep_v1.5_turbo.safetensors
+```
+
+工作流：`config/comfyui/music_acestep.json`（ComfyUI 官方蓝图的 API 版）。
+曲库做好一次放在 `assets/music/`，流水线按情绪名取用：
+
+```bash
+venv\Scripts\python.exe rounds\tools\make_music_library.py
+```
+
+**60 秒的曲子 8-10 秒出一首。** 曲子做好后统一归一化到 -18 LUFS ——
+模型有时会写出比别的小二十分贝的曲子，直接用会让同一集里有的场景吵、有的场景没声。
+
 ---
 
 ## 7. 常见问题
@@ -195,6 +233,9 @@ comfyui:
 | 出图有颜色但没结构 | 文本编码器用了 `int8_convrot`，换成 bf16 版 |
 | `dj nodes sync` 传到一半断了 | 用 `transfer: scp`（内置断点续传）或 `shared` 挂载 |
 | ComfyUI 报显存不足 | H3 出视频时同机不要跑出图；或让出图节点和视频节点分开（`roles`） |
+| 出视频卡在几分钟没动静 | 32B 文本编码器被放到 CPU 上编码了；把它的 `device` 设回 `default` |
 | systemd 说服务启动失败 | 调大 `TimeoutStartSec`；H3 换入权重很慢 |
 | 模型传过去但服务器看不见 | ComfyUI 有缓存，重启实例或等它刷新目录 |
 | `dj comfy-test` 说节点类型不存在 | 装对应的自定义节点（`ComfyUI-GGUF` 等） |
+| 工作流里有 `PathchSageAttentionKJ` 但卡上没装 KJNodes | 提交前会自动绕开这个节点（结果一样，慢约 30%），日志里会写明 |
+| 一加图片就不出视频了 | 出图和出视频挤在同一张 16GB 卡上会互相顶掉权重；先把图出完，再出视频 |

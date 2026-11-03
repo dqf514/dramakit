@@ -118,6 +118,7 @@ class State:
     # -- background jobs --
     def start_job(self, kind: str, fn) -> str:
         jid = uuid.uuid4().hex[:12]
+        self._prune_jobs()
         # The event is what makes a run stoppable: the thread runs the
         # pipeline, the pipeline asks between stages and between episodes,
         # and this is the thing they ask. Without it a plan that turns out
@@ -199,9 +200,36 @@ class State:
     def running_jobs(self) -> list[str]:
         return [k for k, v in self.jobs.items() if v.get("status") == "running"]
 
+    def job_list(self) -> list[dict]:
+        """Every job this process knows about, in a shape that can be sent.
+
+        The stop event is a threading primitive and it is present for as
+        long as the job runs - which is exactly when this is asked for - so
+        it is dropped here rather than at the end, and a listing never
+        fails on a job that is still going. `stoppable` says it was there,
+        which is the thing a page needs to offer a stop button.
+        """
+        out = []
+        for jid, j in self.jobs.items():
+            rec = {k: v for k, v in j.items() if k != "stop"}
+            rec["id"] = jid
+            rec["stoppable"] = j.get("stop") is not None
+            out.append(rec)
+        out.sort(key=lambda r: (0 if r.get("status") == "running" else 1,
+                                r.get("kind") or "", r.get("id") or ""))
+        return out
+
+    def _prune_jobs(self, keep: int = 20) -> None:
+        """Drop the oldest finished jobs, so a long-lived console does not
+        accumulate a record of every run it has ever had."""
+        done = [k for k, v in self.jobs.items() if v.get("status") != "running"]
+        for k in done[:-keep] if len(done) > keep else []:
+            self.jobs.pop(k, None)
+
     def start_job_progress(self, kind: str, fn) -> str:
         """Like start_job, but fn gets a report() callable for live progress."""
         jid = uuid.uuid4().hex[:12]
+        self._prune_jobs()
         stop = threading.Event()
         self.jobs[jid] = {"id": jid, "kind": kind, "status": "running",
                           "result": None, "error": None, "progress": {},
@@ -247,7 +275,12 @@ def _make_handler(state: State):
             self.end_headers()
             try:
                 self.wfile.write(body)
-            except (BrokenPipeError, ConnectionResetError):
+            except (BrokenPipeError, ConnectionResetError,
+                    ConnectionAbortedError):
+                # The page went away while the answer was being written -
+                # a refresh, a navigation, a browser that closed the tab.
+                # Nothing is wrong with the answer, and a traceback for it
+                # only hides the failures that are.
                 pass
 
         def _json(self, obj, code: int = 200) -> None:
@@ -350,6 +383,13 @@ def _make_handler(state: State):
                 return self._json({"ok": True, "lines": state.log_tail.tail(n)})
             if path == "/api/jobs":
                 jid = (query.get("id") or [""])[0]
+                if not jid:
+                    # Without an id this used to look up the empty key and
+                    # answer "no job", which is how a run in progress was
+                    # mistaken for nothing running and a service restart
+                    # killed it. Listing is the answer that lets a restart
+                    # be decided on facts.
+                    return self._json({"ok": True, "jobs": state.job_list()})
                 j = state.jobs.get(jid)
                 return self._json({"ok": bool(j), "job": j})
             if path == "/api/config":
@@ -395,9 +435,31 @@ def _make_handler(state: State):
                     d = h.to_dict()
                     d["transfer"] = spec.transfer
                     d["roles"] = list(spec.roles or [])
+                    # The settings the page edits, so it does not have to
+                    # ask for them a second time: what the card is called,
+                    # where it answers, how models reach it, and the
+                    # weights it is told to load.
+                    cfg_dump = spec.model_dump()
+                    if spec.name == "local" and spec.name not in {
+                            s.name for s in (state.cfg.comfyui.nodes or [])}:
+                        # The primary card is not in the list - its address
+                        # and its role live at the top of the section, and
+                        # the weights it loads are the section's own. The
+                        # page is shown what is actually in force.
+                        cfg_dump["roles"] = list(state.cfg.comfyui.local_roles or [])
+                        cfg_dump["graph_overrides"] = dict(
+                            state.cfg.comfyui.graph_overrides or {})
+                        cfg_dump["primary"] = True
+                    # what the page shows as this card's role is the role
+                    # in force, not the one the list would give it
+                    d["roles"] = list(cfg_dump.get("roles") or [])
+                    d["config"] = cfg_dump
                     out.append(d)
                 return self._json({"ok": True, "nodes": out,
-                                   "models": [r.rel for r in refs]})
+                                   "models": [r.rel for r in refs],
+                                   "workflows": _workflow_files()})
+            if path == "/api/nodes/models":
+                return self._json(self._api_nodes_models(query))
             return self._err(f"no such endpoint: {path}", 404)
 
         # ---- POST /api ----
@@ -410,6 +472,8 @@ def _make_handler(state: State):
                 return self._json(self._api_ai_run(body))
             if path == "/api/run":
                 return self._json(self._api_run(body))
+            if path == "/api/resume":
+                return self._json(self._api_resume(body))
             if path == "/api/skills/save":
                 return self._json(self._api_skills_save(body))
             if path == "/api/skills/recommend":
@@ -418,6 +482,8 @@ def _make_handler(state: State):
                 return self._json(self._api_jobs_stop(body))
             if path == "/api/nodes/sync":
                 return self._json(self._api_nodes_sync(body))
+            if path == "/api/nodes/save":
+                return self._json(self._api_nodes_save(body))
             if path == "/api/reindex":
                 return self._json(self._api_reindex(body))
             if path == "/api/projects/delete":
@@ -917,6 +983,16 @@ def _make_handler(state: State):
 
         def _api_run(self, body: dict) -> dict:
             from ..ai import actions
+            busy = [j for j in state.job_list()
+                    if j.get("status") == "running"
+                    and j.get("kind") == "run_pipeline"]
+            if busy:
+                # Two runs on one project write the same files and read the
+                # same statuses; the second would overwrite the first's
+                # record of where it had got to, and both would render the
+                # same shots.
+                return self._err(
+                    f"已有流水线在跑（{busy[0]['id']}），先等它结束或停掉", 409)
             params = {
                 "project": body.get("project", ""),
                 # chapters are the input: naming them is how a run is told
@@ -934,6 +1010,14 @@ def _make_handler(state: State):
                                       projects_root=state.projects_root,
                                       catalog=state.catalog,
                                       stop_event=stop)
+                # Not worth indexing a run that was asked to stop: the
+                # assets it made are not final, the resume at the end of
+                # this run will index whatever there is, and waiting on
+                # the AI to tag everything is what kept a job reporting
+                # "running" for minutes after the pipeline had already
+                # stopped.
+                if stop.is_set():
+                    return res
                 slug = act.params.get("project")
                 if slug and state.cfg.ai.auto_tag:
                     store = state.open_store(slug)
@@ -947,6 +1031,165 @@ def _make_handler(state: State):
 
             jid = state.start_job("run_pipeline", _job)
             return {"ok": True, "job": jid}
+
+        def _api_resume(self, body: dict) -> dict:
+            """Start the run that was interrupted, with the plan it had.
+
+            The plan lives on the project, not in this process: a restart
+            loses the running job but not what it was doing. The stage
+            statuses already skip what is finished, so what matters here is
+            handing back the same chapters, episodes, stages and season -
+            without them a resume is a fresh run that has to be rebuilt by
+            hand, which is the difference between continuing and starting
+            over.
+            """
+            slug = str(body.get("project") or "")
+            store = state.open_store(slug)
+            if store is None:
+                return self._err("no such project", 404)
+            proj = store.load()
+            params = dict(proj.meta.last_run or {})
+            if not params:
+                return self._err("没有可续跑的记录：这个项目没有中断中的运行", 400)
+            params["project"] = slug
+            # an explicit override from the page wins over what was recorded
+            for key in ("stages", "episodes", "chapters", "season"):
+                if key in body:
+                    params[key] = body[key]
+            return self._api_run(params)
+
+        def _node_client(self, spec):
+            """A client for one node, with that node's own settings.
+
+            The card is addressed and authenticated the way the pool does
+            it, and told to load the weights this node is configured for -
+            otherwise the file list would come from the global settings
+            rather than the card's own.
+            """
+            from ..providers.comfyui import ComfyUIClient
+            cfg = state.cfg.comfyui.model_copy(deep=True)
+            cfg.base_url = spec.base_url
+            cfg.auth = spec.auth if spec.auth in ("none", "basic", "bearer") else "none"
+            cfg.auth_username = spec.auth_username
+            cfg.auth_password = spec.auth_password
+            cfg.auth_token = spec.auth_token
+            cfg.extra_headers = spec.extra_headers or {}
+            cfg.verify_tls = spec.verify_tls
+            cfg.graph_overrides = dict(spec.graph_overrides or {})
+            for role, rel in (spec.workflows or {}).items():
+                rel = str(rel or "").strip()
+                if not rel:
+                    continue
+                if role == "t2i":
+                    cfg.t2i_workflow = rel
+                elif role == "i2v":
+                    cfg.i2v_workflow = rel
+                elif role == "flf":
+                    cfg.flf_workflow = rel
+            return ComfyUIClient(cfg, Path("."))
+
+        def _api_nodes_models(self, query) -> dict:
+            """What weights this card has, and which loader each override names.
+
+            The overrides are keyed by the node id of a loader in the
+            workflow - 127 for the model, 128 for the text encoder - so
+            naming the file for one of them means knowing that id is a
+            UNET loader and not a text encoder. The card says which files
+            it has for each kind of loader; the workflow says what each id
+            is. Both are read here and put side by side, so the page can
+            offer the right list for each id instead of a free-text field
+            that silently accepts a filename this card has never heard of.
+            """
+            name = str((query.get("node") or [""])[0] or "")
+            from ..providers.nodes import nodes_from_config
+            spec = next((s for s in nodes_from_config(state.cfg)
+                         if s.name == name), None)
+            if spec is None:
+                return self._err(f"没有这个节点：{name}", 404)
+            if spec.name == "local" and spec.name not in {
+                    s.name for s in (state.cfg.comfyui.nodes or [])}:
+                # the primary card's role and weights live at the top of
+                # the section rather than in the list
+                spec = spec.model_copy(deep=True)
+                spec.roles = list(state.cfg.comfyui.local_roles or [])
+                spec.graph_overrides = dict(state.cfg.comfyui.graph_overrides or {})
+            client = self._node_client(spec)
+            try:
+                if not client.ping():
+                    return self._err("连不上该节点", 400)
+                info = client.object_info()
+            except Exception as e:  # noqa: BLE001
+                return self._err(f"读取节点信息失败：{str(e)[:160]}", 400)
+
+            files: dict[str, list] = {}
+            for cls, field in (("UNETLoader", "unet_name"),
+                               ("CLIPLoader", "clip_name"),
+                               ("VAELoader", "vae_name"),
+                               ("LoraLoaderModelOnly", "lora_name")):
+                node_spec = info.get(cls)
+                if not node_spec:
+                    continue
+                req = (node_spec.get("input") or {}).get("required") or {}
+                val = req.get(field)
+                if isinstance(val, list) and val and isinstance(val[0], list):
+                    files[cls] = [str(x) for x in val[0]]
+
+            # which loader each overridden node id is, read off the
+            # workflow this card would run for its role
+            roles = {str(r).lower() for r in (spec.roles or [])}
+            cfg = state.cfg.comfyui
+            rel = (cfg.i2v_workflow if "i2v" in roles
+                   else cfg.t2i_workflow if "t2i" in roles
+                   else cfg.i2v_workflow)
+            kinds: dict[str, str] = {}
+            path = Path(rel) if Path(rel).is_absolute() else Path(".") / rel
+            try:
+                graph = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                graph = {}
+            for nid in (spec.graph_overrides or {}):
+                node = graph.get(str(nid)) or {}
+                kinds[str(nid)] = str(node.get("class_type") or "")
+            return self._json({"ok": True, "node": name,
+                                "files": files, "kinds": kinds,
+                                "overrides": spec.graph_overrides or {},
+                                "workflow": rel})
+
+        def _api_nodes_save(self, body: dict) -> dict:
+            """Write the node pool's settings into the config."""
+            from ..ai import autoconfig
+            nodes = body.get("nodes")
+            if not isinstance(nodes, list) or not nodes:
+                return self._err("没有要保存的节点", 400)
+            # The primary card is not in the list: its address, its role and
+            # its weights sit at the top of the section. Every other name
+            # belongs in the list - including one that is not there yet,
+            # which is a new card rather than the primary one.
+            listed = {s.name for s in (state.cfg.comfyui.nodes or [])}
+            primary = "local" if "local" not in listed else ""
+            scalars: dict = {}
+            maps: dict = {}
+            entries: list[dict] = []
+            for node in nodes:
+                name = str(node.get("name") or "").strip()
+                if not name:
+                    continue
+                if name == primary:
+                    if "base_url" in node:
+                        scalars["base_url"] = node["base_url"]
+                    if "roles" in node:
+                        scalars["local_roles"] = node["roles"]
+                    if "graph_overrides" in node:
+                        maps["graph_overrides"] = node.get("graph_overrides") or {}
+                    continue
+                entries.append(node)
+            path = state.config_path or Path("config/default.yaml")
+            try:
+                autoconfig.save_nodes(path, entries, scalars, maps)
+            except Exception as e:  # noqa: BLE001
+                return self._err(f"写入配置失败：{str(e)[:240]}", 400)
+            state.reload_config()
+            return self._json({"ok": True, "nodes": nodes})
 
         def _api_nodes_sync(self, body: dict) -> dict:
             """Ship the models a node is missing, with live progress."""
@@ -1826,6 +2069,24 @@ def _media_url(slug: str, rel_path: str) -> str:
         return ""
     segs = "/".join(quote(s) for s in rel_path.lstrip("/").split("/") if s != "")
     return f"/media/{quote(slug)}/{segs}"
+
+
+def _workflow_files() -> list[str]:
+    """Every workflow the console can run, as config-relative paths.
+
+    The list is what the node page offers when a card is given a workflow
+    of its own: a card that is good at one thing should not be handed the
+    other thing's file, and the only way to say which is to name one.
+    """
+    out: list[str] = []
+    root = Path("config/comfyui")
+    if not root.exists():
+        return out
+    for p in sorted(root.glob("*.json")):
+        if p.name.startswith("_"):
+            continue
+        out.append(f"config/comfyui/{p.name}")
+    return out
 
 
 def _slim_workflow_report(rep: Optional[dict]) -> Optional[dict]:

@@ -89,7 +89,11 @@ class Character(BaseModel):
     locked: bool = False                     # 锁定后角色锚点不允许被 AI 改写
     voice_id: str = ""                       # 绑定音色
     voice_pitch: str = ""                    # 专属音高微调，如 "-16Hz"（随定妆一起设计）
-    voice_rate: str = ""                     # 专属语速微调，如 "-10%"
+    voice_rate: str = ""
+    # A recording of this character's voice, made once at定妆 and used as
+    # the audio reference for every clip they speak in - so the timbre is
+    # theirs rather than whatever the model invents per shot.
+    voice_ref: str = ""                     # 专属语速微调，如 "-10%"
     ref_image: str = ""                      # 旧版单图字段，兼容保留
     lora: str = ""                           # 角色 LoRA（ComfyUI 用）
 
@@ -284,6 +288,12 @@ class ProjectMeta(BaseModel):
     episodes_wanted: int = 0
     created_at: str = ""
     updated_at: str = ""
+    # The run that was under way, kept so a run that stops can be started
+    # again with the same chapters, episodes, stages and season rather than
+    # being reconstructed by hand - which is what a restart has to do when
+    # the process holding the plan is gone. Cleared when a run finishes
+    # with nothing left interrupted; kept when it does not.
+    last_run: dict = {}
 
 
 class Season(BaseModel):

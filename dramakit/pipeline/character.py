@@ -143,6 +143,26 @@ def _ref_prompt(ctx: Context, c: Character, view: str,
             f"natural skin texture and fabric detail, a neutral expression, "
             f"no props, no text, no watermark, {style}."
         )
+    if view == "four":
+        # One picture carrying everything the shots need: the face large
+        # enough to hold an identity, and the three body views beside it.
+        # Two pictures meant two references per person per shot, and the
+        # face sharing a frame with three bodies is a face too small to
+        # keep the same - this puts it on its own half of one image.
+        return (
+            f"Character reference sheet, a single wide studio photograph "
+            f"containing four views of the same person: on the left a large "
+            f"high-resolution close-up of the head filling that half of the "
+            f"frame, and on the right three full-body figures standing in a "
+            f"row - seen from the front, from the side in profile, and from "
+            f"behind. {c.anchor()} The same person in all four views, with "
+            f"identical face, identical hairstyle, identical clothing and "
+            f"identical body proportions throughout. Premium neutral grey "
+            f"studio backdrop with soft even lighting, clean uncluttered "
+            f"composition, natural skin texture and fabric detail, "
+            f"a neutral expression, no props, no labels, no text, no "
+            f"watermark, {style}."
+        )
     if view == "face":
         # the face, filling the frame: this is the picture that keeps the
         # face the same from one shot to the next
@@ -297,12 +317,61 @@ def _view_size(ctx: Context, view: str) -> tuple[int, int]:
     The face fills a wide frame - a face in a portrait frame has gray on
     both sides.  The body views are the other way round: a full body in a
     wide frame is a small person in a field of gray, and that gray is what
-    ends up in the picture.
+    ends up in the picture.  The four-view sheet is wide on purpose: a
+    head on one side and three figures on the other cannot be arranged any
+    other way round.
     """
     cfg = ctx.cfg.characters
+    if view == "four":
+        return int(getattr(cfg, "ref_four_width", 1536)), \
+               int(getattr(cfg, "ref_four_height", 768))
     if view == "face":
         return int(cfg.ref_width), int(cfg.ref_height)
     return int(cfg.ref_body_width), int(cfg.ref_body_height)
+
+
+# The sentence every voice sample is read in. The same one for everyone:
+# what is being compared is the voice, so if the words differ the
+# difference is the script rather than the person.
+VOICE_SAMPLE = ("这是角色的声音样本。用你平时说话的语气，"
+                "自然地把这句话读出来，语速适中，情绪平稳。")
+
+
+def generate_voice_refs(ctx: Context, chars: list[Character]) -> int:
+    """Record one sample of each character's voice, once.
+
+    The video model speaks the words and takes the timbre from a recording,
+    so a character is only consistent across clips if the same recording is
+    handed over every time. Made here, with the rest of the character, so
+    the picture machine never has to wait for the voice machine to start.
+
+    Never raises: a voice that cannot be recorded is a voice without a
+    sample, and the shot falls back to its own line rather than failing
+    the stage.
+    """
+    tts = ctx.providers.tts
+    if tts is None:
+        ctx.log.info("character: 没有 TTS，跳过声音样本")
+        return 0
+    made = 0
+    for c in chars:
+        if not c.voice_id:
+            continue
+        out = ctx.store.character_voice_path(c.name)
+        if c.voice_ref and ctx.store.abs(c.voice_ref).exists():
+            continue
+        try:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tts.synthesize(VOICE_SAMPLE, c.voice_id, str(out))
+            if out.exists() and out.stat().st_size > 0:
+                c.voice_ref = ctx.store.rel(out)
+                made += 1
+                ctx.log.info("character: %s 声音样本已生成", c.name)
+            else:
+                ctx.log.warning("character: %s 声音样本是空的", c.name)
+        except Exception as e:  # noqa: BLE001
+            ctx.log.warning("character: %s 声音样本失败: %s", c.name, str(e)[:120])
+    return made
 
 
 def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) -> int:
@@ -323,8 +392,12 @@ def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) ->
     if vis is None:
         ctx.log.info("character: 未启用画面 provider，跳过 %s 的三视图", c.name)
         return 0
-    if c.locked and _has_refs_on_disk(ctx, c):
-        ctx.log.info("character: %s 已锁定且参考图在，跳过重画", c.name)
+    # The pictures are already there, so there is nothing to make - and
+    # drawing them again would replace the set the rest of the project was
+    # made with. A lock is not the test: a look that exists is kept, a look
+    # that does not is drawn, which is what the stage is for.
+    if _has_refs_on_disk(ctx, c):
+        ctx.log.info("character: %s 参考图已在，跳过重画", c.name)
         return 0
     if hasattr(vis, "ping") and not vis.ping():
         ctx.log.warning("character: ComfyUI 不可达，跳过 %s 的三视图", c.name)
@@ -337,6 +410,7 @@ def generate_refs(ctx: Context, c: Character, views: list[str] | None = None) ->
     made = 0
     master = ""
     for view in views:
+        ctx.check_stop()   # 一图一问：一张约 24 秒
         out = ctx.store.character_ref_path(c.name, view, "png", season=season)
         try:
             # the first view is the master; the other views are made from
@@ -564,12 +638,18 @@ def run(ctx: Context) -> dict:
         ctx.log.info("character: 第%d季已完成，跳过", ctx.season_index)
         return {"skipped": True, "season": ctx.season_index}
 
+    ctx.check_stop()   # 一步一问：停止能在下一个动作生效
     anchors = build_anchors(ctx, chars)
     # the characters that would come out as copies are changed before the
     # pictures are made, not after.  A locked character is left alone: a
     # locked look is the user's decision, not the casting director's.
+    ctx.check_stop()
     anchors += differentiate_characters(ctx, [c for c in chars if not c.locked])
+    ctx.check_stop()
     casted = cast_voices(ctx, chars)
+    # a sample of each voice, so the picture machine can start without
+    # waiting for the voice machine to finish its lines
+    voice_refs = generate_voice_refs(ctx, chars)
     refs = 0
     if cfg.generate_refs:
         refs = sum(generate_refs(ctx, c) for c in chars)
@@ -581,8 +661,10 @@ def run(ctx: Context) -> dict:
     if season is not None:
         season.stage_status["character"] = Status.DONE
     ctx.save()
-    ctx.log.info("character: 第%d季 %d 个角色，锚点补齐 %d，选角 %d，参考图 %d，场景参考图 %d",
-                 ctx.season_index, len(chars), anchors, casted, refs, loc_refs)
+    ctx.log.info("character: 第%d季 %d 个角色，锚点补齐 %d，选角 %d，参考图 %d，"
+                 "场景参考图 %d，声音样本 %d",
+                 ctx.season_index, len(chars), anchors, casted, refs, loc_refs,
+                 voice_refs)
     return {"characters": len(chars), "anchors": anchors, "cast": casted,
             "refs": refs, "location_refs": loc_refs, "season": ctx.season_index}
 

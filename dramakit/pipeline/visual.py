@@ -258,6 +258,9 @@ def _image_size(ctx: Context) -> tuple[int, int]:
 
 def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
     """Render only the still (and the flf end frame)."""
+    # Same reason as in _gen_video: the stills run in their own lane and
+    # would otherwise carry on long after a stop was asked for.
+    ctx.check_stop()
     vis = ctx.providers.visual
     c = ctx.cfg.comfyui
     img_out = ctx.store.image_path(shot.id)
@@ -312,34 +315,73 @@ def _shot_frames(ctx: Context, shot: Shot, duration: float) -> int:
     return max(5, min(17 * k + 5, longest))
 
 
-def _reference_audio(ctx: Context, shot: Shot) -> str:
+def _speakers_voice_refs(ctx: Context, sc, shot: Shot) -> list[str]:
+    """The recorded voice of whoever speaks in this shot, up to three.
+
+    The model takes three audio references and speaks each line in the
+    timbre it is given, so the right recording is the one belonging to the
+    person whose line it is - not whichever line happened to be first in
+    the scene. A speaker with no sample falls through to the shot's own
+    recording.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for idx in (shot.line_indices or []):
+        if idx < 1 or idx > len(sc.lines):
+            continue
+        line = sc.lines[idx - 1]
+        speaker = (line.speaker or "").strip()
+        if not speaker or speaker in seen:
+            continue
+        seen.add(speaker)
+        char = ctx.project.character(speaker)
+        ref = getattr(char, "voice_ref", "") if char else ""
+        if not ref:
+            continue
+        path = ctx.store.abs(ref)
+        if path.exists() and path.stat().st_size > 0:
+            out.append(str(path))
+        if len(out) >= 3:
+            break
+    return out
+
+
+def _reference_audio(ctx: Context, shot: Shot, sc=None, ep=None) -> str:
     """The recording of this shot's line, as the voice reference.
 
     H3 speaks the words itself, but it takes the timbre from this
-    recording - so the character sounds the same in every shot.
+    recording - so the character sounds the same in every shot. This is
+    the fallback for a speaker without a recorded sample: the line's own
+    audio, cut to where the shot sits on the timeline.
     """
     from .lipsync import _scene_wav
-    tl = ctx.timeline(ctx.target_episodes()[0])
-    for tsc in tl.scenes:
-        for ts in tsc.shots:
-            if ts.shot.id != shot.id:
-                continue
-            placed = []
-            for t in tsc.lines:
-                if t.line.kind.value != "dialogue":
+    # The shot is looked for in the episode it belongs to. Searching the
+    # first episode's timeline meant a shot in episode four was never
+    # found, and every clip after the first went out without a voice.
+    eps = [ep] if ep is not None else ctx.target_episodes()
+    for one in eps:
+        tl = ctx.timeline(one)
+        for tsc in tl.scenes:
+            for ts in tsc.shots:
+                if ts.shot.id != shot.id:
                     continue
-                if not (ts.start - 0.02 <= t.start < ts.start + ts.duration):
-                    continue
-                if not t.line.audio_path:
-                    continue
-                placed.append((t.start - tsc.start,
-                               ctx.store.abs(t.line.audio_path)))
-            if not placed:
-                return ""
-            out = ctx.store.root / "tmp" / f"refaudio_{shot.id}.wav"
-            if _scene_wav(placed, ts.start - tsc.start, ts.duration, out):
-                return str(out)
+                placed = []
+                for t in tsc.lines:
+                    if t.line.kind.value != "dialogue":
+                        continue
+                    if not (ts.start - 0.02 <= t.start < ts.start + ts.duration):
+                        continue
+                    if not t.line.audio_path:
+                        continue
+                    placed.append((t.start - tsc.start,
+                                   ctx.store.abs(t.line.audio_path)))
+                if not placed:
+                    return ""
+                out = ctx.store.root / "tmp" / f"refaudio_{shot.id}.wav"
+                if _scene_wav(placed, ts.start - tsc.start, ts.duration, out):
+                    return str(out)
     return ""
+
 
 
 def _handoff_frame(ctx: Context, shot: Shot, sc, path: str) -> str:
@@ -385,8 +427,14 @@ def _wait_for_still(ctx: Context, shot: Shot, sc, minutes: float = 30.0) -> list
     return missing
 
 
-def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str, bool, str]:
+def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0,
+               ep=None) -> tuple[str, bool, str]:
     """Render only the video for one shot."""
+    # Asked here, not once an episode: a clip is minutes and an episode is
+    # dozens of them, so a stop that only lands between episodes is a stop
+    # that takes hours to take effect. Raised before the try below, which
+    # retries a failed first/last frame and would otherwise swallow it.
+    ctx.check_stop()
     vis = ctx.providers.visual
     c = ctx.cfg.comfyui
     img_out = ctx.store.image_path(shot.id)
@@ -429,7 +477,10 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0) -> tuple[str
         if plan:
             extra["ref_pictures"] = plan
         if c.native_audio:
-            ref = _reference_audio(ctx, shot)
+            # Whoever speaks hands over their own recording; a speaker
+            # without one falls back to the shot's own line.
+            voices = _speakers_voice_refs(ctx, sc, shot)
+            ref = voices[0] if voices else _reference_audio(ctx, shot, sc, ep)
             if ref:
                 extra["ref_audio_path"] = ref
                 extra["ref_audio_node"] = c.ref_audio_node
@@ -590,6 +641,14 @@ def run(ctx: Context) -> dict:
             for shot in sc.shots:
                 if shot.status == Status.DONE and shot.has_visual:
                     continue
+                # A shot is drawn when that shot is ready, not when the
+                # project is: the stage is called while the writers are
+                # still going, and a shot with no prompt yet has nothing to
+                # be drawn from. It is picked up on a later pass.
+                if do_image and not (shot.prompt or "").strip():
+                    continue
+                if do_video and not (shot.video_prompt or "").strip():
+                    continue
                 jobs.append((ep, sc, shot))
 
     if not jobs:
@@ -613,7 +672,7 @@ def run(ctx: Context) -> dict:
         ok = 0
         n = workers or c.concurrency
         with ThreadPoolExecutor(max_workers=max(1, n)) as ex:
-            futs = [ex.submit(fn, ctx, sc, shot, durations.get(shot.id, 0.0))
+            futs = [ex.submit(fn, ctx, sc, shot, durations.get(shot.id, 0.0), _ep)
                     if fn is _gen_video else ex.submit(fn, ctx, sc, shot)
                     for (_ep, sc, shot) in jobs]
             for i, fut in enumerate(as_completed(futs), 1):
@@ -707,7 +766,7 @@ def regen_shot(store: ProjectStore, cfg: Config, ep_index: int, shot_id: str,
             if mode in ("image", "all"):
                 _sid, ok, msg = _gen_image(ctx, sc, shot)
             if ok and mode in ("video", "all"):
-                _sid, ok, msg = _gen_video(ctx, sc, shot, dur)
+                _sid, ok, msg = _gen_video(ctx, sc, shot, dur, _ep)
             ctx.save()
             return {"ok": ok, "shot": shot.id, "error": msg,
                     "image_path": shot.image_path, "end_image_path": shot.end_image_path,

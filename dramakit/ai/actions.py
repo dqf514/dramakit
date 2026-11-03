@@ -296,13 +296,30 @@ def _do_run(cfg: Config, store: ProjectStore, p: dict,
         cfg.pipeline.only_episodes = p["episodes"]
     stages = p.get("stages") or cfg.pipeline.stages_enabled
     season = p.get("season")
+    # The plan is written down before the run starts. A process that dies
+    # mid-run cannot record what it was doing, and the next one has to know
+    # which chapters, episodes and stages to pick up - the stage statuses
+    # say how far it got, but not what it was asked to do.
+    proj = store.load()
+    proj.meta.last_run = dict(p)
+    store.save(proj)
     ctx = make_context(cfg, store)
     if stop_event is not None:
         # the pipeline asks this between stages and between episodes
         ctx.bind_stop(stop_event)
     res = run_pipeline(ctx, stages=stages, season=season)
+    # Nothing left interrupted means there is nothing to come back to. A
+    # stage that was never reached is not DONE either, so it counts as
+    # left - which is the case when an earlier stage was stopped.
+    proj = store.load()
+    left = [s for s in stages
+            if proj.stage_status.get(s) != Status.DONE]
+    if not left:
+        proj.meta.last_run = {}
+        store.save(proj)
     return {"ok": True, "project": store.root.name, "stages": stages,
-            "season": season, "results": {k: str(v)[:200] for k, v in res.items()}}
+            "season": season, "resumed_from": left,
+            "results": {k: str(v)[:200] for k, v in res.items()}}
 
 
 def _do_regen_shot(cfg: Config, store: ProjectStore, p: dict) -> dict:

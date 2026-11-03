@@ -1,4 +1,4 @@
-# ===========================================================================
+﻿# ===========================================================================
 #  DramaKit 主配置  (config/default.yaml)
 #  小说 → 多集竖屏短剧 的全流程参数。改完直接 `dj run <项目>` 生效。
 #  密钥建议放环境变量，别写进文件：
@@ -112,7 +112,7 @@ characters:
   generate_refs: true # 用 ComfyUI 生成三视图
   generate_location_refs: true # 每个场景生成一张无人的环境参考图（注入镜头）
   auto_cast: true # 由 AI 从可用音色里给角色分配声音（失败按性别回退）
-  ref_views: [front, face, side, three_quarter, back]  # 角色资产图：正面全身/面部满屏/侧面/四分之三/背面
+  ref_views: [four]  # 单张四视图：左侧头部特写 + 右侧正面/侧面/背面全身（一张替代原5张）
   ref_width: 1344                           # 面部满屏照：跟出图同尺寸
   ref_height: 768                           # 面部满屏照
   ref_body_width: 768                       # 全身视图用竖幅：宽幅里人太小、灰底太多
@@ -275,14 +275,14 @@ comfyui:
   ws_fallback_to_poll: true
   # 出图用 FLUX 3 Image Klein。带角色/场景参考图时用多参考图那版，
   # 没有参考图的空镜用普通版（多参考版无参考时会退化成正方形空潜空间）。
-  t2i_workflow: config/comfyui/t2i_flux3_klein.json
-  t2i_workflow_ref: config/comfyui/t2i_flux3_klein_ref.json
-  i2v_workflow: config/comfyui/i2v_minimax_h3_ref2v_audio.json
+  t2i_workflow: config/comfyui/t2i_krea2.json
+  t2i_workflow_ref: config/comfyui/t2i_krea2_ref.json
+  i2v_workflow: config/comfyui/i2v_shortdrama.json
   # 让 H3 自己说话（画面+嘴型+人声+音效一次出）。
   # 只有 ref2va 模型走得通：fl2va 生成的人声是乱码，我们才不得不改用画外音。
   native_audio: true
   video_references: true                    # 每个视频都带参考图；不齐就不抽卡
-  ref_audio_node: "900"                   # 工作流里装载参考音频的节点
+  ref_audio_node: "161"                   # 工作流里装载参考音频的节点（LoadAudio）
   auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
   auto_map: true # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
   upscale_workflow: ""                      # 可选：放大工作流
@@ -295,7 +295,7 @@ comfyui:
   # 注意：文本编码器必须用 bf16 版。int8_convrot 版（qwen3vl_4b_int8_convrot）
   # 在 ComfyUI 0.42.0 上会产出垃圾条件——画面有正确的颜色语义但完全没结构。
   clip_name: qwen3vl_4b_bf16.safetensors
-  vae_name: flux2-vae.safetensors
+  vae_name: qwen_image_vae.safetensors
   # 出图提示词格式：flux3 = 完整场景描述；sdxl = 关键词堆叠
   prompt_format: flux3
   # 语义名 → 节点ID（字符串）。全部可留空/删掉：auto_map 会按图结构自动推断；
@@ -309,56 +309,66 @@ comfyui:
     steps: 16 # KSampler（写 steps）
     cfg: 1.0 # KSampler（写 cfg）
     sampler: "107"       # KSampler（写 sampler_name / scheduler）
-    checkpoint: "101"    # UNETLoader（写 unet_name）
+    checkpoint: "101"      # UNETLoader（写 unet_name）
     clip: "102"          # CLIPLoader（写 clip_name）
     vae: "103"           # VAELoader（写 vae_name）
-    sampling: "112"      # ModelSamplingFlux（写 width / height）
+    sampling: ""   # Krea-2 无 ModelSamplingFlux，留空=不写
     ref_image: "201"     # LoadImage：角色参考图（第二个槽位=场景参考图，自动推断）
   i2v_nodes:
-    image: "1"           # LoadImage（写 image，上传后的首帧）
-    last_image: ""       # H3 单图 i2v，暂不用尾帧
-    positive: "104"      # MiniMaxH3ImageToVideo（写 prompt）
-    negative: ""         # H3 无负向提示词
-    seed: "15"           # RandomNoise（写 noise_seed）
-    frames: 124 # MiniMaxH3ImageToVideo（写 length，17k+5 网格自动对齐）
-    fps: 24 # CreateVideo（写 fps）
-    width: "104"         # MiniMaxH3ImageToVideo（写 width）
-    height: "104"        # MiniMaxH3ImageToVideo（写 height）
+    image: "137"   # LoadImage（ref_image_0），首帧落这里
+    last_image: ""       # 尾帧：本工作流不接（ref_videos 需 LoadVideo，管线未用）
+    positive: "136"   # MiniMaxH3ReferenceToVideo 节点写 prompt
+    negative: ""   # H3 无负向提示词
+    seed: "129"   # RandomNoise 节点写 noise_seed
+    frames: "136"   # 节点写 length
+    fps: "130"   # CreateVideo 节点写 fps
+    width: "136"   # 节点写 width
+    height: "136"   # 节点写 height
   # ---- 节点池：额外的 ComfyUI 机器（方案B 的调度对象）----
   # 工作流即清单：扫描 config/comfyui/*.json 的模型加载节点，自动得出要传的模型。
   # 新增节点后 `dj nodes check` 看缺什么，`dj nodes sync <名字>` 自动补齐（带进度）。
   # 节点池：除本机之外的 ComfyUI 机器。
   # 3090 是双卡，一台 ComfyUI 只用一张卡，所以那边跑两个实例（8188 / 8189）。
   # 这台机器的显存是分时复用的：跑 H3 之前要把 LLM 服务停下来。
-  local_roles: [t2i]                      # 本机只出图，视频交给 3090
+  local_roles: [t2i] # 本机只出图，视频交给 3090
   nodes:
     - name: gpu3090-a
-      base_url: http://192.168.31.7:8188
+      base_url: http://192.168.31.8:8188
       enabled: true
       roles: [i2v]
       transfer: scp
-      ssh_host: 192.168.31.7
+      ssh_host: 192.168.31.8
       ssh_user: david
       ssh_key: C:/Users/David/.ssh/id_ed25519
       remote_models: /data/comfyui/models
       # 3090 是 Ampere，没有 FP4 张量核：用 int8/convrot 的那套权重
       graph_overrides:
-        "13": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}   # Ampere 没有 FP4 核，nvfp4 是模拟执行的，换 int8 原生核
-        "6": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
-        "11": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
+        "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
+        "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
+        "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
     - name: gpu3090-b
-      base_url: http://192.168.31.7:8189
-      enabled: false                    # 机器现在只剩一张卡，第二个实例起不来
+      base_url: http://192.168.31.8:8189
+      enabled: true # 机器现在只剩一张卡，第二个实例起不来
       roles: [i2v]
       transfer: scp
-      ssh_host: 192.168.31.7
+      ssh_host: 192.168.31.8
       ssh_user: david
       ssh_key: C:/Users/David/.ssh/id_ed25519
       remote_models: /data/comfyui/models
       graph_overrides:
-        "13": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}   # Ampere 没有 FP4 核，nvfp4 是模拟执行的，换 int8 原生核
-        "6": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
-        "11": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
+        "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
+        "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
+        "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
+    - name: local-h3
+      enabled: true
+      roles: [i2v]
+      base_url: http://127.0.0.1:8188
+      transfer: none
+      remote_models: ""
+      graph_overrides:
+        "127": {unet_name: MiniMax_H3_Ref2VA_pruned_mixed_int4_int8_convrot.safetensors}
+        "128": {clip_name: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors, device: default}
+        "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
   #  - name: gpu3090-v0        # 3090#0，专做视频
   #    base_url: http://<3090IP>:8188
   #    roles: [i2v]            # t2i=出图 / i2v=出视频；留空=什么都接
@@ -380,14 +390,14 @@ comfyui:
   #    transfer: scp
   # 本机 ComfyUI 的 models 目录（模型文件存放处，也是同步来源）
   models_dir: E:\\ComfyUI\\models
-  mode: image_then_video # image | video | image_then_video
+  mode: image # image | video | image_then_video（出图和出视频抢同一张卡时，先把图出完）
   width: 1344                               # 出图分辨率（H3 原生 768p，16:9）
   height: 768                               # 出图分辨率
   steps: 8                                # FLUX 3 Klein 是蒸馏版：8 步和 16 步锐度一样（实测 1124 vs 1218），4 步掉 29%
   cfg: 1.0                                # 蒸馏版无引导，cfg 必须 1
   sampler: euler
   scheduler: simple
-  checkpoint: flux3-image-klein-int8-convrot.safetensors
+  checkpoint: krea2_turbo_nvfp4.safetensors
   # 出视频分辨率（H3 标准 16:9 = 960x544，32 的倍数）
   video_width: 1344                         # 视频分辨率（H3 原生 768p，16:9）
   video_height: 768                         # 视频分辨率
@@ -408,7 +418,10 @@ comfyui:
 #   none     不加 BGM
 music:
   provider: library
-  library_dir: assets/music
+  # 曲库放在仓库里而不是项目里：一首曲子做好一次，所有项目都能用。
+  # 用绝对路径；相对路径会按项目目录解析（每个项目一份）。
+  # 曲子是本地 ACE-Step 1.5 生成的（rounds/tools/make_music_library.py）。
+  library_dir: E:/dramakit/assets/music
   base_url: http://localhost:8001           # musicgen HTTP 服务地址
   model: facebook/musicgen-small
   duration: 30.0

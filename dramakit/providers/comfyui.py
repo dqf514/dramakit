@@ -23,6 +23,7 @@ import copy
 import json
 import logging
 import random
+import threading
 import time
 import urllib.parse
 from pathlib import Path
@@ -35,6 +36,75 @@ from .base import BaseImageVideo
 from .workflow_map import infer_workflow, score_workflow
 
 log = logging.getLogger("dramakit.comfyui")
+
+
+def _ref_slots(node: dict, key: str) -> tuple[dict, str]:
+    """Read one reference slot group, whichever shape the workflow wrote.
+
+    A workflow reaches the API in two shapes for the same thing: a nested
+    map under the key - ``{"ref_images": {"ref_image_0": [...]}}`` - or one
+    flat key per slot - ``{"ref_images.ref_image_0": [...]}``. ComfyUI takes
+    both. A reader that only knows one shape gets an empty dict from the
+    other, and an empty dict here means the pictures are never uploaded:
+    the loaders keep the file's own placeholders, and the model renders a
+    character that is not in the script.
+
+    Returns the slots and the shape they came in, so the caller can put
+    them back the way it found them.
+    """
+    inputs = node.get("inputs") or {}
+    nested = inputs.get(key)
+    if isinstance(nested, dict):
+        return dict(nested), "nested"
+    prefix = key + "."
+    flat = {k[len(prefix):]: v for k, v in inputs.items()
+            if k.startswith(prefix) and isinstance(v, list)}
+    return flat, "flat"
+
+
+def _put_ref_slots(node: dict, key: str, slots: dict, shape: str) -> None:
+    """Write a slot group back in the shape it was read in."""
+    inputs = node.setdefault("inputs", {})
+    if shape == "nested":
+        inputs[key] = slots
+        return
+    for name in [k for k in inputs if k.startswith(key + ".")]:
+        del inputs[name]
+    for name, link in slots.items():
+        inputs[f"{key}.{name}"] = link
+
+
+def sage_node(graph: dict) -> str:
+    """The attention patch in this graph, or "" when there is none.
+
+    SageAttention is the card's own accelerator for H3 and the reason this
+    workflow exists rather than a plainer one: it takes roughly a third off
+    the render. A graph without it still renders, at full price, and
+    nothing says so - the loss is invisible in the log and only shows up as
+    a video that took longer than it should. So the presence is named at
+    submit time and checked when the workflow is validated, which is where
+    a swapped or missing file gets caught.
+    """
+    for nid, node in graph.items():
+        if isinstance(node, dict) and "SageAttention" in str(node.get("class_type", "")):
+            return str(nid)
+    return ""
+
+
+def bypassable(node: dict) -> bool:
+    """True when a node can be taken out and its users pointed past it.
+
+    A plugin a card does not have should not stop the card from working.
+    The usual case is the attention patch: the card runs the model
+    perfectly well without it, only slower. Such a node is a patch - it
+    takes one thing in and gives the same kind of thing out - so removing
+    it and connecting its users to what fed it leaves a graph that still
+    means what it meant.
+    """
+    inputs = node.get("inputs") or {}
+    links = [k for k, v in inputs.items()
+             if isinstance(v, list) and len(v) == 2 and isinstance(v[0], str)]
+    return links == ["model"]
 
 
 class ComfyUIError(RuntimeError):
@@ -114,7 +184,11 @@ class ComfyUIClient(BaseImageVideo):
         return r.json()
 
     def queue_info(self) -> dict:
-        r = self._get("/queue", retry=False, timeout=15)
+        # Short on purpose: this is asked of every node before every job,
+        # and a card that has stopped answering has to be found out about
+        # quickly - the alternative is waiting out a render on a card that
+        # will never answer.
+        r = self._get("/queue", retry=False, timeout=10)
         r.raise_for_status()
         d = r.json()
         return {"running": len(d.get("queue_running", [])),
@@ -130,6 +204,49 @@ class ComfyUIClient(BaseImageVideo):
         if not hasattr(self, "_node_types") or self._node_types is None:
             self._node_types = set(self.object_info().keys())
         return self._node_types
+
+    def bypass_unsupported(self, graph: dict) -> list[str]:
+        """Take out the node types this card does not have, wiring around them.
+
+        A card missing a plugin should still be able to work. The usual
+        case is the attention patch: without it the card renders the same
+        picture about a third slower, which is a different plan, not a
+        broken one. Such a node is removed and its users are pointed at
+        what fed it, so the graph keeps meaning what it meant.
+
+        Anything that is not a plain patch is left alone: a missing
+        loader would make the graph mean something else, and that has to
+        be reported rather than quietly absorbed.
+        """
+        try:
+            have = self.available_node_types()
+        except Exception as e:  # noqa: BLE001
+            log.debug("读节点类型失败，跳过兼容性处理: %s", e)
+            return []
+        dropped: list[str] = []
+        for nid, node in list(graph.items()):
+            ct = node.get("class_type")
+            if not ct or ct in have:
+                continue
+            if not bypassable(node):
+                continue
+            model_in = (node.get("inputs") or {}).get("model")
+            if not (isinstance(model_in, list) and len(model_in) == 2):
+                continue
+            for other in graph.values():
+                oi = other.get("inputs")
+                if not isinstance(oi, dict):
+                    continue
+                for k, v in list(oi.items()):
+                    if (isinstance(v, list) and len(v) == 2
+                            and str(v[0]) == str(nid) and v[1] == 0):
+                        oi[k] = list(model_in)
+            graph.pop(nid, None)
+            dropped.append(f"#{nid} {ct}")
+        if dropped:
+            log.warning("这张卡没有 %s，已绕开（渲染结果不变，速度会慢）",
+                        "、".join(dropped))
+        return dropped
 
     def list_checkpoints(self) -> list[str]:
         """Checkpoints the server actually has (for config sanity)."""
@@ -201,6 +318,17 @@ class ComfyUIClient(BaseImageVideo):
         resolved, _, _ = self._resolved_nodes(kind, graph)
         report["inferred"] = {k: v for k, v in resolved.items() if v}
         report["warnings"].extend(info.get("warnings") or [])
+        # The accelerator is a property of the file, not of the card: a
+        # workflow that lost it still validates and still renders, a third
+        # slower, with nothing to show for the difference. Said here so a
+        # swapped or trimmed file cannot quietly cost that.
+        if kind == "i2v":
+            sage = sage_node(graph)
+            report["sage"] = sage
+            if not sage:
+                report["warnings"].append(
+                    "没有 SageAttention 加速节点（PathchSageAttentionKJ），"
+                    "出视频会慢约 30%——确认用的是短剧专用工作流")
         try:
             have = self.available_node_types()
         except Exception as e:  # noqa: BLE001
@@ -210,6 +338,13 @@ class ComfyUIClient(BaseImageVideo):
         for nid, node in graph.items():
             ct = node.get("class_type")
             if ct and ct not in have:
+                if bypassable(node):
+                    # a patch the card does not have: the render still
+                    # works, only slower - so it is a note, not a fault
+                    report["warnings"].append(
+                        f"节点 {nid} 的类型 '{ct}' 服务器上没有，"
+                        "会绕开该节点（结果不变，速度变慢）")
+                    continue
                 report["problems"].append(f"节点 {nid} 的类型 '{ct}' 服务器上没有（缺自定义节点/插件）")
                 report["ok"] = False
         for sem, nid in (nodes_map or {}).items():
@@ -241,6 +376,13 @@ class ComfyUIClient(BaseImageVideo):
         for key, value in explicit.items():
             value = str(value or "")
             if not value:
+                # Empty on purpose, not unconfigured: H3 has no negative
+                # prompt and this file has no tail frame. Keeping the
+                # guess here would aim a write at whatever the guess
+                # found - and for a tail frame the guess is a reference
+                # picture slot, so the render comes out looking right
+                # while the reference it was handed is overwritten.
+                merged.pop(key, None)
                 continue
             if self.cfg.auto_map and value not in graph:
                 continue
@@ -414,6 +556,10 @@ class ComfyUIClient(BaseImageVideo):
 
     # ------------------------------------------------------------- submit
     def _queue(self, graph: dict) -> str:
+        # A card that is missing a plugin still gets the work: the parts
+        # that are only patches are taken out here, once, so both the
+        # picture and the video go through the same door.
+        self.bypass_unsupported(graph)
         payload = {"prompt": graph, "client_id": self.client_id}
         r = self._post("/prompt", json=payload, timeout=self.cfg.request_timeout)
         if r.status_code >= 400:
@@ -435,15 +581,57 @@ class ComfyUIClient(BaseImageVideo):
     def _wait(self, prompt_id: str, timeout: Optional[float] = None) -> None:
         """Wait for completion: WebSocket first, poll /history as fallback."""
         limit = timeout or self.cfg.timeout
-        if self.cfg.use_websocket:
+        # A stop has to reach the card, not just this client. The render is
+        # the long part of a run and nothing here can shorten it - only the
+        # card can drop it. Without this, asking to stop waits out the clip
+        # being drawn, which is a third of an hour for a five-second shot.
+        #
+        # Started whether or not the stop has already been asked for: a job
+        # submitted just before the stop is waiting on its own completion,
+        # and one submitted just after it would otherwise never be dropped.
+        # `done` is what keeps a finished job's watcher from lingering and
+        # interrupting whatever the next one puts on the card.
+        stop = getattr(self, "stop_event", None)
+        done = threading.Event()
+        if stop is not None:
+            threading.Thread(target=self._watch_stop,
+                             args=(stop, done, time.time() + limit),
+                             daemon=True).start()
+        try:
+            if self.cfg.use_websocket:
+                try:
+                    asyncio.run(self._wait_ws(prompt_id, limit))
+                    return
+                except Exception as e:  # noqa: BLE001
+                    if not self.cfg.ws_fallback_to_poll:
+                        raise
+                    log.warning("WebSocket 进度监听失败(%s)，回退到轮询 /history",
+                                str(e)[:120])
+            self._wait_poll(prompt_id, limit)
+        finally:
+            done.set()
+
+    def _watch_stop(self, stop, done: threading.Event, deadline: float) -> None:
+        """Drop this job on the card the moment a stop is asked.
+
+        Interrupted more than once on purpose: /interrupt only stops what
+        is executing, and anything queued behind it starts the moment the
+        first one goes - with its own watcher never armed, because the stop
+        had already been asked by then. So this keeps asking until its own
+        job is gone, and stops the instant that job finishes so it cannot
+        reach the one after it.
+        """
+        while time.time() < deadline:
+            if done.wait(2.0):
+                return                      # our job is over
+            if not stop.is_set():
+                continue
             try:
-                asyncio.run(self._wait_ws(prompt_id, limit))
-                return
+                self._post("/interrupt", json={}, timeout=15)
+                log.info("已请求 %s 中断当前渲染", self.base)
             except Exception as e:  # noqa: BLE001
-                if not self.cfg.ws_fallback_to_poll:
-                    raise
-                log.warning("WebSocket 进度监听失败(%s)，回退到轮询 /history", str(e)[:120])
-        self._wait_poll(prompt_id, limit)
+                log.warning("中断 %s 失败: %s", self.base, str(e)[:140])
+                return                      # the card is not answering
 
     def _video_timeout(self, frames: int) -> float:
         """Long videos need more than the default timeout.
@@ -668,13 +856,14 @@ class ComfyUIClient(BaseImageVideo):
         if pictures:
             slots: list[tuple[str, str]] = []
             ref_node = None
+            ref_shape = "flat"
             for nid, node in graph.items():
                 if not isinstance(node, dict):
                     continue
                 if "ReferenceToVideo" in str(node.get("class_type", "")):
                     ref_node = node
-                    for slot, link in sorted(
-                            (node.get("inputs", {}).get("ref_images") or {}).items()):
+                    imgs, ref_shape = _ref_slots(node, "ref_images")
+                    for slot, link in sorted(imgs.items()):
                         if isinstance(link, list) and link:
                             slots.append((str(link[0]), slot))
                     break
@@ -686,32 +875,50 @@ class ComfyUIClient(BaseImageVideo):
                 used.add(slot)
             # The slots that got no picture are taken out of the job: the
             # node behind them would go on loading the placeholder, and the
-            # model would be handed a picture that is not there.
+            # model would be handed a picture that is not there. The node
+            # goes too - a loader still in the graph is still validated,
+            # and one with no picture of its own fails validation, which
+            # refuses the whole job rather than just the extra slot.
             if ref_node is not None:
-                imgs = dict(ref_node.get("inputs", {}).get("ref_images") or {})
+                imgs, _shape = _ref_slots(ref_node, "ref_images")
+                dropped: list[str] = []
                 for slot in list(imgs):
                     if slot not in used:
-                        imgs.pop(slot)
-                ref_node.setdefault("inputs", {})["ref_images"] = imgs
+                        link = imgs.pop(slot)
+                        if isinstance(link, list) and link:
+                            dropped.append(str(link[0]))
+                _put_ref_slots(ref_node, "ref_images", imgs, ref_shape)
+                for nid in dropped:
+                    graph.pop(nid, None)
         # the voice reference: the recording of the line goes in as the
         # timbre the character speaks with
         ref_audio = extra.get("ref_audio_path")
         slot = str(extra.get("ref_audio_node") or "")
-        if ref_audio and slot and Path(ref_audio).exists():
+        have_audio = bool(ref_audio and slot and Path(ref_audio).exists())
+        if have_audio:
             server_audio = extra.get("uploaded_audio") or self.upload_audio(ref_audio)
             extra["uploaded_audio"] = server_audio
             graph.setdefault(slot, {}).setdefault("inputs", {})["audio"] = server_audio
-            # and the slots that got no recording are taken out too
-            for nid, node in graph.items():
-                if not isinstance(node, dict):
-                    continue
-                if "ReferenceToVideo" not in str(node.get("class_type", "")):
-                    continue
-                auds = dict(node.get("inputs", {}).get("ref_audios") or {})
-                for aslot in list(auds):
-                    if str(auds[aslot][0]) != slot:
-                        auds.pop(aslot)
-                node.setdefault("inputs", {})["ref_audios"] = auds
+        # Every voice slot without a recording comes out of the job,
+        # loader and all - for the same reason as the pictures: a LoadAudio
+        # holding no file fails the card's validation and takes the whole
+        # job with it, rather than just the reference being left out. A
+        # shot with no voice at all reaches this with nothing to fill.
+        drop_audio: list[str] = []
+        for nid, node in graph.items():
+            if not isinstance(node, dict):
+                continue
+            if "ReferenceToVideo" not in str(node.get("class_type", "")):
+                continue
+            auds, shape = _ref_slots(node, "ref_audios")
+            for aslot in list(auds):
+                if not (have_audio and str(auds[aslot][0]) == slot):
+                    link = auds.pop(aslot)
+                    if isinstance(link, list) and link:
+                        drop_audio.append(str(link[0]))
+            _put_ref_slots(node, "ref_audios", auds, shape)
+        for nid in drop_audio:
+            graph.pop(nid, None)
         if use_flf:
             last_name = (extra.get("uploaded_last_image")
                          or self.upload_image(last_image_path))
@@ -740,7 +947,16 @@ class ComfyUIClient(BaseImageVideo):
                 graph[nid].setdefault("inputs", {}).update(fields)
 
         pid = self._queue(graph)
-        log.info("ComfyUI i2v 已提交 pid=%s seed=%s @ %s", pid, real_seed, self.base)
+        # Which card and which file served this, and whether the card's own
+        # accelerator is in the graph. A render without SageAttention is
+        # the same picture at a third more time, and it looks identical in
+        # every other respect - so it is named here, where it can be seen
+        # without reading the workflow.
+        sage = sage_node(graph)
+        log.info("ComfyUI i2v 已提交 pid=%s seed=%s @ %s 工作流=%s SageAttention=%s",
+                 pid, real_seed, self.base,
+                 Path(wf).name if not use_flf else f"{wf}(flf)",
+                 f"#{sage}" if sage else "**无（会慢约 30%）**")
         self._wait(pid, timeout=self._video_timeout(frames or self.cfg.frames))
         item = self._collect_output(pid, ("gifs", "videos", "images"))
         if not item:

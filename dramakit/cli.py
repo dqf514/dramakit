@@ -299,23 +299,43 @@ def comfy_test(config: Optional[str] = typer.Option(None, "--config", "-c"),
     except Exception:  # noqa: BLE001
         pass
 
-    # 4) model files the server can see
+    # Which machine runs which kind: stills and video are on different
+    # cards, and a workflow checked against the card that will never run it
+    # reports the wrong fault - the nodes it lacks are the ones it was not
+    # going to use, and the models it "misses" are on the machine that will
+    # actually load them. Each check below goes to the card that does the
+    # work.
+    def _client_for(kind: str):
+        for spec in (cfg.comfyui.nodes or []):
+            if not spec.enabled:
+                continue
+            roles = {str(r).strip().lower() for r in (spec.roles or [])}
+            if kind in roles:
+                node_cfg = cfg.comfyui.model_copy()
+                node_cfg.base_url = spec.base_url
+                node_cfg.graph_overrides = dict(spec.graph_overrides or {})
+                return ComfyUIClient(node_cfg, Path(".")), spec.base_url
+        return c, cfg.comfyui.base_url
+
+    # 4) model files the machine that will load them can see
     try:
-        have = c.list_model_files()
         for label, rel, kind in (("出图", cfg.comfyui.t2i_workflow, "t2i"),
                                  ("图生视频", cfg.comfyui.i2v_workflow, "i2v")):
-            need = c.workflow_model_files(rel, kind)
+            mc, murl = _client_for(kind)
+            have = mc.list_model_files()
+            need = mc.workflow_model_files(rel, kind)
             missing = [(f, n) for f, n in need
                        if have.get(f) is not None and n not in have.get(f, [])]
             if not need:
                 continue
             if missing:
-                console.print(f"  [red]✗[/red] {label} 工作流缺模型（服务器上看不到）:")
+                console.print(f"  [red]✗[/red] {label} 工作流缺模型"
+                              f"（{murl} 上看不到）:")
                 for folder, name in missing:
                     console.print(f"      - {folder}/{name}")
             else:
                 console.print(f"  [green]✓[/green] {label} 工作流模型齐全 "
-                              f"（{len(need)} 个文件）")
+                              f"（{len(need)} 个文件 @ {murl}）")
     except Exception as e:  # noqa: BLE001
         console.print(f"[yellow]  读取模型列表失败: {e}[/yellow]")
 
@@ -323,17 +343,23 @@ def comfy_test(config: Optional[str] = typer.Option(None, "--config", "-c"),
     for label, rel, nmap, kind in (
             ("出图 t2i", cfg.comfyui.t2i_workflow, cfg.comfyui.t2i_nodes, "t2i"),
             ("图生视频 i2v", cfg.comfyui.i2v_workflow, cfg.comfyui.i2v_nodes, "i2v")):
-        rep = c.validate_workflow(rel, nmap, kind)
+        vc, vurl = _client_for(kind)
+        rep = vc.validate_workflow(rel, nmap, kind)
         nnodes = rep.get("nodes", 0)
         head = f"  [{label}] {Path(rel).name} ({nnodes} 节点)"
         if rep["ok"]:
-            console.print(f"{head} [green]✓ 校验通过[/green]")
+            console.print(f"{head} [green]✓ 校验通过[/green] @ {vurl}")
         else:
-            console.print(f"{head} [red]✗ 有问题[/red]")
+            console.print(f"{head} [red]✗ 有问题[/red] @ {vurl}")
             for p in rep["problems"]:
                 console.print(f"      - {p}")
         for w in rep.get("warnings", []):
             console.print(f"      [yellow]! {w}[/yellow]")
+        if kind == "i2v":
+            sage = rep.get("sage")
+            console.print(f"      SageAttention 加速: "
+                          f"[{'green' if sage else 'red'}]"
+                          f"{'节点 #' + sage if sage else '没有（出视频慢约 30%）'}[/]")
         inferred = rep.get("inferred") or {}
         if inferred:
             console.print("      自动识别: " + " · ".join(

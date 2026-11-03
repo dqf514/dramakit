@@ -124,6 +124,17 @@ def _canon_characters(ctx: Context) -> list[Character]:
 def run(ctx: Context) -> dict:
     season = ctx.seed_season(ctx.season_chapters()
                              or list(ctx.project.meta.chosen_chapters or []))
+    # A resume must not read the same chapters again. The analysis is the
+    # one stage whose output is a decision - who is in the cast, what they
+    # look like - and running it twice on the same pages is a second
+    # opinion nobody asked for, which then overwrites the first.
+    if season is not None and season.stage_status.get("analyze") == "done" \
+            and (ctx.project.characters or ctx.project.locations):
+        ctx.log.info("analyze: 第%d季已分析过，跳过（%d 角色）",
+                     season.index, len(ctx.project.characters))
+        return {"skipped": True, "season": season.index,
+                "characters": len(ctx.project.characters),
+                "locations": len(ctx.project.locations)}
     text, chapters = _season_text(ctx)
     if not text.strip():
         ctx.log.warning("analyze: 本季没有可读的章节文本")
@@ -132,6 +143,7 @@ def run(ctx: Context) -> dict:
     sample = _sample(text, chapters)
     canon_block = _canon_block(ctx)
 
+    ctx.check_stop()
     llm = ctx.providers.llm_for("analyze")
     from ..skills import loader
     user = T.render(T.ANALYZE_USER, text=sample, max_characters=12,
@@ -142,6 +154,7 @@ def run(ctx: Context) -> dict:
     if isinstance(data, list):
         data = data[0] if data else {}
 
+    ctx.check_stop()
     # art direction: this season's, falling back to what the canon holds
     ad = data.get("art_direction", {}) or {}
     base = ctx.project.art_direction
@@ -223,20 +236,44 @@ def _merge_characters(ctx: Context, found: list[dict]) -> list[Character]:
         )
         old = prev.get(name)
         if old is not None:
-            # voice and identity are what make them the same person
+            # Voice and identity are what make them the same person, and
+            # so is everything already decided about them: the recording
+            # made at 定妆, the pictures already drawn, the anchor that
+            # keeps the face the same. The files stay on disk either way,
+            # but a field left empty makes the next stage see a character
+            # with no pictures and draw them again.
             c.voice_id = old.voice_id
             c.voice_pitch = old.voice_pitch
             c.voice_rate = old.voice_rate
+            c.voice_ref = old.voice_ref
+            c.ref_images = list(old.ref_images or [])
+            c.ref_sheet = old.ref_sheet
+            c.ref_image = old.ref_image
+            c.anchor_prompt = old.anchor_prompt
+            c.negative_prompt = old.negative_prompt
+            c.consistency = old.consistency
+            c.lora = old.lora
+            c.locked = old.locked
             if not c.role or c.role == "配角":
                 c.role = old.role
-            if old.locked:
-                # a locked look is not analysis's to change
-                c.locked = True
-                apply_look(c, {k: getattr(old, k) for k in LOOK_FIELDS})
+            if not c.appearance:
+                c.appearance = old.appearance
+            if not c.visual_prompt:
+                c.visual_prompt = old.visual_prompt
         else:
             # a name the canon knows but this season's pages did not return
             c.voice_id = canon.voices.get(name, "")
         out.append(c)
+
+    # A character the analysis no longer mentions is still in the story.
+    # The pages this season read may not have reached them, and dropping
+    # them would take their voice, their pictures and their anchor with
+    # them - the next stage would then draw the same person again.
+    for name, old in prev.items():
+        if any(c.name == name for c in out):
+            continue
+        out.append(old)
+        ctx.log.info("analyze: %s 这季没出现，保留其设定", name)
     return out
 
 

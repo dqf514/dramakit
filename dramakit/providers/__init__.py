@@ -69,6 +69,24 @@ class Providers:
         for client in [self._llm, *self._llm_roles.values()]:
             if client is not None:
                 client.stop_event = event
+        # The renderers too. A clip is minutes long and the card holds it
+        # until it is finished, so a stop only the language clients can
+        # hear waits out the clip - and asking the card to drop its job is
+        # the only thing that makes a stop land now.
+        try:
+            vis = self.visual
+        except Exception:  # noqa: BLE001
+            return
+        if vis is None:
+            return
+        nodes = getattr(vis, "nodes", None)
+        if nodes:
+            for node in nodes:
+                client = getattr(node, "client", None)
+                if client is not None:
+                    client.stop_event = event
+        else:
+            vis.stop_event = event
 
     def llm_for(self, stage: str) -> BaseLLM:
         """LLM for a pipeline stage, resolved through the model registry.

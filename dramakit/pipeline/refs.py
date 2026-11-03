@@ -187,9 +187,11 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
                 refs.append(p)
         if not refs:
             continue
-        # Two pictures per person: the face, then the views side by side.
-        # The face is on its own because a face shared with three full
-        # bodies is a small face, and the face is what has to stay the same.
+        # One picture or two. A four-view sheet carries the face and the
+        # bodies together, so it goes in once - and it is described as what
+        # it actually shows, because the prompt names its pictures by
+        # position and a description that does not match the picture sends
+        # the model after the wrong thing.
         face = _face_picture(ctx, name, refs)
         if face is not None and face not in seen:
             seen.add(face)
@@ -200,11 +202,17 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
         views = _sheet(ctx, name, refs)
         if views not in seen:
             seen.add(views)
-            out.append((views,
-                        f"the views of {name} side by side: from the front, "
+            if face is None:
+                role = (f"the character sheet of {name}: a large close-up of "
+                        f"the face on the left, and on the right the whole "
+                        f"body seen from the front, from the side and from "
+                        f"behind - this is who {name} is, and it must not "
+                        f"change")
+            else:
+                role = (f"the views of {name} side by side: from the front, "
                         f"from the side, three-quarters and from behind - the "
-                        f"same person as the face picture",
-                        "character"))
+                        f"same person as the face picture")
+            out.append((views, role, "character"))
 
     if sc is not None:
         loc = find_location(ctx, sc.location)
@@ -232,9 +240,20 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
 
 
 def missing_references(ctx: Context, shot, sc) -> list[str]:
-    """What is missing before a video for this shot makes sense."""
+    """What is missing before a video for this shot makes sense.
+
+    Only what the shot cannot be made without: the frame it continues
+    from, and the pictures of the people in it. The room is not on the
+    list - the first frame already shows the room, the prompt describes
+    it, and the character sheets carry the identity that has to hold
+    across shots. A book whose scenes outnumber its room art would
+    otherwise render almost nothing, and the scene names outnumber the
+    rooms here by two to one.
+    """
     out: list[str] = []
-    if not shot.image_path or not ctx.store.abs(shot.image_path).exists():
+    frame_missing = (not shot.image_path
+                     or not ctx.store.abs(shot.image_path).exists())
+    if frame_missing:
         out.append("这一镜的首帧还没出")
     for name in shot.characters or []:
         c = ctx.project.character(name)
@@ -244,10 +263,15 @@ def missing_references(ctx: Context, shot, sc) -> list[str]:
         refs = [ctx.store.abs(r) for r in c.refs()]
         if not any(p.exists() for p in refs):
             out.append(f"角色 {name} 没有三视图")
-    if sc is not None:
+    # Said only once the shot is otherwise ready: during the wait for the
+    # first frame this is called every few seconds, and the same line
+    # twenty times is noise rather than news.
+    if sc is not None and not frame_missing and not out:
         loc = find_location(ctx, sc.location)
         if loc is None:
-            out.append(f"场景 {sc.location} 没有找到对应的房间资产")
+            ctx.log.info("refs: 场景 %s 无房间资产，本镜不带房间参考图",
+                         sc.location)
         elif not any(ctx.store.abs(r).exists() for r in (loc.ref_images or [])):
-            out.append(f"场景 {sc.location}（房间资产 {loc.name}）没有参考图")
+            ctx.log.info("refs: 场景 %s 的资产 %s 没有图，本镜不带房间参考图",
+                         sc.location, loc.name)
     return out

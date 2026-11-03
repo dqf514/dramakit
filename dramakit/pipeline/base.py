@@ -9,6 +9,7 @@ So the compose stage and the subtitle stage always agree.
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -365,6 +366,11 @@ class Context:
         # many episodes or many calls ask between items, so a stop lands
         # in seconds rather than at the end of the batch.
         self._stop = None
+        # Two lanes write the project - the one that writes prompts and
+        # the one that draws - and save() replaces the file by renaming a
+        # temporary one over it. Two threads doing that at once is how a
+        # project.json becomes a half-written mix of both.
+        self._save_lock = threading.Lock()
         # The season being made, if a run is making one. Zero means none:
         # a plain run is not scoped to a season, and filtering its episodes
         # by the next season number - which is what current_season is - would
@@ -401,7 +407,10 @@ class Context:
             raise RunStopped()
 
     def save(self) -> None:
-        self.store.save(self.project)
+        # serialised on the write, not on the work: the lanes still run
+        # together, only the moment the file changes takes turns
+        with self._save_lock:
+            self.store.save(self.project)
 
     # -- season ---------------------------------------------------------------
     @property
@@ -423,10 +432,17 @@ class Context:
 
     def seed_season(self, chapters: list[int]) -> "Season":
         """Create this season if it does not exist yet, claiming chapters."""
-        # A stage asking to build a season but not pointed at one means
-        # the next season: that is what the book is waiting for.
+        # A stage asking about a season but not pointed at one means the
+        # season that already owns these chapters - a resume continues the
+        # season it started, and only an untouched book begins the next.
         if not self.season_index:
-            self.use_season(self.project.current_season)
+            want = set(chapters or [])
+            for existing in (self.project.seasons or []):
+                if want and want <= set(existing.chapters or []):
+                    self.use_season(existing.index)
+                    break
+            else:
+                self.use_season(self.project.current_season)
         s = self.season
         if s is None:
             s = Season(index=self.season_index, chapters=list(chapters))

@@ -27,6 +27,11 @@ ROLE_I2V = "i2v"
 
 # how long a queue-depth reading stays valid
 QUEUE_TTL = 3.0
+# how long a node that did not answer is left alone
+SILENT_TTL = 120.0
+# what a silent node's queue depth is reported as - deep enough that no
+# other node is preferred to it
+SILENT_DEPTH = 999
 
 
 class _Node:
@@ -37,6 +42,7 @@ class _Node:
         self.client = ComfyUIClient(cfg, root)
         self.roles = {r.strip().lower() for r in (spec.roles or []) if r.strip()}
         self._queue: tuple[float, int] = (0.0, 0)
+        self._silent_until: float = 0.0
 
     @property
     def name(self) -> str:
@@ -45,18 +51,34 @@ class _Node:
     def takes(self, role: str) -> bool:
         return not self.roles or role in self.roles
 
+    @property
+    def silent(self) -> bool:
+        """True while this node is not answering."""
+        return time.time() < self._silent_until
+
     def depth(self) -> int:
-        """Queued + running jobs, cached briefly."""
+        """Queued + running jobs, cached briefly.
+
+        A node that does not answer is not idle. It is worse than idle:
+        a job sent to it never comes back, and the run waits out the whole
+        timeout before trying anywhere else - so every clip pays for the
+        silent card first, and the card that is working gets the second
+        one. A failure is therefore reported as a queue deep enough that
+        no other node is preferred, and the node is left alone for a
+        while so it gets a chance to come back.
+        """
         now = time.time()
         if now - self._queue[0] < QUEUE_TTL:
             return self._queue[1]
-        depth = 0
         try:
             q = self.client.queue_info()
             depth = int(q.get("running", 0)) + int(q.get("pending", 0))
+            self._silent_until = 0.0
         except Exception as e:  # noqa: BLE001
-            log.debug("节点 %s 队列不可达: %s", self.name, e)
-            depth = 0
+            log.warning("节点 %s 队列不可达（%s），暂时不往它身上派活",
+                        self.name, str(e)[:120])
+            depth = SILENT_DEPTH
+            self._silent_until = now + SILENT_TTL
         self._queue = (now, depth)
         return depth
 
@@ -85,11 +107,18 @@ class ComfyUIPool(BaseImageVideo):
         return node.depth() + self._inflight.get(node.name, 0)
 
     def _take(self, role: str, skip: set[str]) -> Optional[_Node]:
-        """Pick the least busy node and count the job on it, together."""
+        """Pick the least busy node and count the job on it, together.
+
+        A node that has stopped answering is only used when every other
+        one has stopped too: it is the last choice, not the first, because
+        a job sent to a silent card is a job that never comes back.
+        """
         ok = [n for n in self.nodes if n.takes(role) and n.name not in skip]
         if not ok:
             return None
-        node = min(ok, key=lambda n: (self.busy(n), n.name))
+        alive = [n for n in ok if not n.silent]
+        pool = alive or ok
+        node = min(pool, key=lambda n: (self.busy(n), n.name))
         self._inflight[node.name] = self._inflight.get(node.name, 0) + 1
         return node
 
@@ -193,6 +222,19 @@ def build_pool(cfg: Config, root: Optional[Path] = None) -> Optional[ComfyUIPool
         node_cfg.extra_headers = spec.extra_headers or {}
         node_cfg.verify_tls = spec.verify_tls
         node_cfg.graph_overrides = dict(spec.graph_overrides or {})
+        # A node may run its own workflow: two cards on one box can be given
+        # different files for the same kind of work, and the global setting
+        # only says what that kind of work uses by default.
+        for role, rel in (spec.workflows or {}).items():
+            rel = str(rel or "").strip()
+            if not rel:
+                continue
+            if role == "t2i":
+                node_cfg.t2i_workflow = rel
+            elif role == "i2v":
+                node_cfg.i2v_workflow = rel
+            elif role == "flf":
+                node_cfg.flf_workflow = rel
         nodes.append(_Node(spec, node_cfg, root))
 
     if not nodes:

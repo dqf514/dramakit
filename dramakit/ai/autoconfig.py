@@ -468,6 +468,21 @@ def _trailing_comment(rest: str) -> str:
     return " " + stripped if stripped.startswith("#") else ""
 
 
+def _fmt_value(v) -> str:
+    """Render a value as YAML, whatever shape it has.
+
+    A scalar formatter turns a list into its own repr, and a list of roles
+    written that way comes back as a string - which the config refuses,
+    because a role that reads as text is not a role.
+    """
+    if isinstance(v, (list, tuple)):
+        return "[" + ", ".join(_fmt_value(x) for x in v) + "]"
+    if isinstance(v, dict):
+        return "{" + ", ".join(
+            f"{_fmt_scalar(k)}: {_fmt_value(x)}" for k, x in v.items()) + "}"
+    return _fmt_scalar(v)
+
+
 def _yaml_set_scalar(text: str, section: str, key: str, value) -> str:
     """Set `key: value` under a top-level `section:` in YAML text, in place,
     preserving indentation and the trailing comment. Inserts after the section
@@ -488,9 +503,11 @@ def _yaml_set_scalar(text: str, section: str, key: str, value) -> str:
         m = key_re.match(lines[j])
         if m:
             indent, rest = m.group(1), m.group(2)
-            lines[j] = f"{indent}{key}: {_fmt_scalar(value)}{_trailing_comment(rest)}"
+            # a list written as a scalar comes back as text - and a role
+            # that reads as text is not a role
+            lines[j] = f"{indent}{key}: {_fmt_value(value)}{_trailing_comment(rest)}"
             return "\n".join(lines)
-    lines.insert(start + 1, f"  {key}: {_fmt_scalar(value)}")
+    lines.insert(start + 1, f"  {key}: {_fmt_value(value)}")
     return "\n".join(lines)
 
 
@@ -605,6 +622,210 @@ def save_comfyui_settings(cfg_path: str | Path, scalars: dict,
         text = _yaml_set_map(text, "comfyui", key, value or {})
     for key, value in (characters or {}).items():
         text = _yaml_set_scalar(text, "characters", key, value)
+    if not text.strip():
+        raise ValueError("配置为空")
+    path.write_text(text, encoding="utf-8")
+    try:
+        cfg = Config.load(path)
+    except Exception:
+        if backup:
+            path.write_text(backup, encoding="utf-8")
+        else:
+            path.unlink(missing_ok=True)
+        raise
+    return json.loads(cfg.model_dump_json())
+
+
+def _yaml_set_node(text: str, node_name: str, fields: dict,
+                   maps: dict | None = None) -> tuple[str, bool]:
+    """Write one node's settings into the `nodes:` list, in place.
+
+    The fleet is a list of mappings rather than a map of them, so a node is
+    found by its name and its own keys are written where they already are.
+    The comments beside those keys are the only record of why a card is
+    set up the way it is - which weights it takes, which key it is
+    reached on - and rewriting the whole list would throw them away.
+
+    Returns the text and whether the node was found. The caller needs to
+    know that: a node that was found and happened to keep the same values
+    leaves the text exactly as it was, and reading "no change" as "not
+    there" would add a second copy of it.
+    """
+    lines = text.split("\n")
+    entry_re = re.compile(rf"^(\s*)-(\s+)name:\s*{re.escape(node_name)}\s*$")
+    start = None
+    for i, ln in enumerate(lines):
+        m = entry_re.match(ln)
+        if m:
+            start = i
+            break
+    if start is None:
+        return text, False
+
+    dash_indent = len(entry_re.match(lines[start]).group(1))
+    key_indent = " " * (dash_indent + 2)
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        ln = lines[j]
+        if not ln.strip():
+            continue
+        cur = len(ln) - len(ln.lstrip())
+        if cur <= dash_indent:
+            end = j
+            break
+        if ln.strip().startswith("- ") and cur == dash_indent:
+            end = j
+            break
+
+    for key, value in (fields or {}).items():
+        key_re = re.compile(rf"^({re.escape(key_indent)}){re.escape(key)}\s*:(.*)$")
+        hit = None
+        for j in range(start + 1, end):
+            m = key_re.match(lines[j])
+            if m:
+                hit = j
+                lines[j] = (f"{key_indent}{key}: {_fmt_value(value)}"
+                            f"{_trailing_comment(m.group(2))}")
+                break
+        if hit is None:
+            lines.insert(end, f"{key_indent}{key}: {_fmt_value(value)}")
+            end += 1
+
+    for key, mapping in (maps or {}).items():
+        key_re = re.compile(rf"^({re.escape(key_indent)}){re.escape(key)}\s*:(.*)$")
+        hit = None
+        for j in range(start + 1, end):
+            if key_re.match(lines[j]):
+                hit = j
+                break
+        # The note beside a key is the only record of why that value is what
+        # it is. The block is rebuilt from the new values, so the notes are
+        # picked up first and put back with them - otherwise saving a card
+        # quietly throws away the reason it is set up that way.
+        notes: dict[str, str] = {}
+        for j in range(start + 1, end):
+            m = re.match(r"^\s+(\S+?):\s*(.*)$", lines[j])
+            if not m:
+                continue
+            rest = m.group(2)
+            note = _trailing_comment(rest)
+            if not note.strip():
+                continue
+            raw = m.group(1)
+            notes[raw] = note
+            notes[raw.strip('"').strip("'")] = note
+        block = [f"{key_indent}{key}:"]
+        for mk, mv in (mapping or {}).items():
+            inner = ("{" + ", ".join(
+                f"{_fmt_scalar(k)}: {_fmt_value(v)}" for k, v in mv.items()) + "}"
+                if isinstance(mv, dict) else _fmt_value(mv))
+            note = notes.get(str(mk), "") or notes.get(str(mk).strip('"'), "")
+            block.append(f"{key_indent}  {_fmt_scalar(mk)}: {inner}{note}")
+        if hit is not None:
+            stop = hit + 1
+            kept: list[str] = []
+            while stop < end:
+                ln = lines[stop]
+                if not ln.strip():
+                    stop += 1
+                    continue
+                if ln.lstrip().startswith("#"):
+                    # a note inside the block explains why the values are
+                    # what they are; it goes back in rather than being
+                    # swallowed by the rewrite
+                    kept.append(ln)
+                    stop += 1
+                    continue
+                cur = len(ln) - len(ln.lstrip())
+                if cur <= len(key_indent):
+                    break
+                stop += 1
+            lines[hit:stop] = block + kept
+            end += len(block) + len(kept) - (stop - hit)
+        else:
+            lines[end:end] = block
+            end += len(block)
+    return "\n".join(lines), True
+
+
+def _yaml_append_node(text: str, node: dict, fields: dict,
+                      maps: dict | None = None) -> str:
+    """Add a card the file does not have yet, at the end of the list.
+
+    A name that is not in the list is a new card, not a spelling mistake:
+    dropping it would make the page look like it saved when it did not, and
+    the card would never come back.
+    """
+    lines = text.split("\n")
+    sec_re = re.compile(r"^(\s*)nodes\s*:(\s#.*)?$")
+    start = None
+    for i, ln in enumerate(lines):
+        if sec_re.match(ln):
+            start = i
+            break
+    if start is None:
+        return text
+    indent = sec_re.match(lines[start]).group(1)
+    item = indent + "  "
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        ln = lines[j]
+        if not ln.strip():
+            continue
+        cur = len(ln) - len(ln.lstrip())
+        if cur <= len(indent):
+            end = j
+            break
+    block = [f"{item}- name: {node.get('name')}"]
+    for k, v in (fields or {}).items():
+        block.append(f"{item}  {k}: {_fmt_value(v)}")
+    for k, mapping in (maps or {}).items():
+        block.append(f"{item}  {k}:")
+        for mk, mv in (mapping or {}).items():
+            inner = ("{" + ", ".join(
+                f"{_fmt_scalar(a)}: {_fmt_value(b)}" for a, b in mv.items()) + "}"
+                if isinstance(mv, dict) else _fmt_value(mv))
+            block.append(f"{item}    {_fmt_scalar(mk)}: {inner}")
+    lines[end:end] = block
+    return "\n".join(lines)
+
+
+def save_nodes(cfg_path: str | Path, nodes: list[dict],
+              scalars: dict | None = None,
+              maps: dict | None = None) -> dict:
+    """Write the node pool's settings into the config, preserving comments.
+
+    Every node is written by name; a node the file does not have yet is
+    added to the list rather than dropped. The primary card is not in that
+    list - its address, its role and its weights sit at the top of the
+    section - so those arrive as scalars and maps instead.
+
+    The file is validated by reloading it, and the previous contents are
+    put back if it will not parse: a config that does not load takes the
+    whole console down.
+    """
+    path = Path(cfg_path)
+    backup = path.read_text(encoding="utf-8") if path.exists() else ""
+    text = backup
+    for key, value in (scalars or {}).items():
+        text = _yaml_set_scalar(text, "comfyui", key, value)
+    for key, value in (maps or {}).items():
+        text = _yaml_set_map(text, "comfyui", key, value or {})
+    for node in (nodes or []):
+        name = str(node.get("name") or "").strip()
+        if not name:
+            continue
+        fields = {k: v for k, v in node.items()
+                  if k not in ("name", "graph_overrides", "workflows")}
+        maps_here = {}
+        if "graph_overrides" in node:
+            maps_here["graph_overrides"] = node.get("graph_overrides") or {}
+        if "workflows" in node:
+            maps_here["workflows"] = node.get("workflows") or {}
+        text, found = _yaml_set_node(text, name, fields, maps_here)
+        if not found:
+            # the name is not in the file: this is a card that is being added
+            text = _yaml_append_node(text, node, fields, maps_here)
     if not text.strip():
         raise ValueError("配置为空")
     path.write_text(text, encoding="utf-8")

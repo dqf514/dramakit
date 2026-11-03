@@ -289,14 +289,17 @@ try{
   .castgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
   .castcard{background:var(--bg2);border:1px solid var(--line);border-radius:7px;overflow:hidden}
   .casttop{display:flex;gap:10px;padding:10px;border-bottom:1px solid var(--line)}
-  .casttop .ref{width:88px;height:132px;flex:0 0 auto;border-radius:5px;overflow:hidden;
-    background:var(--media-bg);border:1px solid var(--line)}
-  .casttop .ref img{width:100%;height:100%;object-fit:cover}
+  /* The reference is one wide sheet now - a head on the left and three
+     bodies on the right - so the box is sized to that ratio instead of a
+     portrait crop that cut the bodies off the edge. */
+  .casttop .ref{width:184px;height:auto;aspect-ratio:2/1;flex:0 0 auto;border-radius:5px;
+    overflow:hidden;background:var(--media-bg);border:1px solid var(--line)}
+  .casttop .ref img{width:100%;height:100%;object-fit:contain;display:block}
   .casttop .cb{flex:1;min-width:0}
   .casttop .cn{font-size:14px;font-weight:700}
   .casttop .cr{color:var(--fg2);font-size:11.5px;margin:2px 0 6px}
   .reflist{display:flex;gap:4px;flex-wrap:wrap}
-  .reflist img{width:38px;height:56px;object-fit:cover;border-radius:3px;border:1px solid var(--line)}
+  .reflist img{width:64px;height:32px;object-fit:contain;border-radius:3px;border:1px solid var(--line)}
   .castbody{padding:10px}
   .castbody textarea{min-height:64px;font-size:11.5px}
   .lockrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;
@@ -580,6 +583,10 @@ try{
       <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/></svg>
       <span>流水线</span>
     </button>
+    <button class="railbtn" data-page="nodes" title="节点池">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span>节点池</span>
+    </button>
     <button class="railbtn" data-page="assets" title="资产">
       <svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
       <span>资产</span>
@@ -633,6 +640,7 @@ try{
         <section id="page-board" class="page" style="display:none"></section>
         <section id="page-cast" class="page" style="display:none"></section>
         <section id="page-pipeline" class="page" style="display:none"><div id="tab-run"></div></section>
+    <section id="page-nodes" class="page" style="display:none"></section>
         <section id="page-assets" class="page" style="display:none"></section>
 <section id="page-skills" class="page" style="display:none"></section>
         <section id="page-settings" class="page" style="display:none">
@@ -774,6 +782,7 @@ function switchPage(name, force){
   if(name==="board") renderBoard();
   if(name==="cast") renderCast();
   if(name==="pipeline") renderRun();
+  if(name==="nodes") renderNodes();
   if(name==="assets"){ renderAssetsPage(); loadAssets(); }
   if(name==="skills") renderSkills();
   if(name==="settings"){ loadSettings(); loadProduction(); }
@@ -1883,7 +1892,7 @@ function renderCast(){
         <div class="cb">
           <div class="cn">${esc(c.name)} ${c.locked?'<span class="mini" style="color:var(--go2)">已锁定</span>':""}</div>
           <div class="cr">${esc(c.role||"")} · ${esc(c.gender||"")} ${c.age?"· "+esc(c.age):""}</div>
-          <div class="reflist">${imgs.slice(0,5).map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")}</div>
+          ${imgs.length>1?`<div class="reflist">${imgs.slice(0,5).map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")}</div>`:""}
         </div>
       </div>
       <div class="castbody">
@@ -2088,7 +2097,9 @@ function renderRun(){
         <span class="muted" id="runStat"></span>
       </div>
     </div>
-    <div class="card"><h3>节点池 <span class="muted" style="font-weight:400;font-size:11px">ComfyUI 渲染节点 · 自检与模型同步</span></h3>
+    <div class="card"><h3>节点池 <span class="muted" style="font-weight:400;font-size:11px">ComfyUI 渲染节点 · 自检与模型同步</span>
+      <span style="flex:1"></span>
+      <button class="btn xs" onclick="switchPage('nodes')">管理节点池 →</button></h3>
       <div id="nodeBox"><div class="empty"><span class="spin"></span> 探测节点…</div></div>
     </div>
     <div id="runOut"></div>`;
@@ -2153,6 +2164,195 @@ function syncNodes(name,btn){
       }
     },1000);
   });
+}
+
+// ---------- 节点池：远程节点的设置、模型、工作流 ----------
+// The pool used to be a read-only list on the pipeline page: it said
+// which card was up and which weights it was missing, and there was
+// nowhere to change any of it. Everything that decides what a card does
+// - where it answers, how models reach it, which weights it loads,
+// which workflow it runs - lived in the config file, to be edited by
+// hand.
+//
+// This page is that file, per node.
+let NODE_WFS = [];
+let NODE_FILES = {};   // node -> {files, kinds, overrides}
+let NODE_DIRTY = {};
+
+function nodeRoleChips(roles){
+  const rs=(roles&&roles.length)?roles:["any"];
+  return rs.map(r=>`<span class="chip ${r==="any"?"":"on"}" style="font-size:10px">${esc(r==="any"?"任意":r)}</span>`).join(" ");
+}
+async function renderNodes(){
+  const box=$("#page-nodes");
+  box.innerHTML=`<div class="card"><h3>节点池</h3>
+    <div class="muted" style="font-size:11.5px">远程 ComfyUI 渲染节点。角色决定派发（t2i 出图 / i2v 出视频），
+    队列深度决定先后；每台机器可以用自己的工作流和权重。</div>
+    <div id="nodeList"><div class="empty"><span class="spin"></span> 探测节点…</div></div></div>`;
+  await loadNodesPage();
+}
+async function loadNodesPage(){
+  const box=$("#nodeList");
+  if(!box) return;
+  const r=await getJSON("/api/nodes");
+  if(!r.ok){ box.innerHTML=`<div class="empty">加载失败：${esc(r.error||"")}</div>`; return; }
+  NODE_WFS=r.workflows||[];
+  const nodes=r.nodes||[];
+  if(!nodes.length){
+    box.innerHTML=`<div class="empty">没有启用的节点。配置在 config/default.yaml 的 comfyui.nodes</div>`;
+    return;
+  }
+  box.innerHTML=nodes.map(n=>{
+    const c=n.config||{};
+    const roles=c.roles||[];
+    const wf=c.workflows||{};
+    return `<div class="card" data-node="${attr(n.name)}" style="margin-bottom:10px">
+      <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="dot ${n.online?"ok":"bad"}"></span>
+        ${esc(n.name)}
+        ${nodeRoleChips(roles)}
+        <span class="muted" style="font-weight:400;font-size:11px">${esc(n.base_url)}</span>
+        <span style="flex:1"></span>
+        ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${n.depth?` · 队列 ${n.depth}`:""}</span>`
+                  :`<span class="mini" style="color:var(--danger2)">离线</span>`}
+      </h3>
+      <div class="muted" style="font-size:11px;margin:-4px 0 8px">
+        ${(n.missing||[]).length?`<span style="color:var(--warn,#d99)">缺 ${n.missing.length} 个模型：${esc((n.missing||[]).slice(0,4).join("、"))}${n.missing.length>4?" …":""}</span>`
+          :`<span style="color:var(--go2)">权重齐全</span>`}
+      </div>
+      <details ${NODE_DIRTY[n.name]?"open":""}>
+        <summary class="fl" style="cursor:pointer">节点设置 / 模型设置 / 工作流设置</summary>
+        <div style="margin-top:8px">
+          <div class="fl">节点设置</div>
+          <div class="row" style="flex-wrap:wrap;gap:8px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px">
+              <input type="checkbox" data-nf="enabled" ${c.enabled?"checked":""}> 启用</label>
+            <label style="font-size:11px">角色
+              <input class="f" data-nf="roles" value="${attr((roles||[]).join(","))}"
+                     placeholder="i2v" style="width:120px"></label>
+            ${(c.primary?[]:[
+              ["transfer", "模型传输", "select:none|shared|scp"],
+              ["ssh_host", "SSH 主机", "text"],
+              ["ssh_user", "SSH 用户", "text"],
+              ["ssh_key", "SSH 密钥", "text"],
+              ["remote_models", "远端模型目录", "text"],
+              ["local_models", "本地模型目录（shared）", "text"],
+            ]).concat([
+              ["base_url", "地址", "text"],
+              ["auth", "认证", "select:none|basic|bearer"],
+              ["auth_username", "认证用户名", "text"],
+              ["auth_token", "认证令牌", "text"],
+            ]).map(([k,label,kind])=>{
+              const v=c[k]==null?"":String(c[k]);
+              if(kind.startsWith("select:")){
+                const opts=kind.slice(7).split("|");
+                return `<label style="font-size:11px">${label}
+                  <select class="f" data-nf="${attr(k)}" style="width:150px">
+                    ${opts.map(o=>`<option value="${attr(o)}" ${v===o?"selected":""}>${esc(o||"(空)")}</option>`).join("")}
+                  </select></label>`;
+              }
+              return `<label style="font-size:11px">${label}
+                <input class="f" data-nf="${attr(k)}" value="${attr(v)}" style="width:190px"></label>`;
+            }).join("")}
+          </div>
+          <div class="fl" style="margin-top:9px">模型设置（这台机器用哪些权重）</div>
+          <div data-models="${attr(n.name)}" class="muted" style="font-size:11px">读取中…</div>
+          <div class="fl" style="margin-top:9px">工作流设置（这台机器跑哪个工作流）</div>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <label style="font-size:11px">t2i
+              <select class="f" data-wf="t2i" style="width:230px">
+                <option value="">(用全局的)</option>
+                ${NODE_WFS.map(w=>`<option value="${attr(w)}" ${wf.t2i===w?"selected":""}>${esc(w)}</option>`).join("")}
+              </select></label>
+            <label style="font-size:11px">i2v
+              <select class="f" data-wf="i2v" style="width:230px">
+                <option value="">(用全局的)</option>
+                ${NODE_WFS.map(w=>`<option value="${attr(w)}" ${wf.i2v===w?"selected":""}>${esc(w)}</option>`).join("")}
+              </select></label>
+          </div>
+          <div class="row" style="margin-top:10px;gap:8px;align-items:center">
+            <button class="btn sm confirm" data-save="${attr(n.name)}">保存这台节点</button>
+            ${n.online&&(n.missing||[]).length?`<button class="btn sm" data-sync="${attr(n.name)}">同步模型</button>`:""}
+            <span class="mini" data-msg="${attr(n.name)}"></span>
+          </div>
+        </div>
+      </details>
+    </div>`;
+  }).join("");
+
+  $$("#page-nodes [data-nf]").forEach(el=>{
+    el.onchange=()=>{ NODE_DIRTY[el.closest("[data-node]").dataset.node]=true; };
+  });
+  $$("#page-nodes [data-wf]").forEach(el=>{
+    el.onchange=()=>{ NODE_DIRTY[el.closest("[data-node]").dataset.node]=true; };
+  });
+  $$("#page-nodes [data-save]").forEach(b=>b.onclick=()=>saveNode(b.dataset.save,b));
+  $$("#page-nodes [data-sync]").forEach(b=>b.onclick=()=>syncNodes(b.dataset.sync,b));
+  // the model lists are read from each card, one at a time: they are the
+  // only place that knows which files that card actually has
+  for(const n of nodes){
+    loadNodeModels(n.name);
+  }
+}
+async function loadNodeModels(name){
+  const holder=$(`#page-nodes [data-models="${CSS.escape(name)}"]`);
+  if(!holder) return;
+  const r=await getJSON("/api/nodes/models?node="+encodeURIComponent(name));
+  if(!r.ok){ holder.innerHTML=`<span style="color:var(--danger2)">${esc(r.error||"读取失败")}</span>`; return; }
+  NODE_FILES[name]=r;
+  const kinds=r.kinds||{}, files=r.files||{}, over=r.overrides||{};
+  const ids=Object.keys(over);
+  if(!ids.length){
+    holder.innerHTML=`<span class="muted">没有为这台机器单独指定权重（用的是工作流里的默认）</span>`;
+    return;
+  }
+  holder.innerHTML=ids.map(id=>{
+    const cls=kinds[id]||"";
+    const opts=files[cls]||[];
+    const cur=(over[id]||{});
+    const field=Object.keys(cur)[0]||"";
+    const val=cur[field]||"";
+    if(!opts.length){
+      return `<div style="margin-bottom:5px">#${esc(id)} ${esc(cls)} · ${esc(field)} =
+        <code>${esc(val)}</code> <span class="muted">（这台机器上没有可选项）</span></div>`;
+    }
+    return `<div style="margin-bottom:5px;display:flex;align-items:center;gap:7px;font-size:11px">
+      <span style="min-width:170px">#${esc(id)} ${esc(cls)} · ${esc(field)}</span>
+      <select class="f" data-ov="${attr(id)}" data-ovf="${attr(field)}" data-ovn="${attr(name)}" style="width:330px">
+        ${opts.map(o=>`<option value="${attr(o)}" ${o===val?"selected":""}>${esc(o)}</option>`).join("")}
+        ${opts.includes(val)?"":`<option value="${attr(val)}" selected>${esc(val)}（本地）</option>`}
+      </select></div>`;
+  }).join("");
+  $$("#page-nodes [data-ov]").forEach(el=>{
+    el.onchange=()=>{ NODE_DIRTY[el.dataset.ovn]=true; };
+  });
+}
+async function saveNode(name,btn){
+  const card=$(`#page-nodes [data-node="${CSS.escape(name)}"]`);
+  if(!card) return;
+  const msg=$(`#page-nodes [data-msg="${CSS.escape(name)}"]`);
+  const cfg={name};
+  $$("[data-nf]",card).forEach(el=>{
+    const k=el.dataset.nf;
+    if(el.type==="checkbox") cfg[k]=el.checked;
+    else if(k==="roles") cfg[k]=el.value.split(",").map(s=>s.trim()).filter(Boolean);
+    else cfg[k]=el.value;
+  });
+  const wfs={};
+  $$("[data-wf]",card).forEach(el=>{ wfs[el.dataset.wf]=el.value; });
+  cfg.workflows=wfs;
+  const ov={};
+  $$("[data-ov]",card).forEach(el=>{
+    ov[el.dataset.ov]=Object.assign({}, ov[el.dataset.ov]||{}, {[el.dataset.ovf]: el.value});
+  });
+  cfg.graph_overrides=ov;
+  btn.disabled=true; btn.textContent="保存中…";
+  const r=await postJSON("/api/nodes/save",{nodes:[cfg]});
+  btn.disabled=false; btn.textContent="保存这台节点";
+  if(!r.ok){ if(msg) msg.innerHTML=`<span style="color:var(--danger2)">${esc(r.error||"保存失败")}</span>`; return; }
+  if(msg) msg.innerHTML=`<span style="color:var(--go2)">✓ 已保存</span>`;
+  NODE_DIRTY[name]=false;
+  setTimeout(()=>loadNodesPage(), 700);
 }
 function stageStateFor(ep,stage){ const v=(ep.stage_status||{})[stage]; return v==="done"?"done":v||"pending"; }
 function parseEps(str){
@@ -3031,8 +3231,7 @@ async function stopRun(){
     toast((r&&r.error)||"停不下来","err",4000);
     return;
   }
-  toast("已请求停止：当前这一步的调用结束后停下（约 1 分钟内），"
-        "已完成的保留","",5000);
+  toast("已请求停止：当前这一步的调用结束后停下（约 1 分钟内），已完成的保留","",5000);
   // the panel keeps polling; the stage will show as interrupted when the
   // run has actually let go
   setTimeout(()=>{ updateProgressPanel(); }, 2500);

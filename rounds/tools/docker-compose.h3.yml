@@ -1,0 +1,68 @@
+# Two ComfyUI workers, one per 3090.
+#
+# The image is the SageAttention build and --use-sage-attention turns it on:
+# without that flag a ten-second clip costs three times as long, and the
+# node that does it is what the workflow's PathchSageAttentionKJ expects to
+# find. Both workers use it, so either card can take a job.
+#
+# Models are mounted from one directory. The weights are twenty-odd gigabytes
+# each and a job only needs the ones it loads, so sharing costs nothing and
+# means a model added once is available to both.
+#
+# `count: all` rather than a device id: CUDA_VISIBLE_DEVICES then names the
+# real card. Pinning one device and also naming it by index asks for a card
+# that is not there, because the pinned card is renumbered to zero inside
+# the container.
+#
+# One card cannot hold two H3 jobs - 15.2G for the diffusion weights plus
+# 14.6G for the text encoder - which is the whole reason there are two
+# workers rather than one with a deeper queue.
+
+services:
+  comfyui-h3-a:
+    image: comfyui-h3:sage
+    container_name: comfyui-h3-a
+    restart: unless-stopped
+    shm_size: 8gb
+    ports:
+      - "0.0.0.0:8188:8188"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - /data/comfyui/models:/opt/ComfyUI/models
+      - /data/comfyui/input:/opt/ComfyUI/input
+      - /data/comfyui/output:/opt/ComfyUI/output
+      - /data/comfyui/user:/opt/ComfyUI/user
+      - /data/comfyui/custom_nodes:/opt/ComfyUI/custom_nodes
+    command: python3 main.py --listen 0.0.0.0 --port 8188 --reserve-vram 1.5 --use-sage-attention
+
+  comfyui-h3-b:
+    image: comfyui-h3:sage
+    container_name: comfyui-h3-b
+    restart: unless-stopped
+    shm_size: 8gb
+    ports:
+      - "0.0.0.0:8189:8189"
+    environment:
+      - CUDA_VISIBLE_DEVICES=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - /data/comfyui/models:/opt/ComfyUI/models
+      - /data/comfyui/input:/opt/ComfyUI/input
+      - /data/comfyui/output:/opt/ComfyUI/output
+      - /data/comfyui/user:/opt/ComfyUI/user
+      - /data/comfyui/custom_nodes:/opt/ComfyUI/custom_nodes
+    command: python3 main.py --listen 0.0.0.0 --port 8189 --reserve-vram 1.5 --use-sage-attention

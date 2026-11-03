@@ -192,6 +192,10 @@ class CharacterConfig(BaseModel):
     ref_body_width: int = 576
     ref_body_height: int = 1024
     ref_height: int = 1024
+    # 四视图（单张）：左半边头部特写，右半边正面/侧面/背面三个全身。
+    # 一张替代原来的 face + 三视图两张，每镜参考图从 2 张降到 1 张。
+    ref_four_width: int = 1536
+    ref_four_height: int = 768
     # prompt = 只靠文字锚点；ref = 出图时附带角色/场景参考图（需工作流支持）
     consistency: Literal["prompt", "ref", "lora"] = "ref"
 
@@ -290,6 +294,12 @@ class NodeConfig(BaseModel):
     # nodes of the workflow. The 5080 takes the nvfp4 files, the 3090 the
     # int8/convrot ones.
     graph_overrides: dict = Field(default_factory=dict)
+    # This node's own workflows, by role: {"i2v": "config/comfyui/x.json"}.
+    # The global ones say which workflow a kind of work uses; this says
+    # which one this machine uses - two cards on one box can run different
+    # files, and a card that is good at one thing should not be handed the
+    # other thing's workflow.
+    workflows: dict[str, str] = Field(default_factory=dict)
 
 
 class ComfyUIConfig(BaseModel):

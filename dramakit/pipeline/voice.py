@@ -186,7 +186,15 @@ def _synth_one(ctx: Context, line, tries: int = 3) -> tuple[str, bool, str]:
             ctx.log.warning("voice: 台词 %s 第 %d 次合成失败 %s",
                             line.id, attempt, last)
             if attempt < tries:
-                time.sleep(2.0 * attempt)
+                # A rate limit is counted per minute: retrying into the
+                # same window in two seconds spends every attempt there
+                # and the line ends with no voice at all, while a locked
+                # file or a dropped connection does clear that fast.
+                if "rate limit" in last.lower() or "1002" in last:
+                    time.sleep(20.0 * attempt)
+                else:
+                    time.sleep(2.0 * attempt)
+                ctx.check_stop()   # a stop during backoff lands here
     ctx.log.error("voice: 台词 %s 合成失败 %s", line.id, last)
     line.status = Status.FAILED
     return line.id, False, last

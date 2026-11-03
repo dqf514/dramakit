@@ -128,6 +128,15 @@ class ProjectStore:
     def video_path(self, shot_id: str) -> Path:
         return self.root / "video" / f"shot_{shot_id}.mp4"
 
+    def character_voice_path(self, name: str, ext: str = "mp3") -> Path:
+        """Where a character's voice sample lives, beside their pictures.
+
+        The sample is made with the rest of the character, so it sits with
+        the rest of the character - and, like the pictures, it is per
+        season, because a look that changed may have a voice that did not.
+        """
+        return self.character_dir(name) / f"voice.{ext}"
+
     def character_dir(self, name: str, season: int = 0) -> Path:
         """Where a character's reference pictures live.
 
