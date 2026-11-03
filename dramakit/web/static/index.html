@@ -673,6 +673,18 @@ const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"
 const num = (v,d)=>{const x=parseFloat(v);return Number.isFinite(x)?x:d;};
 const attr = s => esc(s).replace(/'/g,"&#39;");
 
+// A node's address is worth clicking: it is the card that is doing the
+// work, and its own console says what it is doing right now. Only a
+// real http address becomes a link - anything else is shown as plain
+// text, so a broken setting is not dressed up as something clickable.
+const nodeLink = (url, label)=>{
+  const u=String(url||"").trim();
+  if(!/^https?:\/\/[^\s"'<>]+$/i.test(u)) return esc(label||u);
+  return `<a href="${attr(u)}" target="_blank" rel="noopener noreferrer" `
+       + `style="font-size:11px;text-decoration:underline;text-underline-offset:2px">`
+       + `${esc(label||u)}</a>`;
+};
+
 const STAGES=["ingest","analyze","character","segment","script","storyboard","promptgen","voice","visual","subtitle","music","precheck","compose","qc"];
 const STAGE_ZH={ingest:"导入",analyze:"分析",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",voice:"配音",visual:"画面",subtitle:"字幕",music:"配乐",precheck:"预检",compose:"合成",qc:"质检"};
 function ago(ts){if(!ts)return "";const s=(Date.now()/1000-ts);if(s<60)return "刚刚";if(s<3600)return Math.floor(s/60)+" 分钟前";if(s<86400)return Math.floor(s/3600)+" 小时前";if(s<86400*7)return Math.floor(s/86400)+" 天前";return new Date(ts*1000).toLocaleDateString();}
@@ -2167,7 +2179,7 @@ async function loadNodes(){
       <span class="dot ${n.online?"ok":"bad"}"></span>
       <b>${esc(n.name)}</b>
       <span class="mini" style="color:var(--go2)">${esc(roles)}</span>
-      <span class="muted" style="font-size:11px">${esc(n.base_url)}</span>
+      ${nodeLink(n.base_url)}
       ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${depth?` · 队列 ${depth}`:""}</span>`:`<span class="mini" style="color:var(--danger2)">离线</span>`}
       ${miss.length?`<span class="mini" style="color:var(--warn,#d99)">缺 ${miss.length} 个模型</span>
         <span class="muted" style="font-size:10.5px">${miss.slice(0,4).map(esc).join("、")}${miss.length>4?" …":""}</span>`:`<span class="mini" style="color:var(--go2)">模型齐全</span>`}
@@ -2254,7 +2266,7 @@ async function loadNodesPage(){
         <span class="dot ${n.online?"ok":"bad"}"></span>
         ${esc(n.name)}
         ${nodeRoleChips(roles)}
-        <span class="muted" style="font-weight:400;font-size:11px">${esc(n.base_url)}</span>
+        ${nodeLink(n.base_url)}
         <span style="flex:1"></span>
         ${n.online?`<span class="muted" style="font-size:11px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${n.depth?` · 队列 ${n.depth}`:""}</span>`
                   :`<span class="mini" style="color:var(--danger2)">离线</span>`}

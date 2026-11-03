@@ -1,14 +1,18 @@
-"""Watch the run and keep a record of what it does.
+"""Keep an eye on the run while it goes, from a process of its own.
 
 A run of this length is unattended, and the interesting part is not the
 progress - it is the moments where something goes wrong. So this follows
 the job, writes every line the console logs, and picks out the ones that
-matter: a stage that failed, a stage that was stopped, an error, a warning
-that is not just a retry, and the moment a stage begins and ends.
+matter: a stage that failed, a stage that was stopped, an error, a
+warning that is not just a retry, and the moment a stage begins and
+ends.
 
-It also times the stages, because the timings are what tell you where the
-pipeline actually spends its time - and where a slow stage is a bug rather
-than the work being slow.
+It also times the stages, because the timings are what tell you where
+the pipeline actually spends its time - and where a slow stage is a bug
+rather than the work being slow.
+
+Started detached (Start-Process), so it keeps going when the console
+it was started from goes away.
 """
 import json
 import re
@@ -19,12 +23,11 @@ from pathlib import Path
 
 CONSOLE = "http://127.0.0.1:8080"
 OUT = Path(r"C:\Users\David\AppData\Local\Temp\opencode\run_watch.txt")
-JID = ""
 seen: set = set()
 stage_start: dict[str, float] = {}
 stages: dict[str, float] = {}
 t0 = time.time()
-DEADLINE = t0 + 12 * 3600
+DEADLINE = t0 + 48 * 3600
 
 
 def get(path, timeout=30):
@@ -35,25 +38,14 @@ def get(path, timeout=30):
         return {}
 
 
-def post(path, body, timeout=30):
-    req = urllib.request.Request(
-        CONSOLE + path, data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"}, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read())
-    except Exception:  # noqa: BLE001
-        return {}
-
-
 def note(lines):
     with OUT.open("a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 
+STAGE_RE = re.compile(r"── 阶段 \[(\w+)\] (开始|完成|已停止|失败)")
 note([f"=== 监控开始 {time.strftime('%H:%M:%S')} ==="])
 
-STAGE_RE = re.compile(r"── 阶段 \[(\w+)\] (开始|完成|已停止|失败)")
 while time.time() < DEADLINE:
     try:
         with urllib.request.urlopen(CONSOLE + "/api/logs?lines=400", timeout=30) as r:
@@ -91,12 +83,10 @@ while time.time() < DEADLINE:
     # the job's own state
     jobs = get("/api/jobs").get("jobs") or []
     run = next((j for j in jobs if j.get("kind") == "run_pipeline"), None)
-    if run and run.get("status") != "running" and JID != run.get("id") + "done":
-        JID = run.get("id") + "done"
+    if run and run.get("status") not in ("running", "queued"):
         note([f"[{time.strftime('%H:%M:%S')}] 任务结束 status={run.get('status')} "
               f"error={str(run.get('error'))[:300]}"])
-        note(["阶段耗时:"] + [f"  {k}: {v/60:.1f} 分"
-                              for k, v in stages.items()])
+        note(["阶段耗时:"] + [f"  {k}: {v/60:.1f} 分" for k, v in stages.items()])
         break
     time.sleep(10)
 

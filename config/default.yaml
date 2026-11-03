@@ -366,9 +366,19 @@ comfyui:
       transfer: none
       remote_models: ""
       graph_overrides:
-        "127": {unet_name: MiniMax_H3_Ref2VA_pruned_mixed_int4_int8_convrot.safetensors}
-        "128": {clip_name: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors, device: default}
         "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
+        "127": {unet_name: MiniMax_H3_FL2VA_pruned_nvfp4.safetensors}
+        "128": {clip_name: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors}
+      ssh_host: ""
+      ssh_user: ""
+      ssh_key: ""
+      local_models: ""
+      auth: none
+      auth_username: ""
+      auth_token: ""
+      workflows:
+        t2i: ""
+        i2v: ""
   #  - name: gpu3090-v0        # 3090#0，专做视频
   #    base_url: http://<3090IP>:8188
   #    roles: [i2v]            # t2i=出图 / i2v=出视频；留空=什么都接
