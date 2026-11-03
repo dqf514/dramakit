@@ -131,10 +131,19 @@ class ComfyUIPool(BaseImageVideo):
         as long, so the pair is slower than one alone. So a node that is
         already at its limit is not a candidate at all; the work waits for
         it rather than being put on top of it.
+
+        How busy a card is is the card's own answer, not this process's:
+        a job that was running when the console was restarted is still
+        running on the card, and the card knows it even though nobody
+        here does. So the two counts are taken together and the larger
+        one is believed.
         """
+        def _on(node: _Node) -> int:
+            return max(self._inflight.get(node.name, 0), node.depth())
+
         ok = [n for n in self.nodes
               if n.takes(role) and n.name not in skip
-              and self._inflight.get(n.name, 0) < n.max_concurrent]
+              and _on(n) < n.max_concurrent]
         if not ok:
             return None
         alive = [n for n in ok if not n.silent]
