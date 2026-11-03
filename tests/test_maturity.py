@@ -209,6 +209,56 @@ class BrowserSourceTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0,
                                  f"script {index} failed: {result.stderr}")
 
+    def test_file_picker_precedes_and_autofills_editable_project_name(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node.js is not installed")
+        text = (Path(__file__).parents[1] /
+                "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        self.assertLess(text.index('id="gFilePicker"'), text.index('id="gName"'))
+        start = text.index("function projectNameFromFilename")
+        end = text.index("\nasync function probeHealth", start)
+        script = text[start:end] + r"""
+const assert = require("assert");
+const picker = {files: [], value: ""};
+const source = {value: ""};
+const name = {value: "", dataset: {}};
+const fileName = {textContent: ""};
+bindGuideSourcePicker(picker, source, name, fileName);
+picker.files = [{name: "归来.最终版.txt", size: 2048}];
+picker.onchange();
+assert.strictEqual(source.value, "归来.最终版.txt");
+assert.strictEqual(name.value, "归来.最终版");
+picker.files = [{name: "第二卷.md", size: 2048}];
+picker.onchange();
+assert.strictEqual(name.value, "第二卷");
+name.value = "手动项目";
+name.oninput();
+picker.files = [{name: "另一本书.txt", size: 2048}];
+picker.onchange();
+assert.strictEqual(name.value, "手动项目");
+name.value = "";
+picker.files = [{name: "重新开始.txt", size: 2048}];
+picker.onchange();
+assert.strictEqual(name.value, "重新开始");
+"""
+        result = subprocess.run([node, "-e", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_sidebar_toggle_stays_at_bottom_and_remains_available_when_collapsed(self):
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        header = text[text.index("<header>"):text.index("</header>")]
+        aside = text[text.index('<aside id="side">'):text.index("</aside>")]
+        self.assertNotIn('id="sideToggle"', header)
+        self.assertIn('id="mobileSideToggle"', header)
+        self.assertLess(aside.index('class="side-content"'), aside.index('id="sideToggle"'))
+        self.assertIn("#side.hide{display:flex", text)
+        self.assertIn("#side.hide .side-content{display:none}", text)
+        modern = (root / "dramakit/web/static/modern.js").read_text(encoding="utf-8")
+        self.assertIn("updateSideToggle();", modern)
+        self.assertIn('sideToggle.setAttribute("aria-expanded", String(!collapsed))', modern)
+
 
 if __name__ == "__main__":
     unittest.main()

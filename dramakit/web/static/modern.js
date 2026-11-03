@@ -65,18 +65,39 @@
     }
   }
 
-  function closeMobileSide() {
-    side.classList.remove("mobile-open");
-    sideScrim.classList.remove("show");
+  const sideToggle = document.getElementById("sideToggle");
+  const mobileSideToggle = document.getElementById("mobileSideToggle");
+
+  function updateSideToggle() {
+    const collapsed = side.classList.contains("hide");
+    sideToggle.innerHTML = collapsed
+      ? '<span aria-hidden="true">›</span><span>展开项目栏</span>'
+      : '<span aria-hidden="true">‹</span><span>收起项目栏</span>';
+    sideToggle.title = collapsed ? "展开项目栏" : "收起项目栏";
+    sideToggle.setAttribute("aria-label", sideToggle.title);
+    sideToggle.setAttribute("aria-expanded", String(!collapsed));
   }
 
-  document.getElementById("sideToggle").onclick = () => {
-    if (matchMedia("(max-width:1180px)").matches) {
-      const open = !side.classList.contains("mobile-open");
-      side.classList.toggle("mobile-open", open);
-      sideScrim.classList.toggle("show", open);
-    } else side.classList.toggle("hide");
+  function setMobileSide(open) {
+    side.classList.toggle("mobile-open", open);
+    sideScrim.classList.toggle("show", open);
+    mobileSideToggle.setAttribute("aria-expanded", String(open));
+  }
+
+  function closeMobileSide() {
+    setMobileSide(false);
+  }
+
+  sideToggle.onclick = () => {
+    side.classList.toggle("hide");
+    updateSideToggle();
   };
+  mobileSideToggle.onclick = () => {
+    side.classList.remove("hide");
+    updateSideToggle();
+    setMobileSide(true);
+  };
+  updateSideToggle();
   sideScrim.onclick = closeMobileSide;
   sideClose.onclick = closeMobileSide;
   document.getElementById("brandBtn").onclick = () => switchPage("guide");

@@ -164,13 +164,15 @@ dialog.dk-dialog::backdrop { background: rgba(10, 16, 24, .58); backdrop-filter:
 #drawer { width: 480px; box-shadow: -16px 0 50px var(--shadow); }
 .dhead .dt { font-size: 15px; }
 .dsec h4 { font-size: 12px; }
-#sideScrim, .mobile-side-close { display: none; }
+#sideScrim, .mobile-side-close, .mobile-side-toggle { display: none; }
 
 @media (max-width: 1180px) {
+  .mobile-side-toggle { display: inline-flex; }
   .mobile-side-close { display: block; width: 100%; margin-bottom: 10px; text-align: left; }
-  #side { display: block; position: fixed; z-index: 180; top: 0; bottom: 0; left: 0; width: 280px; transform: translateX(-102%); transition: transform .18s ease; box-shadow: 12px 0 40px var(--shadow); }
+  #side, #side.hide { display: flex; position: fixed; z-index: 180; top: 0; bottom: 0; left: 0; width: 280px; padding: 12px; transform: translateX(-102%); transition: transform .18s ease; box-shadow: 12px 0 40px var(--shadow); }
   #side.mobile-open { transform: translateX(0); }
-  #side.hide { display: block; }
+  #side.hide .side-content { display: block; }
+  #sideToggle { display: none; }
   #sideScrim.show { display: block; position: fixed; z-index: 170; inset: 0; background: rgba(10,16,24,.45); }
 }
 
