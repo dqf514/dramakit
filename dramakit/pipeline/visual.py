@@ -270,6 +270,11 @@ def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:
     meta.update({"seed": seed, "mode": c.mode})
     try:
         if not img_out.exists():
+            if not (shot.prompt or "").strip():
+                # the clip's prompt arrived before the picture's: there is
+                # nothing to draw from yet, and the picture is picked up
+                # on a later pass rather than drawn from nothing
+                return shot.id, True, ""
             refs = _fit_refs(ctx, _ref_images(ctx, shot, sc), shot)
             _render(ctx, "出图", shot.id, lambda: vis.generate_image(
                 prompt=shot.prompt, negative=shot.negative_prompt,
@@ -473,6 +478,10 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0,
         use_flf = flf_enabled(ctx, shot) and end_out.exists()
         last = str(end_out) if use_flf else ""
         vprompt = shot.video_prompt or shot.prompt
+        if not (vprompt or "").strip():
+            # nothing to make a clip from yet: the writers are still
+            # working on this shot and it comes back on a later pass
+            return shot.id, True, ""
         extra = _extra(ctx)
         if plan:
             extra["ref_pictures"] = plan
@@ -645,9 +654,11 @@ def run(ctx: Context) -> dict:
                 # project is: the stage is called while the writers are
                 # still going, and a shot with no prompt yet has nothing to
                 # be drawn from. It is picked up on a later pass.
-                if do_image and not (shot.prompt or "").strip():
-                    continue
-                if do_video and not (shot.video_prompt or "").strip():
+                # Either prompt is enough: the clip falls back to the
+                # picture's prompt, and a workflow that is not the native
+                # one never writes a second one at all.
+                if not ((shot.prompt or "").strip()
+                        or (shot.video_prompt or "").strip()):
                     continue
                 jobs.append((ep, sc, shot))
 

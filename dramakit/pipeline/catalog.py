@@ -49,7 +49,7 @@ _COMMON_HEADING_PATTERNS = [
 ]
 
 
-def _heading_pattern(text: str, ctx: Context) -> tuple[str, list[str]]:
+def _heading_pattern(text: str, ctx: Context, use_llm: bool = True) -> tuple[str, list[str]]:
     """What marks a chapter and a volume in this book.
 
     The model is shown the head of the book and asked for the pattern; a
@@ -103,7 +103,7 @@ def _heading_pattern(text: str, ctx: Context) -> tuple[str, list[str]]:
             "用 ^ 开头、$ 结尾，比如 ^第[0-9一二三四五六七八九十百千]+章\", "
             "\"volume_pattern\": \"python正则，匹配分卷标题，没有分卷就给空字符串\", "
             "\"found\": \"你在这本书里看到的标题样式，举3个例子\"}\n\n"
-            "开头：\n\"\"\"\n" + head + "\n\"\"\"")
+            "开头：\n\"\"\"\n" + head + "\n\"\"\"") if use_llm else {}
         if isinstance(data, list):
             data = data[0] if data else {}
         chapter_pat = (data.get("chapter_pattern") or "").strip()
@@ -183,12 +183,12 @@ def _split(text: str, chapter_pat: str, volume_pat: str) -> list[dict]:
             for n, (v, t, b) in enumerate(use) if b]
 
 
-def run(ctx: Context, source_file: str | None = None) -> dict:
+def run(ctx: Context, source_file: str | None = None, use_llm: bool = True) -> dict:
     src = source_file or ctx.project.meta.source_file
     if not src:
         raise ValueError("没有指定输入小说/剧本文件")
     text = clean(read_source(src))
-    chapter_pat, vols = _heading_pattern(text, ctx)
+    chapter_pat, vols = _heading_pattern(text, ctx, use_llm=use_llm)
     vpat = vols[0] if vols else ""
     chapters = _split(text, chapter_pat, vpat)
 

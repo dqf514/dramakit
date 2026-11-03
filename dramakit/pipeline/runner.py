@@ -76,12 +76,16 @@ def _stage_fn(name: str) -> Optional[Callable]:
 
 
 def _run_stage(ctx: Context, name: str, source_file: Optional[str],
-               season_obj, results: dict, cfg: Config) -> None:
+               season_obj, results: dict, cfg: Config):
     """Run one stage, recording what it did the way the run has always done.
 
     A refusal is not a failure: RunStopped leaves whatever the stage
     finished where it is and marks the stage interrupted, so the next run
     knows to begin there rather than at the start.
+
+    Returns the season, which may be new: a stage that cuts the chapters
+    into episodes is the one that makes the season, and the stages that
+    follow need to write their status on it.
     """
     log.info("── 阶段 [%s] 开始 ──", name)
     ctx.project.stage_status[name] = Status.RUNNING
@@ -94,8 +98,12 @@ def _run_stage(ctx: Context, name: str, source_file: Optional[str],
         else:
             fn = _stage_fn(name)
             if fn is None:
-                return
+                return season_obj
             res = fn(ctx) or {}
+        # A stage that creates the season - cutting the chapters into
+        # episodes does - leaves it here for the stages that follow.
+        if season_obj is None:
+            season_obj = ctx.season
         results[name] = res
         ctx.project.stage_status[name] = Status.DONE
         if season_obj is not None:
@@ -122,6 +130,7 @@ def _run_stage(ctx: Context, name: str, source_file: Optional[str],
         # compose/visual can be skipped without killing everything else
         if name in ("analyze", "segment"):
             raise  # these are foundational; can't continue
+    return season_obj
 
 
 def _complete_canon(ctx: Context, season_obj) -> None:
@@ -184,25 +193,65 @@ def _draw_until_done(ctx: Context, writes_done: threading.Event,
         ctx.save()
 
     passes = 0
+    # The counts the run reports. Each shot is counted once, when it
+    # comes out: a shot that was tried three times and failed is one
+    # failure, not three, so the tally is read from the project at the
+    # end rather than summed over the passes.
+    images_ok = 0
+    videos_ok = 0
+
+    def _tally(res: dict) -> None:
+        nonlocal images_ok, videos_ok
+        images_ok += int(res.get("images_ok") or 0)
+        videos_ok += int(res.get("videos_ok") or 0)
+
     try:
         while True:
             if ctx.stopped:
                 raise RunStopped()
             res = visual.run(ctx) or {}
             passes += 1
-            if res.get("shots"):
+            _tally(res)
+            # `shots_total` is how many shots the pass had in hand. It is
+            # the thing that says whether the pass did anything: a pass
+            # that found nothing to do reports no shots at all, and a
+            # pass whose shots all failed still had shots.
+            if res.get("shots_total"):
                 # work was done: there may be more waiting behind it
-                results["visual"] = res
                 continue
-            if writes_done.is_set():
-                results["visual"] = res
-                _mark(Status.DONE)
-                log.info("── 阶段 [visual] 完成（%d 趟）: %s ──", passes, res)
-                return
-            # nothing ready and the writers are still going: wait rather than
-            # spin, then look again
-            results["visual"] = res
-            writes_done.wait(5)
+            if not writes_done.is_set():
+                # nothing ready and the writers are still going: wait
+                # rather than spin, then look again
+                writes_done.wait(5)
+                continue
+            # The writers are done - and they may have finished between
+            # the pass above and this check, so what they left behind is
+            # ours to draw. One more pass takes it; without it a run
+            # whose writers were quick finishes with nothing drawn and
+            # reports a clean run that drew nothing.
+            res = visual.run(ctx) or {}
+            passes += 1
+            _tally(res)
+            if res.get("shots_total"):
+                continue
+            ok = failed = 0
+            for ep in ctx.target_episodes():
+                for sc in ep.scenes:
+                    for shot in sc.shots:
+                        if not (shot.prompt or "").strip():
+                            continue   # nothing to draw from yet
+                        if shot.status == Status.DONE:
+                            ok += 1
+                        else:
+                            failed += 1
+            results["visual"] = {
+                "shots_ok": ok, "shots_total": ok + failed,
+                "images_ok": images_ok, "videos_ok": videos_ok,
+                "failed": failed}
+            _mark(Status.DONE)
+            log.info("── 阶段 [visual] 完成（%d 趟）: %s ──", passes,
+                     results["visual"])
+            return
     except RunStopped:
         _mark(Status.INTERRUPTED)
         raise
@@ -243,7 +292,8 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                 continue
             if ctx.stopped:
                 break
-            _run_stage(ctx, name, source_file, season_obj, results, cfg)
+            season_obj = _run_stage(ctx, name, source_file, season_obj,
+                                    results, cfg) or season_obj
             if _stop_if_wanted(name):
                 return _finish(ctx, season_obj, stages, results)
 
@@ -280,7 +330,8 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
             for name in writes + draws:
                 if ctx.stopped:
                     break
-                _run_stage(ctx, name, None, season_obj, results, cfg)
+                season_obj = _run_stage(ctx, name, None, season_obj,
+                                        results, cfg) or season_obj
                 if _stop_if_wanted(name):
                     return _finish(ctx, season_obj, stages, results)
 
@@ -288,7 +339,8 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
         for name in _wanted(TAIL):
             if ctx.stopped:
                 break
-            _run_stage(ctx, name, None, season_obj, results, cfg)
+            season_obj = _run_stage(ctx, name, None, season_obj,
+                                    results, cfg) or season_obj
             if _stop_if_wanted(name):
                 break
     except RunStopped:
