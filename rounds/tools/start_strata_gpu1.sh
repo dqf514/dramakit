@@ -30,7 +30,7 @@ docker run -d --name strata-engine \
   -e HOME=/root \
   python:3.12-slim \
   sh -c 'export PATH=/root/.local/bin:$PATH; \
-        strata launch --preset lan --gpu 1 --yes --no-tui; \
+        strata launch --preset lan --gpu 1 --context 256k --yes --no-tui; \
         echo "=== 启动器已返回，容器保持存活 ==="; \
         tail -f /dev/null' 2>&1 | tail -3
 

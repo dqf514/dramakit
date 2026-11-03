@@ -777,7 +777,7 @@ def regen_shot(store: ProjectStore, cfg: Config, ep_index: int, shot_id: str,
             if mode in ("image", "all"):
                 _sid, ok, msg = _gen_image(ctx, sc, shot)
             if ok and mode in ("video", "all"):
-                _sid, ok, msg = _gen_video(ctx, sc, shot, dur, _ep)
+                _sid, ok, msg = _gen_video(ctx, sc, shot, dur, ep)
             ctx.save()
             return {"ok": ok, "shot": shot.id, "error": msg,
                     "image_path": shot.image_path, "end_image_path": shot.end_image_path,
