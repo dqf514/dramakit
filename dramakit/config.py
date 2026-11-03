@@ -274,6 +274,10 @@ class NodeConfig(BaseModel):
     # Specialising a node keeps one model resident instead of swapping between
     # two, which is where most of the per-shot time went.
     roles: list[str] = Field(default_factory=list)
+    # How many jobs this card may be given at once. One card is one GPU,
+    # and one H3 job fills it, so this is 1 unless the card has more than
+    # one GPU behind it.
+    max_concurrent: int = 1
     # --- how to ship model files to this node ---
     #   shared - the node's models dir is mounted here; copy into it
     #   scp    - copy over ssh to remote_models

@@ -32,6 +32,8 @@ SILENT_TTL = 120.0
 # what a silent node's queue depth is reported as - deep enough that no
 # other node is preferred to it
 SILENT_DEPTH = 999
+# how long a job waits for a card that is busy before giving up
+DISPATCH_WAIT = 3600.0
 
 
 class _Node:
@@ -43,6 +45,17 @@ class _Node:
         self.roles = {r.strip().lower() for r in (spec.roles or []) if r.strip()}
         self._queue: tuple[float, int] = (0.0, 0)
         self._silent_until: float = 0.0
+
+    @property
+    def max_concurrent(self) -> int:
+        """How many jobs this card can do at once.
+
+        One card is one GPU, and one H3 job fills it. Two jobs on one card
+        do not run side by side: they take turns, and each one takes
+        three times as long - so the pair is slower than one alone, and
+        the second one looks like a card that has gone slow.
+        """
+        return max(1, int(getattr(self.spec, "max_concurrent", 1) or 1))
 
     @property
     def name(self) -> str:
@@ -112,8 +125,16 @@ class ComfyUIPool(BaseImageVideo):
         A node that has stopped answering is only used when every other
         one has stopped too: it is the last choice, not the first, because
         a job sent to a silent card is a job that never comes back.
+
+        A card takes one job at a time. Two H3 jobs on one 16GB card do not
+        run side by side - they take turns, and each one takes three times
+        as long, so the pair is slower than one alone. So a node that is
+        already at its limit is not a candidate at all; the work waits for
+        it rather than being put on top of it.
         """
-        ok = [n for n in self.nodes if n.takes(role) and n.name not in skip]
+        ok = [n for n in self.nodes
+              if n.takes(role) and n.name not in skip
+              and self._inflight.get(n.name, 0) < n.max_concurrent]
         if not ok:
             return None
         alive = [n for n in ok if not n.silent]
@@ -123,13 +144,25 @@ class ComfyUIPool(BaseImageVideo):
         return node
 
     def _dispatch(self, role: str, fn) -> str:
+        """Give the job to a card that can take it.
+
+        When every card is busy the work waits for one, rather than being
+        stacked on top of work that is already there: a card that is
+        given two jobs renders them one after the other, and each takes
+        three times as long as it should.
+        """
         tried: list[str] = []
         last: Optional[Exception] = None
+        deadline = time.time() + DISPATCH_WAIT
         while True:
             with self._lock:
                 node = self._take(role, set(tried))
             if node is None:
-                break
+                if time.time() > deadline:
+                    break
+                # every card is busy: wait for one and look again
+                time.sleep(2.0)
+                continue
             tried.append(node.name)
             try:
                 return fn(node.client)
@@ -137,6 +170,10 @@ class ComfyUIPool(BaseImageVideo):
                 last = e
                 log.warning("节点 %s 渲染失败，转移: %s", node.name, str(e)[:160])
                 node.forget_queue()
+                # a card that failed may be the one that is free again
+                tried = [n for n in tried if n != node.name]
+                tried.append(node.name)
+                tried = tried[-len(self.nodes):]
             finally:
                 with self._lock:
                     self._inflight[node.name] = max(
