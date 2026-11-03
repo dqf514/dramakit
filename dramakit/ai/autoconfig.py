@@ -32,6 +32,7 @@ import httpx
 import yaml
 
 from ..config import Config
+from ..config_history import snapshot as snapshot_config
 from ..media import ffmpeg as ff
 from .brain import Brain
 from .templates import apply_chip_ids, preset_by_id
@@ -319,6 +320,7 @@ def setup(cfg: Config, intent: str, *, genre_preset: str = "",
     art = overrides.get("art_direction") if isinstance(overrides, dict) else None
     merged = apply_overrides(cfg, dict(overrides))
     out_path = Path(out_path)
+    snapshot_config(out_path)
     # dump_yaml rewrites the whole file and cannot preserve comments, so keep a
     # .bak of the current (hand-commented) config before overwriting it.
     if out_path.exists():
@@ -597,6 +599,7 @@ def save_comfyui_settings(cfg_path: str | Path, scalars: dict,
     """Write ComfyUI scalars + nested node maps, preserving YAML comments.
     Validates by reloading and restores the backup on failure."""
     path = Path(cfg_path)
+    snapshot_config(path)
     backup = path.read_text(encoding="utf-8") if path.exists() else ""
     text = backup
     for key, value in (scalars or {}).items():
@@ -631,6 +634,7 @@ def save_settings(cfg_path: str | Path, updates: dict, blocks: dict | None = Non
     if not updates and not blocks:
         return json.loads(Config.load(path).model_dump_json())
 
+    snapshot_config(path)
     if path.exists() and path.read_text(encoding="utf-8").strip():
         backup = text = path.read_text(encoding="utf-8")
         for section, fields in updates.items():

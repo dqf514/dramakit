@@ -5,10 +5,10 @@ Design notes:
   * JSON API under /api/*, media previews under /media/*, everything else
     served from web/static (the single-page console).
   * The server holds ONE Config + one Catalog, shared across requests (guarded
-    by a lock). Long jobs (pipeline runs, AI setup) run inline; the browser
-    shows a spinner. A background job runner keeps the UI responsive for runs.
+    by a lock). Background jobs are serialized per project and persisted in
+    SQLite with timestamps, progress, results and interruption recovery.
   * Security: this binds to 127.0.0.1 by default (local only). /media paths are
-    canonicalised and confined to the projects dir to prevent traversal.
+    canonicalised and confined to their project; config APIs never expose secrets.
 """
 from __future__ import annotations
 
@@ -32,6 +32,7 @@ from ..catalog import Catalog, open_catalog
 from ..config import Config
 from ..models import Status
 from ..project import ProjectStore
+from .jobs import JobStore
 
 log = logging.getLogger("dramakit.web")
 
@@ -82,7 +83,12 @@ class State:
         self.config_path = config_path
         self.projects_root = projects_root
         self.catalog: Catalog = open_catalog(cfg, projects_root)
-        self.jobs: dict[str, dict] = {}
+        self.job_store = JobStore(projects_root / ".dramakit_jobs.db")
+        self.jobs: dict[str, dict] = {
+            j["id"]: j for j in self.job_store.list(limit=500)
+        }
+        self.project_locks: dict[str, threading.RLock] = {}
+        self.duration_cache: dict[str, tuple[float, float]] = {}
         self._brain = None
         # what the run is saying, for the panel to show
         self.log_tail = LogTail()
@@ -116,39 +122,87 @@ class State:
         return None
 
     # -- background jobs --
-    def start_job(self, kind: str, fn) -> str:
+    def _save_job(self, jid: str, **updates) -> None:
+        with self.lock:
+            job = self.jobs[jid]
+            job.update(updates)
+            snapshot = dict(job)
+        self.job_store.save(snapshot)
+
+    def _project_lock(self, project: str) -> threading.RLock:
+        with self.lock:
+            return self.project_locks.setdefault(project, threading.RLock())
+
+    def _launch_job(self, kind: str, fn, project: str = "",
+                    with_progress: bool = False) -> str:
         jid = uuid.uuid4().hex[:12]
-        # The event is what makes a run stoppable: the thread runs the
-        # pipeline, the pipeline asks between stages and between episodes,
-        # and this is the thing they ask. Without it a plan that turns out
-        # wrong has to run to the end.
         stop = threading.Event()
-        self.jobs[jid] = {"id": jid, "kind": kind, "status": "running",
-                          "result": None, "error": None, "stop": stop}
+        now = time.time()
+        self.jobs[jid] = {"id": jid, "kind": kind, "project": project,
+                          "status": "queued", "result": None, "error": None,
+                          "progress": {}, "created_at": now, "started_at": None,
+                          "finished_at": None, "stop": stop}
+        self.job_store.save(self.jobs[jid])
+
+        def _execute():
+            if stop.is_set():
+                self._save_job(jid, status="interrupted", error="任务已取消",
+                               finished_at=time.time())
+                return
+            self._save_job(jid, status="running", started_at=time.time())
+            try:
+                if with_progress:
+                    def report(**kw):
+                        progress = {**self.jobs[jid].get("progress", {}), **kw}
+                        self._save_job(jid, progress=progress)
+                    res = fn(report, stop)
+                else:
+                    res = fn(stop)
+                interrupted = stop.is_set()
+                self._save_job(
+                    jid, status="interrupted" if interrupted else "done", result=res,
+                    error="已按请求停止，已完成的内容保留" if interrupted else None,
+                    finished_at=time.time())
+            except Exception as e:  # noqa: BLE001
+                log.error("job %s failed: %s", jid, traceback.format_exc())
+                self._save_job(jid, status="error", error=str(e)[:500],
+                               finished_at=time.time())
 
         def _wrap():
             try:
-                res = fn(stop)
-                self.jobs[jid].update(status="done", result=res)
-            except Exception as e:  # noqa: BLE001
-                log.error("job %s failed: %s", jid, traceback.format_exc())
-                self.jobs[jid].update(status="error", error=str(e)[:500])
+                if project:
+                    with self._project_lock(project):
+                        _execute()
+                else:
+                    _execute()
             finally:
-                # the event is not JSON; the record is handed to the page
                 self.jobs[jid].pop("stop", None)
 
         threading.Thread(target=_wrap, daemon=True).start()
         return jid
 
+    def start_job(self, kind: str, fn, project: str = "") -> str:
+        return self._launch_job(kind, fn, project)
+
+    def get_job(self, jid: str) -> Optional[dict]:
+        job = self.jobs.get(jid) or self.job_store.get(jid)
+        return {k: v for k, v in job.items() if k != "stop"} if job else None
+
+    def list_jobs(self, project: str = "", status: str = "",
+                  limit: int = 100) -> list[dict]:
+        return self.job_store.list(project=project, status=status, limit=limit)
+
     def stop_job(self, jid: str) -> bool:
-        """Ask a running job to stop. False when there is no such job."""
-        j = self.jobs.get(jid)
-        if not j:
+        job = self.jobs.get(jid)
+        if not job or job.get("status") not in ("queued", "running"):
             return False
-        ev = j.get("stop")
+        ev = job.get("stop")
         if ev is None:
             return False
         ev.set()
+        if job.get("status") == "queued":
+            self._save_job(jid, status="interrupted", error="任务已取消",
+                           finished_at=time.time())
         return True
 
     def settle_leftover_runs(self) -> int:
@@ -197,31 +251,11 @@ class State:
         return settled
 
     def running_jobs(self) -> list[str]:
-        return [k for k, v in self.jobs.items() if v.get("status") == "running"]
+        return [k for k, v in self.jobs.items()
+                if v.get("status") in ("queued", "running")]
 
-    def start_job_progress(self, kind: str, fn) -> str:
-        """Like start_job, but fn gets a report() callable for live progress."""
-        jid = uuid.uuid4().hex[:12]
-        stop = threading.Event()
-        self.jobs[jid] = {"id": jid, "kind": kind, "status": "running",
-                          "result": None, "error": None, "progress": {},
-                          "stop": stop}
-
-        def _wrap():
-            def report(**kw):
-                self.jobs[jid]["progress"].update(kw)
-            try:
-                res = fn(report, stop)
-                self.jobs[jid].update(status="done", result=res)
-            except Exception as e:  # noqa: BLE001
-                log.error("job %s failed: %s", jid, traceback.format_exc())
-                self.jobs[jid].update(status="error", error=str(e)[:500])
-            finally:
-                # the event is not JSON; the record is handed to the page
-                self.jobs[jid].pop("stop", None)
-
-        threading.Thread(target=_wrap, daemon=True).start()
-        return jid
+    def start_job_progress(self, kind: str, fn, project: str = "") -> str:
+        return self._launch_job(kind, fn, project, with_progress=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -242,6 +276,14 @@ def _make_handler(state: State):
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "DENY")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Content-Security-Policy",
+                             "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+                             "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+                             "media-src 'self' data: blob:; connect-src 'self' ws: wss:; "
+                             "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
             for k, v in (extra or {}).items():
                 self.send_header(k, v)
             self.end_headers()
@@ -350,17 +392,53 @@ def _make_handler(state: State):
                 return self._json({"ok": True, "lines": state.log_tail.tail(n)})
             if path == "/api/jobs":
                 jid = (query.get("id") or [""])[0]
-                j = state.jobs.get(jid)
-                return self._json({"ok": bool(j), "job": j})
+                if jid:
+                    j = state.get_job(jid)
+                    return self._json({"ok": bool(j), "job": j})
+                project = (query.get("project") or [""])[0]
+                status = (query.get("status") or [""])[0]
+                try:
+                    limit = int((query.get("limit") or ["100"])[0])
+                except ValueError:
+                    limit = 100
+                jobs = state.list_jobs(project, status, limit)
+                return self._json({"ok": True, "jobs": jobs,
+                                   "active": len(state.running_jobs())})
             if path == "/api/config":
-                return self._json({"ok": True,
-                                   "config": json.loads(state.cfg.model_dump_json())})
+                c = state.cfg
+                return self._json({"ok": True, "config": {
+                    "pipeline": {"output_dir": c.pipeline.output_dir},
+                    "web": {"host": c.web.host, "port": c.web.port,
+                            "title": c.web.title},
+                    "llm": {"base_url": c.llm.base_url, "model": c.llm.model,
+                            "api_key_set": bool(c.llm.api_key)},
+                    "comfyui": {"base_url": c.comfyui.base_url,
+                                "enabled": c.comfyui.enabled},
+                    "tts": {"provider": c.tts.provider,
+                            "base_url": c.tts.base_url},
+                    "music": {"provider": c.music.provider},
+                }})
             if path == "/api/config/llm":
                 return self._json(self._api_config_llm_get())
             if path == "/api/config/models":
                 return self._json(self._api_config_models_get())
             if path == "/api/config/production":
                 return self._json(self._api_config_production_get())
+            if path == "/api/config/history":
+                from ..config_history import versions
+                cfg_path = state.config_path or Path("config/default.yaml")
+                return self._json({"ok": True, "versions": versions(cfg_path)})
+            if path == "/api/projects/trash":
+                trash = state.projects_root / "_trash"
+                rows = []
+                if trash.exists():
+                    for item in trash.iterdir():
+                        if (item / "project.json").is_file():
+                            rows.append({"slug": item.name, "name": item.name,
+                                         "deleted_at": item.stat().st_mtime,
+                                         "bytes": _dir_size(item)})
+                rows.sort(key=lambda x: x["deleted_at"], reverse=True)
+                return self._json({"ok": True, "projects": rows})
             if path == "/api/assets":
                 slug = (query.get("project") or [""])[0]
                 kind = (query.get("kind") or [""])[0]
@@ -383,7 +461,19 @@ def _make_handler(state: State):
                         data = _json.loads(pf.read_text(encoding="utf-8"))
                     except Exception:  # noqa: BLE001
                         data = {}
-                return self._json({"ok": True, "progress": data})
+                summary = None
+                store = state.open_store(slug)
+                if store:
+                    proj = store.load()
+                    value = lambda v: getattr(v, "value", str(v))
+                    summary = {
+                        "updated_at": proj.meta.updated_at,
+                        "stage_status": {k: value(v) for k, v in proj.stage_status.items()},
+                        "episodes": [{"index": ep.index, "status": value(ep.status),
+                                      "stage_status": {k: value(v) for k, v in ep.stage_status.items()}}
+                                     for ep in proj.episodes],
+                    }
+                return self._json({"ok": True, "progress": data, "project": summary})
             if path == "/api/nodes":
                 from ..providers.nodes import (check_node, manifest,
                                               nodes_from_config)
@@ -422,6 +512,8 @@ def _make_handler(state: State):
                 return self._json(self._api_reindex(body))
             if path == "/api/projects/delete":
                 return self._json(self._api_projects_delete(body))
+            if path == "/api/projects/manage":
+                return self._json(self._api_projects_manage(body))
             if path == "/api/upload":
                 return self._json(self._api_upload(body))
             if path == "/api/new":
@@ -440,6 +532,12 @@ def _make_handler(state: State):
                 return self._json(self._api_config_test_llm(body))
             if path == "/api/config/production":
                 return self._json(self._api_config_production_save(body))
+            if path == "/api/config/restore":
+                from ..config_history import restore
+                cfg_path = state.config_path or Path("config/default.yaml")
+                restore(cfg_path, str(body.get("id") or ""))
+                state.reload_config()
+                return self._json({"ok": True})
             if path == "/api/comfyui/inspect":
                 return self._json(self._api_comfyui_inspect(body))
             if path == "/api/comfyui/apply":
@@ -460,7 +558,7 @@ def _make_handler(state: State):
         def _serve_static(self, path: str):
             rel = "index.html" if path in ("/", "") else path.lstrip("/")
             f = (STATIC_DIR / rel).resolve()
-            if not str(f).startswith(str(STATIC_DIR.resolve())) or not f.is_file():
+            if not f.is_relative_to(STATIC_DIR.resolve()) or not f.is_file():
                 f = STATIC_DIR / "index.html"
             ctype = mimetypes.guess_type(str(f))[0] or "application/octet-stream"
             self._send(200, f.read_bytes(), ctype)
@@ -473,7 +571,7 @@ def _make_handler(state: State):
             slug, sub = parts[0], parts[1]
             base = (state.projects_root / slug).resolve()
             target = (base / sub).resolve()
-            if not str(target).startswith(str(base)) or not target.is_file():
+            if not target.is_relative_to(base) or not target.is_file():
                 return self._err("not found", 404)
             ctype = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
             self._send(200, target.read_bytes(), ctype)
@@ -624,12 +722,19 @@ def _make_handler(state: State):
                     return 0.0
 
             def _duration(rel: str) -> float:
-                """How long the finished film is."""
                 if not rel:
                     return 0.0
                 try:
+                    path = store.abs(rel)
+                    mtime = path.stat().st_mtime
+                    cache_key = str(path)
+                    cached = state.duration_cache.get(cache_key)
+                    if cached and cached[0] == mtime:
+                        return cached[1]
                     from ..media.ffmpeg import probe_duration
-                    return round(float(probe_duration(store.abs(rel))), 2)
+                    duration = round(float(probe_duration(path)), 2)
+                    state.duration_cache[cache_key] = (mtime, duration)
+                    return duration
                 except Exception:  # noqa: BLE001
                     return 0.0
 
@@ -945,7 +1050,7 @@ def _make_handler(state: State):
                             brain=brain if with_ai else None)
                 return res
 
-            jid = state.start_job("run_pipeline", _job)
+            jid = state.start_job("run_pipeline", _job, act.params.get("project", ""))
             return {"ok": True, "job": jid}
 
         def _api_nodes_sync(self, body: dict) -> dict:
@@ -1083,6 +1188,62 @@ def _make_handler(state: State):
                 pass
             return {"ok": True, "project": slug, "moved_to": str(dest)}
 
+        def _api_projects_manage(self, body: dict) -> dict:
+            from ..project import slugify
+            action = str(body.get("action") or "")
+            slug = str(body.get("project") or "").strip()
+            if not slug or Path(slug).name != slug:
+                return {"ok": False, "error": "项目编号不合法"}
+            base = state.projects_root.resolve()
+            if action == "restore":
+                source = (base / "_trash" / slug).resolve()
+                dest = (base / slug).resolve()
+                if source.parent != (base / "_trash").resolve() or not source.is_dir():
+                    return {"ok": False, "error": "回收站中没有这个项目"}
+                if dest.exists():
+                    return {"ok": False, "error": "已有同名项目，请先重命名现有项目"}
+                shutil.move(str(source), str(dest))
+                state.catalog.reindex_project(ProjectStore.open(dest), with_ai=False)
+                return {"ok": True, "project": slug}
+            store = state.open_store(slug)
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            if action == "stats":
+                return {"ok": True, "project": slug, "bytes": _dir_size(store.root)}
+            name = str(body.get("name") or "").strip()
+            if not name:
+                return {"ok": False, "error": "项目名称不能为空"}
+            new_slug = slugify(name)
+            dest = base / new_slug
+            if dest.exists() and dest != store.root:
+                return {"ok": False, "error": "已有同名项目，请换一个名称"}
+            if action == "rename":
+                proj = store.load()
+                proj.meta.name = name
+                proj.meta.title = name
+                store.save(proj)
+                if dest != store.root:
+                    shutil.move(str(store.root), str(dest))
+                state.catalog.reindex_project(ProjectStore.open(dest), with_ai=False)
+                return {"ok": True, "project": new_slug, "name": name}
+            if action == "duplicate":
+                if dest.exists():
+                    return {"ok": False, "error": "已有同名副本，请换一个名称"}
+                def _job(stop=None):
+                    shutil.copytree(store.root, dest)
+                    if stop and stop.is_set():
+                        return {"project": new_slug, "name": name}
+                    copied = ProjectStore.open(dest)
+                    proj = copied.load()
+                    proj.meta.name = name
+                    proj.meta.title = name
+                    copied.save(proj)
+                    state.catalog.reindex_project(copied, with_ai=False)
+                    return {"project": new_slug, "name": name}
+                jid = state.start_job("duplicate_project", _job, slug)
+                return {"ok": True, "job": jid}
+            return {"ok": False, "error": "不支持的项目操作"}
+
         def _api_chapter_read(self, body: dict) -> dict:
             """The text of one chapter, by its index in the project's catalogue."""
             store = state.open_store(body.get("project", ""))
@@ -1105,7 +1266,7 @@ def _make_handler(state: State):
             root = store.root.resolve()
             fpath = (root / rel).resolve()
             # the file must live inside the project - never read outside it
-            if not str(fpath).startswith(str(root)) or not fpath.is_file():
+            if not fpath.is_relative_to(root) or not fpath.is_file():
                 return {"ok": False, "error": f"章节文件缺失：{rel}"}
 
             try:
@@ -1821,6 +1982,17 @@ def _legacy_model_entries(cfg: Config) -> tuple[list[dict], str]:
     return entries, "m1"
 
 
+def _dir_size(root: Path) -> int:
+    total = 0
+    for path in root.rglob("*"):
+        try:
+            if path.is_file():
+                total += path.stat().st_size
+        except OSError:
+            continue
+    return total
+
+
 def _media_url(slug: str, rel_path: str) -> str:
     if not rel_path:
         return ""
@@ -1883,6 +2055,13 @@ def serve(cfg: Config, *, config_path: Optional[Path] = None,
     # a process that died could not say so; settle what it left running
     # before anyone reads the console and believes it
     try:
+        interrupted = state.job_store.settle_leftovers()
+        if interrupted:
+            log.warning("启动清理：%d 个后台任务已标记为中断", interrupted)
+            for job in state.jobs.values():
+                if job.get("status") in ("queued", "running"):
+                    job.update(status="interrupted", error="服务重启，任务已中断",
+                               finished_at=time.time())
         state.settle_leftover_runs()
     except Exception as e:  # noqa: BLE001
         # a failed tidy-up must never be why the console will not start

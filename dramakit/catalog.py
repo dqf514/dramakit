@@ -19,6 +19,7 @@ import json
 import logging
 import sqlite3
 import threading
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -70,10 +71,15 @@ class Catalog:
         self._init_schema()
 
     # ------------------------------------------------------------------ conn
-    def _conn(self) -> sqlite3.Connection:
+    @contextmanager
+    def _conn(self):
         c = sqlite3.connect(self.db_path, timeout=30)
         c.row_factory = sqlite3.Row
-        return c
+        try:
+            with c:
+                yield c
+        finally:
+            c.close()
 
     def _init_schema(self) -> None:
         with _lock, self._conn() as c:

@@ -555,38 +555,27 @@ try{
 .sk-cost{font-variant-numeric:tabular-nums}
 </style>
 </style>
+<link rel="stylesheet" href="/modern.css">
 </head>
 <body>
 <div id="app">
-  <nav id="rail">
-    <div class="brand">DK</div>
-    <button class="railbtn on" data-page="guide" title="导引">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1 5.1-2.1z"/></svg>
-      <span>导引</span>
+  <nav id="rail" aria-label="主导航">
+    <button class="brand" id="brandBtn" title="打开导引" aria-label="打开导引">DK</button>
+    <button class="railbtn on" data-page="workbench" data-group="workbench" title="项目">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>项目</span>
     </button>
-    <button class="railbtn" data-page="workbench" title="工作台">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      <span>工作台</span>
+    <button class="railbtn" data-page="board" data-group="studio" title="制作">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M17 9h4M3 15h4M17 15h4"/></svg>
+      <span>制作</span>
     </button>
-    <button class="railbtn" data-page="board" title="分镜台">
-      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M17 9h4M3 15h4M17 15h4"/></svg>
-      <span>分镜台</span>
-    </button>
-    <button class="railbtn" data-page="cast" title="角色库">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      <span>角色库</span>
-    </button>
-    <button class="railbtn" data-page="pipeline" title="流水线">
-      <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/></svg>
-      <span>流水线</span>
+    <button class="railbtn" data-page="jobs" data-group="jobs" title="任务">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2M5 3l2 2M19 3l-2 2"/></svg>
+      <span>任务</span><span class="job-count" id="jobCount" hidden>0</span>
     </button>
     <button class="railbtn" data-page="assets" title="资产">
-      <svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
       <span>资产</span>
-    </button>
-    <button class="railbtn" data-page="skills" title="技能">
-      <svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2V5z"/><path d="M9 3v18"/></svg>
-      <span>技能</span>
     </button>
     <button class="railbtn" data-page="settings" title="设置">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -730,7 +719,7 @@ async function boot(){
     if(pj && S.projects.some(x=>x.slug===pj) && pj!==S.current){
       S.current=pj; await selectProject(pj, true);
     }
-    const known=["guide","workbench","board","cast","pipeline","assets","settings"];
+    const known=["guide","workbench","board","cast","pipeline","jobs","assets","skills","settings"];
     S.activePage = pg && known.includes(pg) ? pg
                  : (S.projects.length ? "workbench" : "guide");
     S.booted=true;
@@ -768,7 +757,7 @@ function switchPage(name, force){
   $$(".page").forEach(p=>p.style.display=(p.id==="page-"+name?"":"none"));
   $("#main").scrollTop=0;
   // remember where we are: a refresh should come back to it
-  try{ if(S.current) location.replace("#"+S.current+"/"+name); }catch(e){}
+  try{ location.replace("#"+(S.current||"_")+"/"+name); }catch(e){}
   if(name==="guide") renderGuide();
   if(name==="workbench") renderWorkbench();
   if(name==="board") renderBoard();
@@ -984,13 +973,13 @@ function renderGuide(){
     <div class="guide-hero">
       <div>
         <h1>从一本小说，到一条能发的竖屏短剧</h1>
-        <div class="gsub">十二个阶段串成一条流水线：AI 读故事、定角色、切集、写剧本、拆分镜、生成提示词，再交给 ComfyUI 出画面、TTS 配音、曲库配乐，最后 ffmpeg 合成。所有状态都在 <code>project.json</code>，断了能接着跑。</div>
+        <div class="gsub">从故事分析、角色定妆到画面、声音和质检，所有阶段都有真实状态。先检查环境与执行范围，再开始生成；中断后可以从已完成的位置继续。</div>
         <div class="guide-stats">
           <div><b>${d?esc(d.meta.title||d.meta.name):"—"}</b><span>当前项目</span></div>
           <div><b>${eps.length}</b><span>集</span></div>
           <div><b>${shots}</b><span>分镜</span></div>
           <div><b>${finals}</b><span>成片</span></div>
-          <div><b>${doneStages}/12</b><span>阶段完成</span></div>
+          <div><b>${doneStages}/${STAGES.length}</b><span>阶段完成</span></div>
         </div>
       </div>
       <div class="gh-side">
@@ -1125,7 +1114,7 @@ function renderGuide(){
 
     <h2 class="page" style="font-size:14px;margin:16px 0 8px">怎么做到“无缝”</h2>
     <div class="flowgrid">
-      <div class="flow"><b>① 一条命令跑全链</b><span>十二阶段按固定顺序执行，已完成节点自动跳过；也可以只勾某几段重跑。</span></div>
+      <div class="flow"><b>① 一条命令跑全链</b><span>全部制作与质检阶段按依赖顺序执行，已完成节点自动跳过；运行前可确认范围，也可以只勾某几段重跑。</span></div>
       <div class="flow"><b>② 断点续跑</b><span>所有状态写进 <code>project.json</code>，每个集/场/镜/台词都有 status。崩溃、换模型、换 ComfyUI 后直接重跑即可。</span></div>
       <div class="flow"><b>③ 改一处，只废下游</b><span>改台词只作废这句配音/字幕/合成；改角色锚点会重置相关提示词；单镜返工只重出那一个镜头。</span></div>
       <div class="flow"><b>④ 后台任务不堵界面</b><span>生成画面/视频可能跑几十分钟；任务在服务端线程里跑，浏览器轮询，随时可以切页面或关掉重开。</span></div>
@@ -1513,13 +1502,16 @@ function startProgressPoll(){
     // submitted after the page loaded was never seen, and the workbench
     // stayed silent for the whole run.
     try{
-      const d=await getJSON("/api/projects/"+encodeURIComponent(S.current));
-      if(!d||!d.ok) return;
-      S.detail=d;
       const pr=await getJSON("/api/progress?project="+encodeURIComponent(S.current));
-      if(pr&&pr.ok) S.progress=pr.progress||{};
-      // the panel is updated where it stands: redrawing the workbench
-      // would reset the scroll of a chapter list the user is reading
+      if(!pr||!pr.ok) return;
+      S.progress=pr.progress||{};
+      if(pr.project&&S.detail){
+        S.detail.stage_status=pr.project.stage_status||{};
+        (pr.project.episodes||[]).forEach(summary=>{
+          const ep=(S.detail.episodes||[]).find(e=>e.index===summary.index);
+          if(ep){ep.status=summary.status;ep.stage_status=summary.stage_status||{};}
+        });
+      }
       updateProgressPanel();
       renderHeader(); renderProjects();
     }catch(e){/* 网络瞬断 */}
@@ -1597,7 +1589,7 @@ function renderWorkbench(){
           <div class="stat"><b>${eps.reduce((a,e)=>a+e.scenes.length,0)}</b><span>场次</span></div>
           <div class="stat"><b>${shots}</b><span>分镜</span></div>
           <div class="stat"><b>${(d.characters||[]).length}</b><span>角色</span></div>
-          <div class="stat"><b>${doneStages}/12</b><span>阶段完成</span></div>
+          <div class="stat"><b>${doneStages}/${STAGES.length}</b><span>阶段完成</span></div>
         </div>
         <div class="quick">
           <button class="btn go" data-act="run-all">▶ 跑完整流程</button>
@@ -1607,7 +1599,7 @@ function renderWorkbench(){
         </div>
       </div>
     </div>
-    <div class="card"><h3>制作阶段 <span class="muted" style="font-weight:400">完成 ${doneStages}/12</span></h3>
+    <div class="card"><h3>制作阶段 <span class="muted" style="font-weight:400">完成 ${doneStages}/${STAGES.length}</span></h3>
       <div class="stagebar">${stageHtml}</div>
       ${runningProgressHtml()}
       <div class="muted" style="font-size:11px;margin-top:8px">阶段按顺序执行；画面/配音可单独重跑。点击阶段跳到流水线并勾选它。</div>
@@ -2163,20 +2155,30 @@ function parseEps(str){
   });
   return [...new Set(out.filter(n=>!isNaN(n)))];
 }
-function doRun(){
+async function doRun(){
   const body={project:$("#runProj").value,episodes:parseEps($("#runEps").value),
     stages:[...runSel],overrides:{}};
   if(!body.project){ toast("请先选择项目","err"); return; }
   if(!body.stages.length){ toast("至少选一个阶段","err"); return; }
+  if(window.runPreflight && !(await runPreflight(body.stages,"流水线",body))) return;
   $("#runStat").innerHTML='<span class="spin"></span> 运行中…（可切到别处，稍后刷新）';
   $("#runGo").disabled=true;
   postJSON("/api/run",body).then(r=>{
     if(!r.ok){ $("#runStat").textContent="失败："+(r.error||""); $("#runGo").disabled=false; return; }
-    pollJob(r.job,res=>{
+    pollJob(r.job,(res,job)=>{
       $("#runGo").disabled=false;
-      $("#runStat").innerHTML='<span style="color:var(--go2)">✓ 运行完成</span>';
-      $("#runOut").innerHTML=`<div class="card"><h3>结果</h3><pre style="font-family:var(--mono);font-size:11px;overflow:auto;margin:0">${esc(JSON.stringify(res,null,1))}</pre></div>`;
-      toast("流水线完成","ok"); selectProject(body.project,true).then(()=>renderWorkbench());
+      if(!res||job.status!=="done"){
+        const msg=(job&&job.error)||"任务已中断，未产生完整结果";
+        $("#runStat").innerHTML=`<span style="color:var(--danger2)">✗ ${esc(msg)}</span>`;
+        $("#runOut").innerHTML=`<div class="card run-result fail"><h3>运行未完成</h3><p>${esc(msg)}</p><button class="btn ghost" onclick="switchPage('jobs')">查看任务与日志</button></div>`;
+        return;
+      }
+      const failed=Object.entries(res||{}).filter(([,v])=>v&&v.error);
+      const rows=Object.entries(res||{}).map(([s,v])=>`<div class="result-row"><b>${esc(STAGE_ZH[s]||s)}</b>${v&&v.error?`<span class="badge fail">${esc(v.error)}</span>`:'<span class="badge done">完成</span>'}</div>`).join("");
+      $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)">✓ 运行完成</span>';
+      $("#runOut").innerHTML=`<div class="card run-result"><h3>${failed.length?"部分完成":"运行完成"}</h3>${rows}<details><summary>查看原始结果</summary><pre>${esc(JSON.stringify(res,null,1))}</pre></details></div>`;
+      toast(failed.length?"部分阶段失败，请查看结果":"流水线完成",failed.length?"err":"ok");
+      selectProject(body.project,true).then(()=>renderWorkbench());
     });
   });
 }
@@ -3031,7 +3033,7 @@ async function stopRun(){
     toast((r&&r.error)||"停不下来","err",4000);
     return;
   }
-  toast("已请求停止：当前这一步的调用结束后停下（约 1 分钟内），"
+  toast("已请求停止：当前这一步的调用结束后停下（约 1 分钟内），" +
         "已完成的保留","",5000);
   // the panel keeps polling; the stage will show as interrupted when the
   // run has actually let go
@@ -3177,5 +3179,6 @@ async function recommendSkills(){
   renderSkills();
 }
 </script>
+<script src="/modern.js"></script>
 </body>
 </html>
