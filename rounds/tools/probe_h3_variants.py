@@ -34,13 +34,16 @@ FRAMES = int(sys.argv[1]) if len(sys.argv) > 1 else 49
 VARIANTS = [
     ("nvfp4", {"unet_name": "MiniMax_H3_Ref2VA_pruned_nvfp4.safetensors"},
      {"clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "device": "default"}),
-    ("nvfp4+clipCPU", {"unet_name": "MiniMax_H3_Ref2VA_pruned_nvfp4.safetensors"},
-     {"clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "device": "cpu"}),
-    ("w6a8", {"unet_name": "minimax_h3_ref2va_pruned_w6a8.safetensors"},
-     {"clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "device": "cpu"}),
     ("mixed_int4_int8", {"unet_name": "MiniMax_H3_Ref2VA_pruned_mixed_int4_int8_convrot.safetensors"},
-     {"clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "device": "cpu"}),
+     {"clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "device": "default"}),
 ]
+
+# The first time a weight is used the card pays for things it will not pay
+# for again - the kernels are compiled, the file is read, the quantised
+# weights are built. So the order of the tests is not the answer: the
+# second round of each is. Two rounds, alternating, and the second round
+# is what is compared.
+ROUNDS = 2
 
 
 def post(path, body, timeout=180):
@@ -139,15 +142,20 @@ def run(name, unet, clip):
 
 
 results = []
-for name, unet, clip in VARIANTS:
-    print(f"=== {name} ===", flush=True)
-    r = run(name, unet, clip)
-    results.append(r)
-    print("  ->", json.dumps(r, ensure_ascii=False), flush=True)
+for rnd in range(ROUNDS):
+    for name, unet, clip in VARIANTS:
+        print(f"=== 第 {rnd+1}/{ROUNDS} 轮 · {name} ===", flush=True)
+        r = run(name, unet, clip)
+        r["round"] = rnd + 1
+        results.append(r)
+        print("  ->", json.dumps(r, ensure_ascii=False), flush=True)
 
 print()
-print("=== 结果 ===")
+print("=== 结果（看第 2 轮，那才是稳态）===")
 for r in results:
-    print("  %-18s %s" % (r["name"], json.dumps(r, ensure_ascii=False)))
+    print("  %-18s 第%d轮  %s" % (r["name"], r.get("round", 0),
+                                  json.dumps({k: v for k, v in r.items()
+                                              if k not in ("name", "round")},
+                                             ensure_ascii=False)))
 Path(r"C:\Users\David\AppData\Local\Temp\opencode\ab_test.txt").write_text(
     json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")

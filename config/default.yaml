@@ -258,7 +258,7 @@ comfyui:
   request_timeout: 60.0                     # 短HTTP调用（提交/查询/下载）超时
   poll_interval: 1.0
   concurrency: 1 # 出图并发（本机一张卡，一次一个）
-  video_concurrency: 2                     # 出视频并发（每个远端节点一个）
+  video_concurrency: 3                     # 出视频并发（三台出视频的机器各一个）
   max_retries: 3                            # 远程网络抖动重试次数
   use_proxy: false                          # 直连(false)：局域网/远程 ComfyUI 必须 false，
                                             #   否则 httpx 会读系统代理导致连不上/卡住
@@ -366,9 +366,9 @@ comfyui:
       transfer: none
       remote_models: ""
       graph_overrides:
+        "127": {unet_name: MiniMax_H3_Ref2VA_pruned_nvfp4.safetensors}
+        "128": {clip_name: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors, device: default}
         "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
-        "127": {unet_name: MiniMax_H3_FL2VA_pruned_nvfp4.safetensors}
-        "128": {clip_name: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors}
       ssh_host: ""
       ssh_user: ""
       ssh_key: ""
