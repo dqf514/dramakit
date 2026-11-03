@@ -339,6 +339,7 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     aspect, composition = _aspect(ctx)
     user = T.render(template, shot_type=shot.shot_type.value,
                     camera_move=shot.camera_move,
+                    duration=_shot_seconds(shot),
                     action=_action_without_words(shot.action),
                     character_anchors=visuals, location=sc.location or "场景",
                     location_visual=location_visual or "（按剧情合理生成）",

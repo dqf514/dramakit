@@ -124,6 +124,8 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                 if fn is None:
                     continue
                 res = fn(ctx) or {}
+            if season_obj is None:
+                season_obj = ctx.season
             results[name] = res
             ctx.project.stage_status[name] = Status.DONE
             if season_obj is not None:

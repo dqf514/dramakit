@@ -125,9 +125,9 @@ class State:
     def _save_job(self, jid: str, **updates) -> None:
         with self.lock:
             job = self.jobs[jid]
+            snapshot = {**job, **updates}
+            self.job_store.save(snapshot)
             job.update(updates)
-            snapshot = dict(job)
-        self.job_store.save(snapshot)
 
     def _project_lock(self, project: str) -> threading.RLock:
         with self.lock:
@@ -1121,7 +1121,7 @@ def _make_handler(state: State):
                 store = ProjectStore.create(state.projects_root, name)
             src_dir = store.root / "source"
             src_dir.mkdir(parents=True, exist_ok=True)
-            fname = Path(name or "novel.txt").name
+            fname = Path(str(body.get("file") or "novel.txt")).name
             if not fname.lower().endswith((".txt", ".md")):
                 fname += ".txt"
             f = src_dir / fname
@@ -1130,17 +1130,17 @@ def _make_handler(state: State):
             proj = store.load()
             proj.meta.source_file = str(f)
             store.save(proj)
-            # and cut the book straight away, so the console can show the
-            # table of contents and the user can pick the chapters
+            # A quick local cut keeps upload responsive; the ingest stage can
+            # refine unusual heading formats with the model afterwards.
             info = {}
             try:
                 from ..pipeline.catalog import run as catalog_run
                 from ..pipeline.base import Context
                 cfg = state.cfg
-                info = {"catalog": catalog_run(Context(cfg, store), str(f))}
+                info = {"catalog": catalog_run(Context(cfg, store), str(f), use_llm=False)}
             except Exception as e:  # noqa: BLE001
                 info = {"catalog_error": str(e)[:300]}
-            return {"ok": True, "project": store.root.name,
+            return {"ok": True, "project": store.root.name, "slug": store.root.name,
                     "path": str(f), "chars": len(text), **info}
 
         def _api_chapters_choose(self, body: dict) -> dict:

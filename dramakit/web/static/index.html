@@ -692,7 +692,7 @@ async function pollJob(jid, onDone){
     const r = await getJSON("/api/jobs?id="+encodeURIComponent(jid));
     const j = r.job;
     if(!j){ toast("任务丢失","err"); return; }
-    if(j.status==="running"){ setTimeout(tick, 900); return; }
+    if(j.status==="queued"||j.status==="running"){ setTimeout(tick, 900); return; }
     if(j.status==="error"){ toast("任务失败："+esc(j.error),"err",6000); onDone&&onDone(null,j); return; }
     onDone&&onDone(j.result,j);
   };
@@ -841,6 +841,15 @@ async function selectProject(slug, quiet){
   const d=await getJSON("/api/projects/"+encodeURIComponent(slug));
   if(!d.ok){ toast("加载项目失败："+esc(d.error||""),"err"); return; }
   S.detail=d;
+  const summary=S.projects.find(p=>p.slug===slug);
+  if(summary){
+    summary.episodes=(d.episodes||[]).length;
+    summary.shots=(d.episodes||[]).reduce((n,ep)=>n+ep.scenes.reduce((x,s)=>x+s.shots.length,0),0);
+    summary.characters=(d.characters||[]).length;
+    summary.genre=d.art_direction.genre||"";
+    summary.style=d.art_direction.style||"";
+    summary.updated_at=d.meta.updated_at||summary.updated_at;
+  }
   const pr=await getJSON("/api/progress?project="+encodeURIComponent(slug));
   S.progress=(pr&&pr.ok)?(pr.progress||{}):{};
   if(!S.boardEp || !(d.episodes||[]).some(e=>e.index===S.boardEp)) S.boardEp=(d.episodes[0]||{}).index||0;
@@ -1155,6 +1164,21 @@ dj comfy-test --gen                        # 远程 ComfyUI 自检 + 试生成�
     runSel=new Set([x.dataset.gstage]); switchPage("pipeline");
   });
   const gc=$("#gCreate"); if(gc) gc.onclick=createProjectFromGuide;
+  const picker=$("#gFilePicker"), sourceInput=$("#gSource");
+  if(picker) picker.onchange=()=>{
+    const file=picker.files&&picker.files[0];
+    if(!file){ $("#gFileName").textContent=""; return; }
+    sourceInput.value=file.name;
+    const size=file.size>=1024*1024?(file.size/1024/1024).toFixed(1)+" MB":Math.max(1,Math.round(file.size/1024))+" KB";
+    $("#gFileName").textContent=`已选择本地文件 · ${size}`;
+  };
+  if(sourceInput) sourceInput.oninput=()=>{
+    const file=picker&&picker.files&&picker.files[0];
+    if(file&&sourceInput.value.trim()!==file.name){
+      picker.value="";
+      $("#gFileName").textContent="已改用手动路径";
+    }
+  };
   comfyBind();
 }
 
@@ -1329,7 +1353,8 @@ async function startStages(stages,label){
   pollJob(r.job,async res=>{
     if(guideTimer){ clearInterval(guideTimer); guideTimer=null; }
     S.guideBusy=null;
-    const failed=(stages||[]).filter(s=>res&&res[s]&&res[s].error);
+    const stageResults=(res&&res.results)||res||{};
+    const failed=(stages||[]).filter(s=>stageResults[s]&&stageResults[s].error);
     if(!res) toast("任务失败，请到流水线查看输出","err",6000);
     else if(failed.length) toast("部分阶段失败："+failed.map(s=>STAGE_ZH[s]||s).join("、"),"err",6000);
     else toast((label||"阶段")+" 完成","ok");
@@ -1374,16 +1399,16 @@ if(picked){
   r=await postJSON("/api/new",{name,source});
 }
   if(!r.ok){ btn.disabled=false; btn.textContent=old; return toast("创建失败："+esc(r.error||""),"err"); }
-  S.current=r.slug;
+  S.current=r.slug||r.project;
   await boot();
   S.activePage="guide"; switchPage("guide",true);
   const d=S.detail;
-  if(source&&!(d&&d.meta&&d.meta.source_file)){
+  if(!picked&&source&&!(d&&d.meta&&d.meta.source_file)){
     toast("项目已建，但源文件不可读；请检查路径后重试导入","err",6000);
     return;
   }
-  if(source){ toast("项目已创建，开始导入…","ok"); startStages(["ingest"],"导入"); }
-  else toast("项目已创建；补上小说路径后可跑「导入」","",3200);
+  if(picked||source){ toast("项目已创建，开始导入…","ok"); startStages(["ingest"],"导入"); }
+  else toast("项目已创建；选择小说后可跑「导入」","",3200);
 }
 
 // ---------- workbench ----------
@@ -1401,7 +1426,10 @@ function stageState(stage){
   return "pending";
 }
 function epProgress(ep){
-  const vals=STAGES.map(s=>(ep.stage_status||{})[s]);
+  const proj=(S.detail&&S.detail.stage_status)||{};
+  const shared=["ingest","analyze","character","segment"];
+  const vals=STAGES.map(s=>(ep.stage_status||{})[s]||
+    (shared.includes(s)?proj[s]:undefined));
   return Math.round(vals.filter(v=>v==="done").length/STAGES.length*100);
 }
 function runningStageName(){
@@ -2173,10 +2201,11 @@ async function doRun(){
         $("#runOut").innerHTML=`<div class="card run-result fail"><h3>运行未完成</h3><p>${esc(msg)}</p><button class="btn ghost" onclick="switchPage('jobs')">查看任务与日志</button></div>`;
         return;
       }
-      const failed=Object.entries(res||{}).filter(([,v])=>v&&v.error);
-      const rows=Object.entries(res||{}).map(([s,v])=>`<div class="result-row"><b>${esc(STAGE_ZH[s]||s)}</b>${v&&v.error?`<span class="badge fail">${esc(v.error)}</span>`:'<span class="badge done">完成</span>'}</div>`).join("");
+      const stageResults=(res&&res.results)||res||{};
+      const failed=Object.entries(stageResults).filter(([,v])=>v&&v.error);
+      const rows=Object.entries(stageResults).map(([s,v])=>`<div class="result-row"><b>${esc(STAGE_ZH[s]||s)}</b>${v&&v.error?`<span class="badge fail">${esc(v.error)}</span>`:'<span class="badge done">完成</span>'}</div>`).join("");
       $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)">✓ 运行完成</span>';
-      $("#runOut").innerHTML=`<div class="card run-result"><h3>${failed.length?"部分完成":"运行完成"}</h3>${rows}<details><summary>查看原始结果</summary><pre>${esc(JSON.stringify(res,null,1))}</pre></details></div>`;
+      $("#runOut").innerHTML=`<div class="card run-result"><h3>${failed.length?"部分完成":"运行完成"}</h3>${rows}<details><summary>查看原始结果</summary><pre>${esc(JSON.stringify(stageResults,null,1))}</pre></details></div>`;
       toast(failed.length?"部分阶段失败，请查看结果":"流水线完成",failed.length?"err":"ok");
       selectProject(body.project,true).then(()=>renderWorkbench());
     });

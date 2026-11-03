@@ -132,8 +132,11 @@
   }
 
   function displayJobStatus(job) {
-    if (job.status === "done" && job.result && typeof job.result === "object" &&
-        Object.values(job.result).some(v => v && typeof v === "object" && v.error)) return ["部分失败", "fail"];
+    const results = job.result?.results || job.result || {};
+    if (job.status === "done" &&
+        Object.values(results).some(v => v && typeof v === "object" && v.error)) {
+      return ["部分失败", "fail"];
+    }
     return jobStatus[job.status] || [job.status || "未知", ""];
   }
 

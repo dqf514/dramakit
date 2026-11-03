@@ -164,6 +164,17 @@ class WebRegressionTests(unittest.TestCase):
         self.assertTrue(restored["ok"])
         self.assertTrue((self.root / new_slug / "project.json").is_file())
 
+    def test_upload_uses_original_filename_and_returns_project_slug(self):
+        _, uploaded = self.request("/api/upload", {
+            "name": "上传验收项目", "file": "我的小说.txt",
+            "text": "第一章 归来\n他回到了这座城市。\n"})
+        self.assertTrue(uploaded["ok"])
+        self.assertEqual(uploaded["project"], "上传验收项目")
+        source = self.root / uploaded["project"] / "source" / "我的小说.txt"
+        self.assertTrue(source.is_file())
+        self.assertIn("他回到了这座城市", source.read_text(encoding="utf-8"))
+        self.assertEqual(uploaded["slug"], uploaded["project"])
+
     def test_job_list_and_static_enhancements(self):
         _, created = self.request("/api/new", {"name": "任务列表项目"})
         _, response = self.request("/api/projects/manage", {
