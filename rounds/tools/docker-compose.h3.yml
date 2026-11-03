@@ -1,34 +1,38 @@
-# Two ComfyUI workers, one per 3090.
+# One ComfyUI worker, on one of the 3090s.
 #
 # The image is the SageAttention build and --use-sage-attention turns it on:
 # without that flag a ten-second clip costs three times as long, and the
 # node that does it is what the workflow's PathchSageAttentionKJ expects to
-# find. Both workers use it, so either card can take a job.
+# find.
 #
 # Models are mounted from one directory. The weights are twenty-odd gigabytes
-# each and a job only needs the ones it loads, so sharing costs nothing and
-# means a model added once is available to both.
+# each and a job only needs the ones it loads, so a model added once is
+# available whenever it is needed.
 #
 # `count: all` rather than a device id: CUDA_VISIBLE_DEVICES then names the
 # real card. Pinning one device and also naming it by index asks for a card
 # that is not there, because the pinned card is renumbered to zero inside
 # the container.
 #
-# One card cannot hold two H3 jobs - 19.5G for the diffusion weights plus
-# 25.3G for the text encoder - which is the whole reason there are two
-# workers rather than one with a deeper queue.
-#
 # --- memory ---------------------------------------------------------------
-# Two workers on one machine is 96 GB of weights on a 121 GB machine, and
-# ComfyUI's own accounting does not know the other worker exists: on Linux
-# it allows itself up to 109 GB of pinned memory per process, because it
-# assumes it has the machine to itself. Pinned pages cannot be swapped, so
-# when the machine runs short the kernel kills a worker instead of slowing
-# one down, and the machine stops answering.
+# One H3 job on this card needs 19.5 GB of weights for the diffusion and
+# 25.3 GB for the text encoder, and neither fits in a 24 GB card, so they
+# live in the host's memory: about 48 GB a job.
 #
-# So the weights are read from the disk rather than pinned into memory
-# (--fast-disk), the pinned path is off, and the shared memory each
-# container may use is a couple of gigabytes rather than eight.
+# Two workers on one machine is ninety-six gigabytes of weights on a
+# hundred-and-twenty-one gigabyte machine, and ComfyUI's own accounting does
+# not know the other worker exists: on Linux it allows itself up to 109 GB of
+# pinned memory per process, because it assumes it has the machine to
+# itself. Pinned pages cannot be swapped, so when the machine runs short the
+# kernel kills a worker instead of slowing one down, and the machine stops
+# answering - which is what "the card died" looks like from the other side.
+#
+# So the weights are read from the disk as they are needed rather than held
+# in memory (--fast-disk), the pinned path is off, and the shared memory
+# each container may use is a couple of gigabytes rather than eight.
+#
+# The second 3090 was taken out of service for other work, so there is one
+# worker here and the local card makes the pictures.
 
 services:
   comfyui-h3-a:
@@ -55,32 +59,5 @@ services:
       - /data/comfyui/custom_nodes:/opt/ComfyUI/custom_nodes
     command: >-
       python3 main.py --listen 0.0.0.0 --port 8188
-      --reserve-vram 1.5 --use-sage-attention
-      --fast-disk --disable-pinned-memory
-
-  comfyui-h3-b:
-    image: comfyui-h3:sage
-    container_name: comfyui-h3-b
-    restart: unless-stopped
-    shm_size: 2gb
-    ports:
-      - "0.0.0.0:8189:8189"
-    environment:
-      - CUDA_VISIBLE_DEVICES=1
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    volumes:
-      - /data/comfyui/models:/opt/ComfyUI/models
-      - /data/comfyui/input:/opt/ComfyUI/input
-      - /data/comfyui/output:/opt/ComfyUI/output
-      - /data/comfyui/user:/opt/ComfyUI/user
-      - /data/comfyui/custom_nodes:/opt/ComfyUI/custom_nodes
-    command: >-
-      python3 main.py --listen 0.0.0.0 --port 8189
       --reserve-vram 1.5 --use-sage-attention
       --fast-disk --disable-pinned-memory

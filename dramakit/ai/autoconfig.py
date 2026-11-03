@@ -793,15 +793,72 @@ def _yaml_append_node(text: str, node: dict, fields: dict,
     return "\n".join(lines)
 
 
+def _nodes_in_file(text: str) -> list[str]:
+    """The names of the cards the `nodes:` list currently holds."""
+    out = []
+    lines = text.split("\n")
+    in_list = False
+    for ln in lines:
+        if re.match(r"^\s*nodes\s*:", ln):
+            in_list = True
+            continue
+        if not in_list:
+            continue
+        if not ln.strip():
+            continue
+        cur = len(ln) - len(ln.lstrip())
+        if cur <= 2:
+            break
+        m = re.match(r"^\s*-\s*name:\s*(\S+)\s*$", ln)
+        if m:
+            out.append(m.group(1).strip('"\''))
+    return out
+
+
+def _yaml_remove_node(text: str, node_name: str) -> str:
+    """Take a card out of the `nodes:` list.
+
+    The list is the list of cards there are. A card that is no longer in
+    it has been taken out of service, and leaving its entry behind means
+    the scheduler keeps offering work to a machine that is doing something
+    else now.
+    """
+    lines = text.split("\n")
+    entry_re = re.compile(rf"^(\s*)-(\s+)name:\s*{re.escape(node_name)}\s*$")
+    start = None
+    for i, ln in enumerate(lines):
+        if entry_re.match(ln):
+            start = i
+            break
+    if start is None:
+        return text
+    dash_indent = len(entry_re.match(lines[start]).group(1))
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        ln = lines[j]
+        if not ln.strip():
+            continue
+        cur = len(ln) - len(ln.lstrip())
+        if cur <= dash_indent:
+            end = j
+            break
+        if ln.strip().startswith("- ") and cur == dash_indent:
+            end = j
+            break
+    return "\n".join(lines[:start] + lines[end:])
+
+
 def save_nodes(cfg_path: str | Path, nodes: list[dict],
               scalars: dict | None = None,
               maps: dict | None = None) -> dict:
     """Write the node pool's settings into the config, preserving comments.
 
     Every node is written by name; a node the file does not have yet is
-    added to the list rather than dropped. The primary card is not in that
-    list - its address, its role and its weights sit at the top of the
-    section - so those arrive as scalars and maps instead.
+    added to the list rather than dropped, and a node that is no longer
+    in the list is taken out of it - the list is the list of cards there
+    are. The primary card is not in that list - its address, its role and
+    its weights sit at the top of the section - so those arrive as
+    scalars and maps instead.
 
     The file is validated by reloading it, and the previous contents are
     put back if it will not parse: a config that does not load takes the
@@ -814,6 +871,8 @@ def save_nodes(cfg_path: str | Path, nodes: list[dict],
         text = _yaml_set_scalar(text, "comfyui", key, value)
     for key, value in (maps or {}).items():
         text = _yaml_set_map(text, "comfyui", key, value or {})
+    wanted = [str(n.get("name") or "").strip() for n in (nodes or [])
+              if str(n.get("name") or "").strip()]
     for node in (nodes or []):
         name = str(node.get("name") or "").strip()
         if not name:
@@ -829,6 +888,10 @@ def save_nodes(cfg_path: str | Path, nodes: list[dict],
         if not found:
             # the name is not in the file: this is a card that is being added
             text = _yaml_append_node(text, node, fields, maps_here)
+    # a card that is no longer in the list has been taken out of service
+    for name in _nodes_in_file(text):
+        if name not in wanted:
+            text = _yaml_remove_node(text, name)
     if not text.strip():
         raise ValueError("配置为空")
     path.write_text(text, encoding="utf-8")

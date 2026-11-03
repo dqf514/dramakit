@@ -258,7 +258,7 @@ comfyui:
   request_timeout: 60.0                     # 短HTTP调用（提交/查询/下载）超时
   poll_interval: 1.0
   concurrency: 1 # 出图并发（本机一张卡，一次一个）
-  video_concurrency: 3                     # 出视频并发（三台出视频的机器各一个）
+  video_concurrency: 1                     # 出视频并发（现在只有 3090-a 出视频）
   max_retries: 3                            # 远程网络抖动重试次数
   use_proxy: false                          # 直连(false)：局域网/远程 ComfyUI 必须 false，
                                             #   否则 httpx 会读系统代理导致连不上/卡住
@@ -346,39 +346,6 @@ comfyui:
         "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
         "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
         "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
-    - name: gpu3090-b
-      base_url: http://192.168.31.8:8189
-      enabled: true # 机器现在只剩一张卡，第二个实例起不来
-      roles: [i2v]
-      transfer: scp
-      ssh_host: 192.168.31.8
-      ssh_user: david
-      ssh_key: C:/Users/David/.ssh/id_ed25519
-      remote_models: /data/comfyui/models
-      graph_overrides:
-        "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
-        "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
-        "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
-    - name: local-h3
-      enabled: true
-      roles: [i2v]
-      base_url: http://127.0.0.1:8188
-      transfer: none
-      remote_models: ""
-      graph_overrides:
-        "127": {unet_name: MiniMax_H3_Ref2VA_pruned_nvfp4.safetensors}
-        "128": {clip_name: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors, device: default}
-        "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
-      ssh_host: ""
-      ssh_user: ""
-      ssh_key: ""
-      local_models: ""
-      auth: none
-      auth_username: ""
-      auth_token: ""
-      workflows:
-        t2i: ""
-        i2v: ""
   #  - name: gpu3090-v0        # 3090#0，专做视频
   #    base_url: http://<3090IP>:8188
   #    roles: [i2v]            # t2i=出图 / i2v=出视频；留空=什么都接
