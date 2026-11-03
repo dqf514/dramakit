@@ -390,7 +390,7 @@ comfyui:
   #    transfer: scp
   # 本机 ComfyUI 的 models 目录（模型文件存放处，也是同步来源）
   models_dir: E:\\ComfyUI\\models
-  mode: image # image | video | image_then_video（出图和出视频抢同一张卡时，先把图出完）
+  mode: image_then_video # image | video | image_then_video（出图和出视频抢同一张卡时，先把图出完再切到 image_then_video）
   width: 1344                               # 出图分辨率（H3 原生 768p，16:9）
   height: 768                               # 出图分辨率
   steps: 8                                # FLUX 3 Klein 是蒸馏版：8 步和 16 步锐度一样（实测 1124 vs 1218），4 步掉 29%
