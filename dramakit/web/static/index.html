@@ -1755,10 +1755,10 @@ function renderWorkbench(){
       <div class="ebar"><i style="width:${epProgress(ep)}%"></i></div>
       <div class="ef">
         <span class="mini">${epProgress(ep)}% 完成</span>
-        ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ${mark("↗")}</a>':""}
+        ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 <span aria-hidden="true">↗</span></a>':""}
       ${ep.video_mtime?`<span class="muted" style="font-size:12px">${ago(ep.video_mtime)}</span>`:""}
-        ${ep.nle?'<a class="mini" href="'+ep.nle+'" target="_blank">FCPXML ${mark("↗")}</a>':""}
-        ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ${mark("↗")}</a>':""}
+        ${ep.nle?'<a class="mini" href="'+ep.nle+'" target="_blank">FCPXML <span aria-hidden="true">↗</span></a>':""}
+        ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 <span aria-hidden="true">↗</span></a>':""}
         ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:var(--go2)">有视频</span>':""}
         ${qcBadge(ep.qc)}
       </div>
@@ -1990,7 +1990,7 @@ function openShotDrawer(ep,sc,sh){
   $("#edRegenImg").onclick=()=>regenShot("image");
   $("#edRegenVid").onclick=()=>regenShot("video");
   $("#edRegenAll").onclick=()=>regenShot("all");
-  $("#edClose2").onclick=closeDrawer;
+  $("#edClose2").onclick=()=>closeDrawer();
 }
 
 async function saveShot(){
@@ -2596,7 +2596,7 @@ async function doRun(){
       const stageResults=(res&&res.results)||res||{};
       const failed=Object.entries(stageResults).filter(([,v])=>v&&v.error);
       const rows=Object.entries(stageResults).map(([s,v])=>`<div class="result-row"><b>${esc(STAGE_ZH[s]||s)}</b>${v&&v.error?`<span class="badge fail">${esc(v.error)}</span>`:'<span class="badge done">完成</span>'}</div>`).join("");
-      $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)">${mark("✓")} 运行完成</span>';
+      $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)"><span aria-hidden="true">✓</span> 运行完成</span>';
       $("#runOut").innerHTML=`<div class="card run-result"><h3>${failed.length?"部分完成":"运行完成"}</h3>${rows}<details><summary>查看原始结果</summary><pre>${esc(JSON.stringify(stageResults,null,1))}</pre></details></div>`;
       toast(failed.length?"部分阶段失败，请查看结果":"流水线完成",failed.length?"err":"ok");
       selectProject(body.project,true).then(()=>renderWorkbench());
@@ -2681,7 +2681,7 @@ async function saveProduction(){
   const r=await postJSON("/api/config/production",body);
   $("#prSave").disabled=false;
   if(!r.ok){ $("#prOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
-  $("#prOut").innerHTML='<span style="color:var(--go2)">${mark("✓")} 已写回配置</span>';
+  $("#prOut").innerHTML=`<span style="color:var(--go2)">${mark("✓")} 已写回配置</span>`;
   toast("制作参数已保存","ok"); renderHeader();
 }
 
@@ -2898,7 +2898,7 @@ async function saveModels(){
   $("#mSave").disabled=false;
   if(!r.ok){ $("#mSaveOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
   S.settings=r; S.modelEntries=r.entries||[]; S.modelDefault=r.default||"";
-  $("#mSaveOut").innerHTML='<span style="color:var(--go2)">${mark("✓")} 已写回 default.yaml</span>';
+  $("#mSaveOut").innerHTML=`<span style="color:var(--go2)">${mark("✓")} 已写回 default.yaml</span>`;
   renderModelList(); toast("模型清单已保存","ok");
 }
 async function saveAI(){
@@ -2906,7 +2906,7 @@ async function saveAI(){
     language:$("#aiLang").value,main_timeout:num($("#aiMainTO").value,90)}};
   const r=await postJSON("/api/config/llm",body);
   if(!r.ok){ $("#aiSaveOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
-  $("#aiSaveOut").innerHTML='<span style="color:var(--go2)">${mark("✓")} 已保存</span>';
+  $("#aiSaveOut").innerHTML=`<span style="color:var(--go2)">${mark("✓")} 已保存</span>`;
   toast("AI 行为设置已保存","ok"); boot();
 }
 
@@ -2983,7 +2983,7 @@ async function doSetup(){
   pollJob(r.job,res=>{
     $("#doSetup").disabled=false;
     if(!res){ stat.textContent=""; return; }
-    stat.innerHTML=res.used_llm?'<span style="color:var(--go2)">${mark("✓")} 已由 AI 生成并写入</span>':'<span style="color:var(--warn)">${mark("✓")} 已写入（未连到大模型，用模板规则生成）</span>';
+    stat.innerHTML=res.used_llm?`<span style="color:var(--go2)">${mark("✓")} 已由 AI 生成并写入</span>`:`<span style="color:var(--warn)">${mark("✓")} 已写入（未连到大模型，用模板规则生成）</span>`;
     $("#setupWizOut").innerHTML=`<div class="card" style="margin-top:9px"><h3>写入 ${esc(res.written||"config/default.yaml")}</h3>
       <pre style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-family:var(--mono);font-size:12px;margin:0">${esc(JSON.stringify(res.overrides||{},null,1))}</pre></div>`;
     toast("配置已更新","ok"); boot(); loadProduction();
@@ -3022,14 +3022,14 @@ async function execAction(a){
   if(r.job){
     toast("已提交，后台执行中…");
     pollJob(r.job,res=>{
-      toast(${mark("✓")}+" "+a.title+" 完成","ok");
+      toast(mark("✓")+" "+a.title+" 完成","ok");
       if(a.kind==="search"&&res){ switchPage("assets"); jumpSearch(""); renderSearchResults(res); }
       boot(); if(S.current) selectProject(S.current,true);
     });
   } else if(r.result){
     const res=r.result;
     if(a.kind==="search"){ switchPage("assets"); renderSearchResults(res); }
-    else toast(${mark("✓")}+" "+a.title+" 完成","ok");
+    else toast(mark("✓")+" "+a.title+" 完成","ok");
     boot();
   }
 }
@@ -3250,7 +3250,7 @@ async function deleteProject(slug){
     const f=this.files&&this.files[0];
     if(!f){ label.textContent=""; return; }
     const kb=f.size/1024, sz=kb>1024?(kb/1024).toFixed(1)+" MB":Math.round(kb)+" KB";
-    label.innerHTML=${mark("✓")}+" 已选 "+esc(f.name)+"（"+sz+"）";
+    label.innerHTML=mark("✓")+" 已选 "+esc(f.name)+"（"+sz+"）";
     if(path){ path.placeholder="（已选本地文件，路径可以留空）"; path.style.opacity=".55"; }
   });
 })();
@@ -3505,6 +3505,7 @@ function renderLightbox(){
   root.querySelector("[data-lb-close]").onclick=closeLightbox;
   root.querySelector("[data-lb-prev]").onclick=()=>lightboxStep(-1);
   root.querySelector("[data-lb-next]").onclick=()=>lightboxStep(1);
+  trapFocus(root.querySelector(".lb-box"));
 }
 </script>
 
