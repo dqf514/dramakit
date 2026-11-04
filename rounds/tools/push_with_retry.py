@@ -36,12 +36,19 @@ def note(msg):
 
 
 def door_open(timeout=5.0):
-    """Can we reach GitHub's door at all?"""
-    try:
-        with socket.create_connection(("github.com", 443), timeout=timeout):
-            return True
-    except Exception:  # noqa: BLE001
-        return False
+    """Can we reach GitHub's door at all?
+
+    The name is not enough: this network resolves github.com to an
+    address that does not answer, while other addresses of GitHub's do.
+    So the known addresses are tried as well.
+    """
+    for host in ("github.com",) + GITHUB_IPS:
+        try:
+            with socket.create_connection((host, 443), timeout=timeout):
+                return True
+        except Exception:  # noqa: BLE001
+            continue
+    return False
 
 
 def run(cmd, timeout=90):
@@ -53,20 +60,25 @@ def run(cmd, timeout=90):
         return 124, "超时"
 
 
-# The ways out, in the order they are tried.  The first one is the plain
-# push with the backend this git was built with - openssl, which reaches
-# GitHub.  The second asks for HTTP/2, for when the link drops a
-# half-finished HTTP/1.1 upload.  The third names one of GitHub's own
-# addresses, for when the name resolves to one this network drops.  The
-# last goes through the proxy, for when the proxy is working.
-ATTEMPTS = [
-    ("直连", ["git", "push", "origin", "main"]),
-    ("HTTP/2", ["git", "-c", "http.version=HTTP/2", "push", "origin", "main"]),
-    ("指定地址", ["git", "-c", "http.curloptResolve=github.com:443:20.205.243.166",
-                  "push", "origin", "main"]),
-    ("走代理", ["git", "-c", "http.proxy=http://127.0.0.1:7897",
-                "push", "origin", "main"]),
-]
+# The ways out, in the order they are tried.  The name github.com is
+# resolved by a DNS that hands out an address this network drops, so the
+# real addresses of GitHub are tried as well - a request that names one
+# of them goes there whatever the name resolves to.
+GITHUB_IPS = ("140.82.112.3", "140.82.113.3", "140.82.114.3", "20.205.243.166")
+
+ATTEMPTS = [("直连", ["git", "-c", "http.sslBackend=schannel",
+                      "push", "origin", "main"])]
+for _ip in GITHUB_IPS:
+    ATTEMPTS.append(("指定地址 " + _ip,
+                     ["git", "-c", "http.sslBackend=schannel",
+                      "-c", "http.curloptResolve=github.com:443:" + _ip,
+                      "push", "origin", "main"]))
+ATTEMPTS.append(("HTTP/2", ["git", "-c", "http.sslBackend=schannel",
+                            "-c", "http.version=HTTP/2",
+                            "push", "origin", "main"]))
+ATTEMPTS.append(("走代理", ["git", "-c", "http.sslBackend=schannel",
+                            "-c", "http.proxy=http://127.0.0.1:7897",
+                            "push", "origin", "main"]))
 
 
 def pushed(out: str) -> bool:

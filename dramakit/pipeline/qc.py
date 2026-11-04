@@ -72,7 +72,7 @@ def _frac(value: str) -> float:
         return 0.0
 
 
-def _camera_on(shot, ep) -> str:
+def _camera_on(shot, scenes) -> str:
     """Who the camera is on in this shot.
 
     The shot's own text is not enough: the model writes a subject in its
@@ -81,7 +81,7 @@ def _camera_on(shot, ep) -> str:
     carries, or whoever is left in the frame.
     """
     from .storyboard import camera_on
-    for sc in ep.scenes:
+    for sc in scenes:
         if shot in sc.shots:
             spoken = [l for l in sc.lines if not is_narration(l)]
             return camera_on(shot, spoken)
@@ -107,16 +107,44 @@ def _coverage_metrics(ep: Episode) -> tuple[dict, list[str]]:
     out["head_on_shots"] = len(head_on)
     if talking:
         out["head_on_share"] = round(len(head_on) / len(talking), 3)
-    # how many different pictures there are
-    frames = {(sh.shot_type.value, sh.angle, _camera_on(sh, ep)) for sh in shots}
+    # how many different pictures there are.  The unit is the scene: the
+    # same person at the same angle in another scene is not a repeat, but
+    # the same picture twice in a row inside one scene is.
+    frames = {(sh.shot_type.value, sh.angle, _camera_on(sh, ep.scenes)) for sh in shots}
     out["distinct_frames"] = len(frames)
     out["distinct_share"] = round(len(frames) / len(shots), 3)
-    # the longest run of the same face in a row
+    # the longest run of the same face in a row, and of the same picture
     run = best = 1
+    same_picture = best_picture = 1
     for a, b in zip(shots, shots[1:]):
-        run = run + 1 if _camera_on(a, ep) and _camera_on(a, ep) == _camera_on(b, ep) else 1
+        run = run + 1 if _camera_on(a, ep.scenes) and _camera_on(a, ep.scenes) == _camera_on(b, ep.scenes) else 1
         best = max(best, run)
+        if (a.shot_type == b.shot_type and a.angle == b.angle
+                and _camera_on(a, ep.scenes) == _camera_on(b, ep.scenes)):
+            same_picture += 1
+        else:
+            same_picture = 1
+        best_picture = max(best_picture, same_picture)
     out["longest_same_subject_run"] = best
+    out["longest_same_picture_run"] = best_picture
+    # the scene that varies the least
+    worst = ("", 1.0, 1)
+    for sc in ep.scenes:
+        sshots = sc.shots
+        if len(sshots) < 3:
+            continue
+        sframes = {(sh.shot_type.value, sh.angle, _camera_on(sh, [sc]))
+                   for sh in sshots}
+        share = len(sframes) / len(sshots)
+        srun = sbest = 1
+        for a, b in zip(sshots, sshots[1:]):
+            srun = srun + 1 if _camera_on(a, [sc]) == _camera_on(b, [sc]) else 1
+            sbest = max(sbest, srun)
+        if share < worst[1]:
+            worst = (sc.location or f"第{sc.index}场", share, sbest)
+    if worst[0]:
+        out["least_varied_scene"] = worst[0]
+        out["least_varied_share"] = round(worst[1], 3)
     # the shots that carry no line: reactions, inserts, the establishing
     # shot - the ones that make a scene a scene
     out["silent_shots"] = len(shots) - len(talking)
@@ -129,11 +157,12 @@ def _coverage_metrics(ep: Episode) -> tuple[dict, list[str]]:
         warnings.append(f"正对镜头的台词镜头 {len(head_on)}/{len(talking)}"
                         f"（{len(head_on) / len(talking) * 100:.0f}%）："
                         "整场像访谈，不像戏")
-    if out["distinct_share"] < 0.6:
-        warnings.append(f"镜头重复率高：{len(shots)} 镜只有 {len(frames)} 种"
-                        f"景别/角度/主体组合")
-    if best >= 3:
-        warnings.append(f"连续 {best} 镜拍同一个人，缺正反打与反应镜头")
+    if out.get("least_varied_share", 1.0) < 0.6:
+        warnings.append(f"「{out.get('least_varied_scene')}」这场变化太少："
+                        f"{out['least_varied_share'] * 100:.0f}% 的镜头是重复的构图")
+    if out.get("longest_same_picture_run", 1) >= 3:
+        warnings.append(f"连续 {out['longest_same_picture_run']} 镜是同一个构图"
+                        "（景别、角度、人物都一样）")
     if talking and out["silent_shots"] == 0:
         warnings.append("没有一镜不带台词：整集只有说话的脸，没有画面")
     return out, warnings
