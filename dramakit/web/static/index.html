@@ -3297,6 +3297,7 @@ async function openReader(idx){
   root.querySelector("[data-rd-close]").onclick=closeReader;
   root.querySelector("[data-rd-prev]").onclick=()=>_rdStep(-1);
   root.querySelector("[data-rd-next]").onclick=()=>_rdStep(1);
+  trapFocus(root.querySelector(".rd-sheet"));
   const closeBtn=root.querySelector("[data-rd-close]");
   if(closeBtn) closeBtn.focus();
   window.__rdIdx=idx;

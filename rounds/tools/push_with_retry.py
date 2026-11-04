@@ -60,12 +60,22 @@ while time.time() < DEADLINE and not ok:
             note("门关着（第 %d 次探，第 %d 次关）" % (tries, closed))
         time.sleep(8)
         continue
-    # github.com resolves to an address that this network drops. The git
-    # endpoint is reached through another of its addresses, and the ssl
-    # backend this build actually has is the one that works.
-    code, out = run(["git", "-c", "http.sslBackend=schannel",
-                     "-c", "http.curloptResolve=github.com:443:172.182.252.133",
-                     "push", "origin", "main"])
+    # github.com has several addresses and this network drops some of them
+    # while others work. So the default is tried first, and another one is
+    # tried after it - and the ssl backend this build has is the one that
+    # works: the system config asks for openssl, which this build does
+    # not have, and that only shows up once a connection is made.
+    attempts = [
+        ["git", "-c", "http.sslBackend=schannel", "push", "origin", "main"],
+        ["git", "-c", "http.sslBackend=schannel",
+         "-c", "http.curloptResolve=github.com:443:172.182.252.133",
+         "push", "origin", "main"],
+    ]
+    code, out = 1, ""
+    for cmd in attempts:
+        code, out = run(cmd)
+        if code == 0:
+            break
     clean = "\n".join(l for l in out.split("\n")
                       if "LF will be replaced" not in l).strip()
     if code == 0 and ("Everything up-to-date" in clean or "-> main" in clean):
