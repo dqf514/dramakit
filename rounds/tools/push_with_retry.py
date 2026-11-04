@@ -5,10 +5,15 @@ accepted and then reset, or it times out. The work is committed
 locally either way - what is missing is only the trip to the other
 side - so the push is simply retried until it goes through.
 
-Git retries by itself and each try takes minutes, which is far too
-slow for a link that comes and goes in seconds. So the door is tried
-first, with a short timeout, and git is only asked to push when the
-door is already open.
+Two things were wrong with the first version of this. It forced the
+schannel backend, which this build of git does not have working
+(the one it ships with, openssl, reaches GitHub fine) - and it left
+the push to hang for minutes when the connection stalls halfway
+through the upload, which is exactly when the link is at its worst.
+
+So: the door is tried first with a short timeout, and the push itself
+is given a short leash. Every way out is tried in turn, and each one
+is written down, so there is a record of what the network was doing.
 
 It says what it did every time, so there is a record of how long the
 network was down and of the moment it came back.
@@ -39,13 +44,37 @@ def door_open(timeout=5.0):
         return False
 
 
-def run(cmd, timeout=240):
+def run(cmd, timeout=90):
     try:
         r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True,
                            timeout=timeout, encoding="utf-8", errors="replace")
         return r.returncode, (r.stdout or "") + (r.stderr or "")
     except subprocess.TimeoutExpired:
         return 124, "超时"
+
+
+# The ways out, in the order they are tried.  The first one is the plain
+# push with the backend this git was built with - openssl, which reaches
+# GitHub.  The second asks for HTTP/2, for when the link drops a
+# half-finished HTTP/1.1 upload.  The third names one of GitHub's own
+# addresses, for when the name resolves to one this network drops.  The
+# last goes through the proxy, for when the proxy is working.
+ATTEMPTS = [
+    ("直连", ["git", "push", "origin", "main"]),
+    ("HTTP/2", ["git", "-c", "http.version=HTTP/2", "push", "origin", "main"]),
+    ("指定地址", ["git", "-c", "http.curloptResolve=github.com:443:20.205.243.166",
+                  "push", "origin", "main"]),
+    ("走代理", ["git", "-c", "http.proxy=http://127.0.0.1:7897",
+                "push", "origin", "main"]),
+]
+
+
+def pushed(out: str) -> bool:
+    """Did the push land?"""
+    clean = "\n".join(l for l in out.split("\n")
+                      if "LF will be replaced" not in l).strip()
+    return ("Everything up-to-date" in clean or "-> main" in clean
+            or "main -> main" in clean)
 
 
 note("=== 开始推送（网络时通时断就一直试）===")
@@ -60,38 +89,22 @@ while time.time() < DEADLINE and not ok:
             note("门关着（第 %d 次探，第 %d 次关）" % (tries, closed))
         time.sleep(8)
         continue
-    # Three ways out, tried in turn:
-#   - straight out, the way the machine normally reaches the internet
-#   - straight out but to a named address of GitHub's, for when the name
-#     resolves to one that this network drops
-#   - through the proxy, for when the proxy is working
-# The ssl backend this build has is the one that works: the system
-# config asks for openssl, which this build does not have, and that
-# only shows up once a connection is made.
-    attempts = [
-        ["git", "-c", "http.sslBackend=schannel", "push", "origin", "main"],
-        ["git", "-c", "http.sslBackend=schannel",
-         "-c", "http.curloptResolve=github.com:443:20.205.243.166",
-         "push", "origin", "main"],
-        ["git", "-c", "http.sslBackend=schannel",
-         "-c", "http.proxy=http://127.0.0.1:7897", "push", "origin", "main"],
-    ]
-    code, out = 1, ""
-    for cmd in attempts:
+    for label, cmd in ATTEMPTS:
         code, out = run(cmd)
-        if code == 0:
+        if code == 0 and pushed(out):
+            note("✓ 第 %d 次（%s）：推上去了" % (tries, label))
+            for line in out.split("\n"):
+                if line.strip() and "LF will be replaced" not in line:
+                    note("   " + line.strip()[:160])
+            ok = True
             break
-    clean = "\n".join(l for l in out.split("\n")
-                      if "LF will be replaced" not in l).strip()
-    if code == 0 and ("Everything up-to-date" in clean or "-> main" in clean):
-        note("✓ 第 %d 次：推上去了" % tries)
-        for line in clean.split("\n"):
-            if line.strip():
-                note("   " + line.strip())
-        ok = True
+        err = next((l for l in out.split("\n")
+                    if "fatal" in l or "error" in l), out.strip()[:120])
+        note("  第 %d 次（%s）失败：%s" % (tries, label, err.strip()[:150]))
+        if code == 124:
+            break
+    if ok:
         break
-    err = next((l for l in clean.split("\n") if "fatal" in l or "error" in l), clean[:120])
-    note("第 %d 次失败：%s" % (tries, err.strip()[:160]))
     time.sleep(10)
 
 if not ok:
