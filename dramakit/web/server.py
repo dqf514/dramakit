@@ -412,7 +412,7 @@ def _make_handler(state: State):
                     # nothing chosen for this project: what the config says
                     sel = {k: list(getattr(cfg_skills, k) or [])
                            for k in ("analyze", "script", "storyboard", "promptgen")}
-                costs = skillcat.cost(sel)
+                costs = skillcat.cost(sel, getattr(cfg_skills, "refs", None))
                 return self._json({"ok": True,
                                    "skills": skillcat.catalog(),
                                    "selection": sel,
@@ -1024,7 +1024,7 @@ def _make_handler(state: State):
             proj.meta.skills = clean
             store.save(proj)
             return {"ok": True, "selection": clean,
-                    "costs": skillcat.cost(clean)}
+                    "costs": skillcat.cost(clean, _cfg_refs(state))}
 
         def _api_skills_recommend(self, body: dict) -> dict:
             """Which skills suit this project, and why.
@@ -1092,7 +1092,7 @@ def _make_handler(state: State):
                 reasons = {}
             return {"ok": True, "selection": clean,
                     "reasons": {k: str(v) for k, v in reasons.items()},
-                    "costs": skillcat.cost(clean)}
+                    "costs": skillcat.cost(clean, _cfg_refs(state))}
 
         def _api_run(self, body: dict) -> dict:
             from ..ai import actions
@@ -2155,6 +2155,20 @@ def _make_handler(state: State):
             return {"ok": True, **res}
 
     return Handler
+
+
+def _cfg_refs(state: State) -> dict:
+    """The references the config sends with each stage's skills.
+
+    The cost a stage carries is the skills *and* the documents that come
+    with them, so a number that leaves the documents out would be a lie
+    about what a run is paying.
+    """
+    try:
+        from ..config import Config as _C
+        return dict(getattr(_C.load(state.config_path).skills, "refs", None) or {})
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def _invalidate_stages(ep, *stages: str) -> None:

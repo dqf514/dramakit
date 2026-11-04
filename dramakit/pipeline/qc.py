@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..media import ffmpeg as ff
-from ..models import Episode, Status
+from ..models import Episode, Status, is_narration
 from .base import Context
 
 _I_RE = re.compile(r"I:\s*(-?[\d.]+)\s*LUFS")
@@ -70,6 +70,73 @@ def _frac(value: str) -> float:
         return float(num) / float(den) if den else float(num)
     except Exception:  # noqa: BLE001
         return 0.0
+
+
+def _camera_on(shot, ep) -> str:
+    """Who the camera is on in this shot.
+
+    The shot's own text is not enough: the model writes a subject in its
+    own words ("合同与父亲医药费缴费单"), and two of those are not two
+    shots of the same face.  The face is the person whose lines the shot
+    carries, or whoever is left in the frame.
+    """
+    from .storyboard import camera_on
+    for sc in ep.scenes:
+        if shot in sc.shots:
+            spoken = [l for l in sc.lines if not is_narration(l)]
+            return camera_on(shot, spoken)
+    return shot.characters[0] if shot.characters else ""
+
+
+def _coverage_metrics(ep: Episode) -> tuple[dict, list[str]]:
+    """How varied the coverage of an episode is.
+
+    The failure this catches is the one that looks fine on paper: every
+    line of dialogue gets its own close-up of the person saying it, and
+    the whole episode is one camera on one tripod.  The numbers are cheap
+    to take and they say what a viewer would say - that it never cuts.
+    """
+    shots = [sh for sc in ep.scenes for sh in sc.shots]
+    if not shots:
+        return {}, []
+    out: dict = {"shots": len(shots)}
+    talking = [sh for sh in shots if sh.line_indices]
+    out["talking_shots"] = len(talking)
+    # a face square to the lens, saying the line: an interview, not a scene
+    head_on = [sh for sh in talking if sh.angle == "正面"]
+    out["head_on_shots"] = len(head_on)
+    if talking:
+        out["head_on_share"] = round(len(head_on) / len(talking), 3)
+    # how many different pictures there are
+    frames = {(sh.shot_type.value, sh.angle, _camera_on(sh, ep)) for sh in shots}
+    out["distinct_frames"] = len(frames)
+    out["distinct_share"] = round(len(frames) / len(shots), 3)
+    # the longest run of the same face in a row
+    run = best = 1
+    for a, b in zip(shots, shots[1:]):
+        run = run + 1 if _camera_on(a, ep) and _camera_on(a, ep) == _camera_on(b, ep) else 1
+        best = max(best, run)
+    out["longest_same_subject_run"] = best
+    # the shots that carry no line: reactions, inserts, the establishing
+    # shot - the ones that make a scene a scene
+    out["silent_shots"] = len(shots) - len(talking)
+    out["over_shoulder_shots"] = sum(1 for sh in shots
+                                      if sh.shot_type.value == "过肩")
+    out["insert_shots"] = sum(1 for sh in shots
+                              if sh.shot_type.value in ("空镜", "特写"))
+    warnings: list[str] = []
+    if talking and len(head_on) / len(talking) > 0.3:
+        warnings.append(f"正对镜头的台词镜头 {len(head_on)}/{len(talking)}"
+                        f"（{len(head_on) / len(talking) * 100:.0f}%）："
+                        "整场像访谈，不像戏")
+    if out["distinct_share"] < 0.6:
+        warnings.append(f"镜头重复率高：{len(shots)} 镜只有 {len(frames)} 种"
+                        f"景别/角度/主体组合")
+    if best >= 3:
+        warnings.append(f"连续 {best} 镜拍同一个人，缺正反打与反应镜头")
+    if talking and out["silent_shots"] == 0:
+        warnings.append("没有一镜不带台词：整集只有说话的脸，没有画面")
+    return out, warnings
 
 
 def check_episode(ctx: Context, ep: Episode) -> dict:
@@ -159,6 +226,11 @@ def check_episode(ctx: Context, ep: Episode) -> dict:
             warnings.append("字幕文件缺失（成片可能没有字幕）")
         else:
             metrics["subtitles"] = ("srt" if srt.exists() else "ass")
+
+    # how the scene was covered
+    coverage, cover_warnings = _coverage_metrics(ep)
+    metrics["coverage"] = coverage
+    warnings.extend(cover_warnings)
 
     return {"ok": not errors, "errors": errors, "warnings": warnings,
             "metrics": metrics}

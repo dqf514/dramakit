@@ -3627,7 +3627,7 @@ function skillRow(x, sel){
       <span class="sk-name">${esc(x.title||x.name)}</span>
       <span class="sk-size">${fmtChars(x.chars)}</span>
       <div class="sk-desc" title="${esc(x.description||"")}">${esc(desc)}${(x.description||"").length>150?"…":""}</div>
-      ${x.refs?`<div class="mini muted" style="margin-top:3px">另有 ${x.refs} 个深参考（${fmtChars(x.ref_chars)}，当前不注入）</div>`:""}
+      ${x.refs?`<div class="mini muted" style="margin-top:3px">另有 ${x.refs} 个深参考（${fmtChars(x.ref_chars)}，在配置的 refs 里点名才注入）</div>`:""}
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${picks}</div>
   </div>`;

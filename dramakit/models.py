@@ -163,11 +163,26 @@ class Shot(BaseModel):
     index: int = 0
     shot_type: ShotType = ShotType.MEDIUM
     camera_move: str = "固定"                 # 固定/推/拉/摇/移/跟
+    # The three camera choices that are not the size.  A shot is not just
+    # "close-up" - the horizontal angle decides how much of the face the
+    # viewer is allowed to read, the height decides who looks bigger, the
+    # lens decides whether two people look far apart or close.  Written
+    # down separately, because a size on its own cannot tell the picture
+    # generator whether the person is looking at the lens or at the other
+    # person, and "a person talking to camera" is what a shot list without
+    # an angle always turns into.
+    angle: str = "斜侧"                       # 正面/斜侧/正侧/后斜侧/背面
+    height: str = "平视"                      # 地平/低/平视/高/顶视
+    lens: str = "标准"                        # 广/标准/长
+    purpose: str = ""                         # 这一镜的职责（中文短句）
+    subject: str = ""                         # 画面主体：角色名 / 环境 / 道具名
     duration: float = 3.0                     # seconds
     action: str = ""                          # 画面内容（中文，给人看）
     characters: list[str] = Field(default_factory=list)
     # which lines of the scene this shot carries (1-based). The timeline cuts
-    # on these, so the camera is on the person who is speaking.
+    # on these, so the line belongs to this shot.  The camera does not have
+    # to be head-on to the speaker: the speaker is usually seen from the
+    # side, over the other shoulder, or further away.
     line_indices: list[int] = Field(default_factory=list)
     # generation
     prompt: str = ""                          # 正向提示词（出图用）

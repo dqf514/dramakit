@@ -31,8 +31,26 @@ def available() -> list[str]:
     return sorted(p.name for p in SKILLS.iterdir() if (p / "SKILL.md").exists())
 
 
-def load(name: str, *, refs: bool = False) -> str:
+def _reference_files(folder: Path) -> list[Path]:
+    """The documents that go with a skill.
+
+    Two shapes are in use: a `references/` folder, and a `reference.md`
+    beside the SKILL.md itself.  Both are read when the whole skill is
+    asked for.
+    """
+    out: list[Path] = []
+    refs = folder / "references"
+    if refs.is_dir():
+        out += sorted(refs.glob("*.md"))
+    out += sorted(folder.glob("reference*.md"))
+    return out
+
+
+def load(name: str, *, refs: bool | list[str] = False) -> str:
     """The text of a skill: its SKILL.md, and its references when asked.
+
+    `refs` is either False (the skill alone), True (every document that
+    comes with it), or a list of the documents wanted by name.
 
     Returns an empty string when the skill is not there - a missing skill
     must not stop a run, it just means the stage writes with its own rules.
@@ -44,18 +62,51 @@ def load(name: str, *, refs: bool = False) -> str:
         return ""
     parts = [md.read_text(encoding="utf-8", errors="replace")]
     if refs:
-        for ref in sorted((folder / "references").glob("*.md")):
+        wanted = None
+        if isinstance(refs, (list, tuple, set)):
+            wanted = {str(r).strip() for r in refs}
+        for ref in _reference_files(folder):
+            if wanted is not None and ref.name not in wanted:
+                continue
             parts.append(f"\n\n<!-- {ref.name} -->\n"
                          + ref.read_text(encoding="utf-8", errors="replace"))
     return "\n".join(parts)
 
 
-def for_stage(ctx, stage: str, *, refs: bool = False) -> str:
+def load_refs(name: str, refs: list[str]) -> str:
+    """Just the named documents of a skill, without its SKILL.md.
+
+    A stage sometimes wants one document out of a skill without the
+    skill's own rules - the adaptation craft, say, without the whole
+    development process that goes with it.
+    """
+    folder = SKILLS / name
+    if not folder.is_dir():
+        return ""
+    wanted = {str(r).strip() for r in refs or []}
+    parts: list[str] = []
+    for ref in _reference_files(folder):
+        if ref.name not in wanted:
+            continue
+        parts.append(f"\n\n<!-- {ref.name} -->\n"
+                     + ref.read_text(encoding="utf-8", errors="replace"))
+    if not parts:
+        log.warning("skills: %s 里没有这些参考文档：%s", name, ", ".join(sorted(wanted)))
+    return "".join(parts)
+
+
+def for_stage(ctx, stage: str, *, refs: bool | list[str] = False) -> str:
     """The skills a stage writes with, joined.
 
     The config names them per stage; a genre can add its own:
     `characters.genre` (or the project's art direction) picks the theory
     skills that suit the drama.
+
+    `skills.refs` names the documents that come with those skills: a
+    skill is a folder of knowledge and only its SKILL.md is the short
+    version.  The heavy part - how an adaptation is actually made, how
+    the shots are covered - lives in the references, and a stage that
+    wants that has to ask for it by name.
     """
     cfg = getattr(ctx.cfg, "skills", None)
     # The project's own choice first: two dramas that share a genre word
@@ -80,15 +131,30 @@ def for_stage(ctx, stage: str, *, refs: bool = False) -> str:
         for key, extra in (cfg.by_genre or {}).items():
             if key and key in genre and extra:
                 names += list(extra)
+    # the documents each of those skills brings with it
+    wanted_refs: dict[str, list[str]] = {}
+    try:
+        wanted_refs = dict((getattr(cfg, "refs", None) or {}).get(stage) or {})
+    except Exception:  # noqa: BLE001
+        wanted_refs = {}
     seen: set[str] = set()
     out = []
     for n in names:
         if n in seen:
             continue
         seen.add(n)
-        text = load(n, refs=refs)
+        ask = wanted_refs.get(n)
+        text = load(n, refs=ask if ask else refs)
         if text:
             out.append(f"\n\n=== 规矩（来自 skill：{n}）===\n{text}")
+    # a skill whose documents are wanted but whose own rules are not
+    for n, docs in wanted_refs.items():
+        if n in seen:
+            continue
+        seen.add(n)
+        text = load_refs(n, docs)
+        if text:
+            out.append(f"\n\n=== 规矩（来自 skill：{n} 的参考文档）===\n{text}")
     if not out:
         log.info("skills: %s 阶段没有可用的 skill，用内置规矩", stage)
     return "".join(out)

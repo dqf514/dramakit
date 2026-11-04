@@ -162,12 +162,36 @@ class WebConfig(BaseModel):
 # 角色定妆 / 一致性
 # --------------------------------------------------------------------------- #
 class SkillsConfig(BaseModel):
-    """Which skills each stage writes with (see skills/ for what is there)."""
-    analyze: list[str] = ["short-drama-novel-analyze"]
-    script: list[str] = ["short-drama-write"]
+    """Which skills each stage writes with (see skills/ for what is there).
+
+    A skill is a folder of knowledge and only its SKILL.md is the short
+    version.  The heavy part - how a novel is turned into a screenplay,
+    how a scene is covered by shots - lives in the references, so a
+    stage names the documents it wants in `refs`.
+    """
+    analyze: list[str] = ["short-drama-novel-analyze", "short-drama-develop"]
+    # the screenwriter: a novel is not a screenplay, and the craft of
+    # turning one into the other is its own subject
+    script: list[str] = ["short-drama-write",
+                         "screenwriting-theory/sw-format-adaptation"]
+    # the director: the coverage of a scene, the angle, the axis
     storyboard: list[str] = ["short-drama-storyboard"]
     promptgen: list[str] = ["short-drama-video-prompts",
                             "short-drama-image-prompts"]
+    # the documents that come with those skills.  A skill named only here
+    # contributes its documents and not its own rules.
+    refs: dict[str, dict[str, list[str]]] = {
+        "analyze": {
+            "short-drama-develop": ["adaptation-craft.md"],
+        },
+        "script": {
+            "short-drama-develop": ["adaptation-craft.md"],
+        },
+        "storyboard": {
+            "short-drama-storyboard": ["production-shot-grammar.md",
+                                       "blocking-playbooks.md"],
+        },
+    }
     # the screenwriting theory, by genre: the drama asks, the skills answer
     by_genre: dict[str, list[str]] = {
         "复仇": ["screenwriting-theory/sw-character-conflict"],
@@ -484,6 +508,10 @@ class ComposeConfig(BaseModel):
     #   discard = 丢弃 H3 音频，只用 TTS 人声 + 曲库 BGM
     h3_audio: Literal["bed", "discard"] = "bed"
     h3_audio_gain: float = 0.18               # H3 垫底音量（相对人声）
+    # H3 原生音频独占成片音轨：H3 做出来的人声、环境声、配乐是同一件事，
+    # 浑然天成，所以成片不再叠任何额外的声音——不叠配乐垫底、不叠曲库 BGM、
+    # 不加房间混响。关掉它就回到"人声 TTS + 配乐垫底 + 曲库"的旧做法。
+    native_audio_exclusive: bool = True
     # 音乐垫底要比对白低这么多 LU 才听得清台词（每集会按实测自动校正）
     music_gap_lu: float = 12.0
     # --- 专业后期 ---

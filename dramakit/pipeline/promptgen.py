@@ -13,6 +13,7 @@ from pathlib import Path
 from ..models import Shot, Status, is_narration
 from ..prompts import templates as T
 from .base import Context, build_timeline
+from .refs import _is_face
 
 # MiniMax H3 I2VA alignment line (official wording, first frame at 0.00s)
 H3_I2VA_ALIGN = ("For the target video, at 0.00 seconds into the target video, "
@@ -339,6 +340,7 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     aspect, composition = _aspect(ctx)
     user = T.render(template, shot_type=shot.shot_type.value,
                     camera_move=shot.camera_move,
+                    angle=shot.angle, height=shot.height, lens=shot.lens,
                     duration=_shot_seconds(shot),
                     action=_action_without_words(shot.action),
                     character_anchors=visuals, location=sc.location or "场景",
@@ -400,25 +402,40 @@ def _shot_seconds(shot) -> float:
 
 
 def _reference_jobs(shot, plan=None) -> str:
-    """Say what each reference is for - and what it is not for."""
-    kinds = [k for _p, _w, k in (plan or [])]
-    n_face = kinds.count("character")
-    n_room = kinds.count("room")
+    """Say what each reference is for - and what it is not for.
+
+    The numbers are the positions the pictures are actually sent in, so
+    the prompt and the job talk about the same picture.
+    """
+    items = list(plan or [])
+    kinds = [k for _p, _w, k in items]
+    faces = [i + 1 for i, p in enumerate(items) if _is_face(p)]
+    sheets = [i + 1 for i, p in enumerate(items)
+              if p[2] == "character" and not _is_face(p)]
+    room = [i + 1 for i, p in enumerate(items) if p[2] == "room"]
     bits = []
     if "frame" in kinds:
         bits.append("图片1 是这一镜的首帧：构图、站位、服装、光线都以它为准")
-    if n_face:
-        lo = 2 if "frame" in kinds else 1
-        bits.append(f"图片{lo} 到 图片{lo + n_face - 1} 是画面里人物的面部特写，"
-                    f"锁定他们的脸、发型与服装")
-    if n_room:
-        lo = (2 if "frame" in kinds else 1) + n_face
-        bits.append(f"图片{lo} 是场景与光影参考，只用它的环境与光线，"
+    if faces:
+        bits.append(f"{_nums(faces)} 是画面里人物的面部特写，锁定他们的脸与发型")
+    if sheets:
+        bits.append(f"{_nums(sheets)} 是这些人物的四视图（正面、侧面、"
+                    "四分之三、背面），锁定他们的服装")
+    if room:
+        bits.append(f"图片{room[0]} 是场景与光影参考，只用它的环境与光线，"
                     "不要借用里面的服装、人物或文字")
     if not bits:
         bits.append("图片1 是场景与光影参考，只用它的环境与光线，"
                     "不要借用里面的文字或人物")
     return "；".join(bits) + "。"
+
+
+def _nums(numbers: list[int]) -> str:
+    """A list of picture numbers, in words the model can use."""
+    if len(numbers) == 1:
+        return f"图片{numbers[0]}"
+    return "图片" + "、".join(str(n) for n in numbers[:-1]) + \
+        f" 和 图片{numbers[-1]}"
 
 
 def _segment_beats(shot) -> list[tuple[float, float, str]]:
@@ -599,6 +616,9 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     "（no narration, no voice over）：只有 <d> 里的那句是人话，"
                     "其余全是画面和声音，不要念动作、不要念环境。"
                     "overall_soundscape 写环境声和动作声，不要写人声。"
+                    "**non_diegetic_music 写这一镜的配乐**（乐器、节奏速度、"
+                    "情绪起伏），要和本场情绪一致——这一镜的配乐就是成片的配乐，"
+                    "后期不会再叠别的音乐，所以要写实、写准。"
                     "**这一段里可以有好几个镜头**：用 [Shot 1]、[Shot 2] 写，"
                     "后面的镜头用 `At 00:0X.000, the camera cuts to ...` 标出切点；"
                     "每个镜头要有自己的景别和机位，不要整段一个景别。")
@@ -622,6 +642,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         h3_user = T.render(
             T.H3_VIDEO_USER,
             shot_type=shot.shot_type.value, camera_move=shot.camera_move,
+            angle=shot.angle, height=shot.height, lens=shot.lens,
             action=_action_without_words(shot.action), character_anchors=visuals,
             location=sc.location or "场景",
             location_visual=location_visual or "（按剧情合理生成）",
@@ -682,12 +703,13 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     f"a plain studio backdrop and never an empty gray wall.")
         if desc:
             if ctx.cfg.comfyui.native_audio:
-                # the score has its own music-only clip; the shot clip
-                # carries the voice and the room
+                # the sound comes with the picture: the clip carries the
+                # voice, the room and the music, and nothing is laid
+                # under it afterwards
                 from .refs import picture_plan
                 plan = picture_plan(ctx, shot, sc)
                 shot.video_prompt = _assemble_r2v_prompt(
-                    desc, soundscape or "N/A", "N/A", plan)
+                    desc, soundscape or "N/A", music or "N/A", plan)
             else:
                 shot.video_prompt = _assemble_h3_prompt(
                     desc, soundscape or "N/A", music or "N/A")

@@ -486,9 +486,17 @@ def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path,
         wet = min(max(room, 0.0), 0.6)
         room_af = (f"aecho=1.0:1.0:38|71:{wet:.3f}|{wet * 0.63:.3f},")
     if not has_bgm:
+        raw = out.with_suffix(".raw.mp3")
         _run([ffmpeg_bin(), "-y", "-i", str(voice),
               "-af", room_af + "aresample=44100",
-              "-c:a", "libmp3lame", "-q:a", "3", str(out)], quiet=False)
+              "-c:a", "libmp3lame", "-q:a", "3", str(raw)], quiet=False)
+        if not target_lufs:
+            raw.replace(out)
+            return str(out)
+        # the loudness is set here too: a track with no music under it is
+        # still measured against the platform's target
+        _normalize_loudness(raw, out, target_lufs)
+        raw.unlink(missing_ok=True)
         return str(out)
     if duck:
         fc = (f"[0:a]{room_af}asplit=2[v][sc];"
@@ -508,6 +516,17 @@ def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path,
     if not target_lufs:
         raw.replace(out)
         return str(out)
+    _normalize_loudness(raw, out, target_lufs)
+    raw.unlink(missing_ok=True)
+    return str(out)
+
+
+def _normalize_loudness(raw: Path, out: Path, target_lufs: float) -> None:
+    """Put a track on the platform's loudness target.
+
+    Measured first and corrected with a linear gain, so the result lands
+    on the target instead of near it.
+    """
     m = measure_loudness(raw)
     # the aac encode pushes the peaks up a little, so the normaliser leaves
     # more headroom than the target itself
@@ -520,8 +539,6 @@ def mix_voice_bgm(voice: str | Path, bgm: Optional[str | Path], out: str | Path,
         af += ":linear=true"
     _run([ffmpeg_bin(), "-y", "-i", str(raw), "-af", af,
           "-c:a", "libmp3lame", "-q:a", "3", str(out)], quiet=False)
-    raw.unlink(missing_ok=True)
-    return str(out)
 
 
 def measure_loudness(src: str | Path) -> dict:

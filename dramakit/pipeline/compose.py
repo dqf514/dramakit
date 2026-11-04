@@ -6,9 +6,10 @@ Per episode:
      Ken Burns motion, or a black card placeholder when no visual exists)
   2b. colour grade: measure every shot, pull them onto one look
   3. concat shots -> scene picture; concat scenes -> episode picture (silent)
-  4. concat line audio per scene (silence for any missing) -> pad to scene dur;
-     concat scenes -> episode dialogue track (sample-aligned with the picture)
-  5. mix dialogue + BGM (sidechain ducking, loudness normalize)
+  4. the sound: either the clips' own sound (H3 native) or the recorded
+     dialogue track (per-line TTS), laid on the scene timeline
+  5. mix the music under it - unless the sound came with the picture, in
+     which case there is no second music
   6. mux picture + mix, burn ASS subtitles -> episodes/ep_XXX.mp4
   7. grab a cover frame
   8. export an FCPXML timeline so an editor can pick the episode up in an NLE
@@ -197,6 +198,21 @@ def _scene_voice(ctx: Context, tscene, tmp: Path, idx: int = 0,
     return ff.pad_audio(joined, padded, tscene.duration)
 
 
+def _soundtrack_is_native(ctx: Context) -> bool:
+    """True when the clip's own sound is the whole soundtrack.
+
+    H3 makes the voice, the room and the music in one go, and they belong
+    together: the line, the breath in front of it and the music under it
+    were written as one thing.  Laying a score under that - or a library
+    track on top of it - puts two more musics on one picture, and the
+    result sounds like three things playing at once.
+
+    So when the sound comes with the picture, nothing else is mixed in.
+    """
+    return bool(ctx.cfg.comfyui.native_audio) and \
+        bool(ctx.cfg.compose.native_audio_exclusive)
+
+
 def compose_episode(ctx: Context, ep) -> str:
     cc = ctx.cfg.compose
     tl = ctx.timeline(ep)
@@ -253,8 +269,12 @@ def compose_episode(ctx: Context, ep) -> str:
     # sound is not used - H3 reads the prompt out loud in gibberish when a
     # character is told to talk, and that would end up under the recorded
     # dialogue.
+    #
+    # That is the other way round from the native mode: there the clip's own
+    # sound IS the soundtrack, so a second music under it is a third music.
+    native = _soundtrack_is_native(ctx)
     bed = None
-    if cc.h3_audio == "bed":
+    if not native and cc.h3_audio == "bed":
         beds: list[str] = []
         for tscene in tl.scenes:
             sc = tscene.scene
@@ -281,6 +301,11 @@ def compose_episode(ctx: Context, ep) -> str:
     bgm = ctx.store.abs(ep.bgm_path) if ep.bgm_path else None
     if bgm and not bgm.exists():
         bgm = None
+    if native and bgm:
+        # the clip already carries its own music; a library track on top of
+        # it is one music too many
+        ctx.log.info("compose: 第%d集 用 H3 自带音轨，不叠曲库 BGM", ep.index)
+        bgm = None
     parts: list[tuple[str, float]] = []
     if bed:
         # the bed level depends on the episode, so set it against the dialogue:
@@ -302,7 +327,8 @@ def compose_episode(ctx: Context, ep) -> str:
     # The music stem is the only thing that proves "there is a BGM": the final
     # mix is loud either way because the dialogue is in it. Measure the stem.
     mix_info: dict = {"bed_segments": len(beds) if bed else 0,
-                      "library_bgm": bool(bgm)}
+                      "library_bgm": bool(bgm),
+                      "native_soundtrack": native}
     if music:
         measured = ff.measure_loudness(music)
         mix_info["music_lufs"] = round(float(measured.get("input_i", 0.0)), 2)
@@ -313,6 +339,12 @@ def compose_episode(ctx: Context, ep) -> str:
             ctx.log.info("compose: 第%d集 音乐轨 %.1f LUFS（垫底 %d 段%s）",
                          ep.index, mix_info["music_lufs"], mix_info["bed_segments"],
                          " + 曲库" if bgm else "")
+    elif native:
+        # the music is inside the clip: there is no separate music track and
+        # there is not meant to be one
+        mix_info["music_lufs"] = None
+        ctx.log.info("compose: 第%d集 音轨= H3 原生（人声+环境声+配乐），不再混任何音乐",
+                     ep.index)
     else:
         mix_info["music_lufs"] = None
         ctx.log.warning("compose: 第%d集 没有任何音乐轨", ep.index)
@@ -320,10 +352,13 @@ def compose_episode(ctx: Context, ep) -> str:
 
     mix = tmp / "mix.mp3"
     target = cc.target_loudness_lufs if cc.loudness_normalize else None
+    # the room on the voice is the model's own when the sound came with the
+    # picture - adding a second room on top of it is one sound too many
+    room = 0.0 if native else float(cc.voice_room or 0)
     ff.mix_voice_bgm(voice, music or None, mix,
                      bgm_volume=1.0,
                      duck=ctx.cfg.music.duck_voice, target_lufs=target,
-                     room=float(cc.voice_room or 0))
+                     room=room)
 
     # The mux takes the shorter of the two tracks, so a picture that came out
     # a little short would cut the end of the dialogue off. Both tracks are

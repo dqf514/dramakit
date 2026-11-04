@@ -70,6 +70,20 @@ def _family(rel: Path) -> tuple[str, str]:
     return key, FAMILY_ZH.get(key, key)
 
 
+def _reference_files(folder: Path) -> list[Path]:
+    """The documents that go with a skill.
+
+    Two shapes are in use: a `references/` folder, and a `reference.md`
+    beside the SKILL.md itself.
+    """
+    out: list[Path] = []
+    refs = folder / "references"
+    if refs.is_dir():
+        out += sorted(refs.glob("*.md"))
+    out += sorted(folder.glob("reference*.md"))
+    return out
+
+
 def catalog() -> list[dict]:
     """Every skill a stage could load, with what choosing it costs.
 
@@ -89,8 +103,7 @@ def catalog() -> list[dict]:
             if e > 0:
                 body = text[e + 4:]
         fam, fam_zh = _family(rel)
-        refs = list((md.parent / "references").glob("*.md")) \
-            if (md.parent / "references").exists() else []
+        refs = _reference_files(md.parent)
         out.append({
             "name": rel.as_posix(),
             "title": fm.get("name") or rel.name,
@@ -103,23 +116,56 @@ def catalog() -> list[dict]:
             "ref_chars": sum(len(f.read_text(encoding="utf-8", errors="replace"))
                              for f in refs),
             "refs": len(refs),
+            # the name of every reference, so a stage can ask for one of
+            # them by name
+            "ref_names": [f.name for f in refs],
         })
     return out
 
 
-def cost(selection: dict[str, list[str]]) -> dict[str, int]:
+def cost(selection: dict[str, list[str]],
+         refs: dict[str, dict[str, list[str]]] | None = None) -> dict[str, int]:
     """Characters each stage would add, given what is selected.
 
     Shown before a run: a stage sends these with every call, so a list
     that looks harmless is a multiplier on the whole batch.
+
+    `refs` is the per-stage map of the references that are actually sent
+    with those skills - the documents are part of the cost, and a number
+    that leaves them out would be a lie.
     """
     by_name = {s["name"]: s for s in catalog()}
     out: dict[str, int] = {}
     for stage, names in (selection or {}).items():
         total = 0
+        stage_refs = (refs or {}).get(stage) or {}
         for n in names or []:
             s = by_name.get(n)
-            if s:
-                total += s["chars"]
+            if not s:
+                continue
+            total += s["chars"]
+            wanted = stage_refs.get(n)
+            if not wanted:
+                continue
+            by_ref = {r["name"]: r["chars"] for r in _reference_chars()}
+            for name in wanted:
+                chars = by_ref.get(f"{n}/{name}")
+                if chars:
+                    total += chars
         out[stage] = total
+    return out
+
+
+def _reference_chars() -> list[dict]:
+    """Every reference document, with its size, keyed by skill and name."""
+    out: list[dict] = []
+    if not ROOT.exists():
+        return out
+    for md in sorted(ROOT.rglob("SKILL.md")):
+        rel = md.parent.relative_to(ROOT)
+        for f in _reference_files(md.parent):
+            out.append({
+                "name": f"{rel.as_posix()}/{f.name}",
+                "chars": len(f.read_text(encoding="utf-8", errors="replace")),
+            })
     return out

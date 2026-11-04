@@ -236,6 +236,47 @@ def picture_plan(ctx: Context, shot, sc, *, with_frame: bool = True
                 seen.add(str(pp))
                 out.append((str(pp), f"the prop: {prop.name}", "prop"))
 
+    # the list is trimmed here, once: the prompt numbers these pictures and
+    # the job sends them in the same order, so the two have to be the same
+    # list - and the model only has room for so many
+    return trim_plan(out)
+
+
+# The H3 node takes nine pictures.  A shot with three people in it, a
+# room, a prop and the frame before it asks for more than that, and the
+# ones that fall off the end are not the ones that can be lost.
+MAX_REF_PICTURES = 9
+
+
+def _is_face(item: tuple[str, str, str]) -> bool:
+    """True for the picture that carries a face."""
+    return item[2] == "character" and "the face of" in (item[1] or "")
+
+
+def trim_plan(plan: list[tuple[str, str, str]],
+              limit: int = MAX_REF_PICTURES) -> list[tuple[str, str, str]]:
+    """Keep the pictures that carry the shot, drop the rest.
+
+    The order is kept: the first picture is the one the shot follows,
+    so the frame has to stay at the front.  What goes is chosen by what
+    the model cannot do without - the room and the prop are described in
+    the prompt, so they go before a face does.
+    """
+    if len(plan) <= limit:
+        return plan
+    out = list(plan)
+    for kind in ("prop", "room"):
+        if len(out) <= limit:
+            return out
+        out = [p for p in out if p[2] != kind]
+    # the body sheet goes before the face does
+    if len(out) > limit:
+        out = [p for p in out if _is_face(p)]
+    # the frame before this one goes last: it is continuity, not identity
+    if len(out) > limit:
+        out = [p for p in out if p[2] != "handoff"]
+    if len(out) > limit:
+        out = out[:limit]
     return out
 
 

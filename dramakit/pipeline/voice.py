@@ -206,6 +206,22 @@ def run(ctx: Context) -> dict:
     if ctx.cfg.characters.auto_cast:
         from .character import cast_voices
         cast_voices(ctx, list(ctx.project.characters))
+    # In the native mode the voice in the film is the one H3 made with the
+    # picture, and the recorded line is not mixed in.  The recording is
+    # still wanted for one thing: it is the timbre reference for a
+    # character who has no sample of their own.  So only those lines are
+    # recorded - the rest would be a second voice that nobody hears.
+    native = bool(ctx.cfg.comfyui.native_audio) and \
+        bool(ctx.cfg.compose.native_audio_exclusive)
+    need_ref = set()
+    if native:
+        for c in ctx.project.characters:
+            ref = getattr(c, "voice_ref", "") or ""
+            if not ref or not ctx.store.abs(ref).exists():
+                need_ref.add(c.name)
+        if need_ref:
+            ctx.log.info("voice: H3 原生音轨，只录 %d 个没有音色样本的角色",
+                         len(need_ref))
     lines = []
     for ep in ctx.target_episodes():
         ctx.check_stop()   # 一集一问：停止能在下一集生效
@@ -217,10 +233,19 @@ def run(ctx: Context) -> dict:
                     continue
                 if line.status == Status.SKIPPED:
                     continue
+                if native and line.speaker not in need_ref:
+                    continue
                 lines.append(line)
 
     if not lines:
         ctx.log.info("voice: 所有台词已合成")
+        if native and not need_ref:
+            # nothing to record and nothing missing: the voice in the film
+            # is the one H3 made with the picture, so there is nothing here
+            # to wait for
+            for ep in ctx.target_episodes():
+                ctx.mark(ep, "voice", Status.DONE)
+            ctx.save()
         return {"lines": 0}
 
     ctx.log.info("voice: 合成 %d 句（provider=%s，并发=%d）",

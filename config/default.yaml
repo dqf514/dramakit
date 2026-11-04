@@ -17,11 +17,11 @@
 #   LMStudio   base_url: http://localhost:1234/v1           model: <你加载的模型>
 llm:
   provider: openai_compat
-  base_url: http://localhost:11434/v1 # 默认指向本地 Ollama
-  api_key: ollama # 本地随便填；云端用环境变量覆盖
-  model: qwen2.5:14b
+  base_url: https://api.minimax.cn/v1 # 默认指向本地 Ollama
+  api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4 # 本地随便填；云端用环境变量覆盖
+  model: MiniMax-M3.1-Flash
   temperature: 0.7
-  max_tokens: 4096
+  max_tokens: 102400
   top_p: 1.0
   timeout: 300.0
   max_retries: 3
@@ -42,12 +42,12 @@ models:
   default: m1
   entries:
   - id: m1
-    label: 当前模型
-    base_url: http://localhost:11434/v1
-    model: qwen2.5:14b
-    api_key: ollama
+    label: miniMax-M3.1
+    base_url: https://api.minimax.cn/v1
+    model: MiniMax-M3.1-Flash
+    api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4
     temperature: 0.7
-    max_tokens: 4096
+    max_tokens: 102400
     timeout: 300.0
     use_proxy: false
     roles:
@@ -437,6 +437,33 @@ storyboard:
   include_insert_shots: true                # 允许空镜/特写插入
   language: bilingual                       # 提示词语言 zh | en | bilingual
 
+# --------------------------- 技能 skills ------------------------------------
+# 每个阶段写什么，凭哪些技能。技能是一个知识文件夹，SKILL.md 是短的那份；
+# 真正的手艺在它的 references 里，所以在这里点名要读哪几篇。
+skills:
+  analyze:
+    - short-drama-novel-analyze
+    - short-drama-develop
+  script:
+    - short-drama-write
+    - screenwriting-theory/sw-format-adaptation
+  storyboard:
+    - short-drama-storyboard
+  promptgen:
+    - short-drama-video-prompts
+    - short-drama-image-prompts
+  refs:
+    analyze:
+      short-drama-develop:
+        - adaptation-craft.md
+    script:
+      short-drama-develop:
+        - adaptation-craft.md
+    storyboard:
+      short-drama-storyboard:
+        - production-shot-grammar.md
+        - blocking-playbooks.md
+
 # --------------------------- 合成 compose -----------------------------------
 compose:
   width: 1344                         # 16:9 横屏 768p 成片
@@ -456,6 +483,9 @@ compose:
   target_loudness_lufs: -16.0
   # H3 原生音频：bed=只当配乐/环境声垫底（人声走 TTS 轨，避免双声混叠）；discard=完全丢弃
   h3_audio: bed
+  # H3 原生音频独占成片音轨：H3 做的人声+环境声+配乐浑然天成，
+  # 成片不再叠任何额外声音（不叠配乐垫底、不叠曲库 BGM、不加房间混响）
+  native_audio_exclusive: true
   # H3 垫底的音量。垫底要在对白之下 10 LU 以上才听得清台词，
   # 实测 0.45 时只差 6.4 LU，音乐会盖住人声。
   h3_audio_gain: 0.18               # 短视频平台常用 -14~-16 LUFS

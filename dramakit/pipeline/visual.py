@@ -523,7 +523,13 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0,
 
 
 def _gen_scores(ctx: Context) -> int:
-    """One music-only clip per scene: the score of the episode."""
+    """One music-only clip per scene: the score of the episode.
+
+    Not in the native mode: there the clip's own sound is the soundtrack,
+    and a second music under it is a third music on the same picture.
+    """
+    if ctx.cfg.comfyui.native_audio and ctx.cfg.compose.native_audio_exclusive:
+        return 0
     if ctx.cfg.compose.h3_audio != "bed":
         return 0
     jobs = []

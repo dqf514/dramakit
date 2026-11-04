@@ -20,6 +20,11 @@ def run(ctx: Context) -> dict:
     if mc.provider == "none":
         ctx.log.info("music: provider=none，跳过")
         return {"skipped": True}
+    if ctx.cfg.comfyui.native_audio and ctx.cfg.compose.native_audio_exclusive:
+        # the sound came with the picture: H3's own voice, room and music.
+        # A library track laid under it is one music too many.
+        ctx.log.info("music: H3 原生音轨，跳过曲库 BGM")
+        return {"skipped": True}
     music = ctx.providers.music
     made = 0
     for ep in ctx.target_episodes():
