@@ -60,16 +60,21 @@ while time.time() < DEADLINE and not ok:
             note("门关着（第 %d 次探，第 %d 次关）" % (tries, closed))
         time.sleep(8)
         continue
-    # github.com has several addresses and this network drops some of them
-    # while others work. So the default is tried first, and another one is
-    # tried after it - and the ssl backend this build has is the one that
-    # works: the system config asks for openssl, which this build does
-    # not have, and that only shows up once a connection is made.
+    # Three ways out, tried in turn:
+#   - straight out, the way the machine normally reaches the internet
+#   - straight out but to a named address of GitHub's, for when the name
+#     resolves to one that this network drops
+#   - through the proxy, for when the proxy is working
+# The ssl backend this build has is the one that works: the system
+# config asks for openssl, which this build does not have, and that
+# only shows up once a connection is made.
     attempts = [
         ["git", "-c", "http.sslBackend=schannel", "push", "origin", "main"],
         ["git", "-c", "http.sslBackend=schannel",
-         "-c", "http.curloptResolve=github.com:443:172.182.252.133",
+         "-c", "http.curloptResolve=github.com:443:20.205.243.166",
          "push", "origin", "main"],
+        ["git", "-c", "http.sslBackend=schannel",
+         "-c", "http.proxy=http://127.0.0.1:7897", "push", "origin", "main"],
     ]
     code, out = 1, ""
     for cmd in attempts:

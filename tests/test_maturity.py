@@ -259,6 +259,193 @@ assert.strictEqual(name.value, "重新开始");
         self.assertIn("updateSideToggle();", modern)
         self.assertIn('sideToggle.setAttribute("aria-expanded", String(!collapsed))', modern)
 
+    def test_palette_is_declared_once_and_both_themes_cover_it(self):
+        """Two palettes is how a console ends up with two greens."""
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        modern = (root / "dramakit/web/static/modern.css").read_text(encoding="utf-8")
+        self.assertFalse(re.search(r"^\s*--[a-z0-9-]+\s*:", modern, re.M),
+                         "modern.css re-declares colour tokens")
+        light = text[text.index(":root{"):text.index("html[data-theme=\"dark\"]")]
+        dark = text[text.index("html[data-theme=\"dark\"]{"):text.index("*{box-sizing:border-box}")]
+        declared = lambda block: set(re.findall(r"--[a-z0-9-]+(?=\s*:)", block))
+        # a token that only exists in one theme is a component that goes
+        # colourless when the theme is switched
+        self.assertTrue(declared(dark) <= declared(light),
+                        declared(dark) - declared(light))
+        for token in ("--fg", "--fg2", "--fg3", "--confirm", "--go", "--danger2",
+                      "--warn", "--on-accent", "--count-bg", "--count-fg", "--monitor"):
+            self.assertIn(token, light)
+        # everything the second sheet paints with has to be declared
+        used = set(re.findall(r"var\((--[a-z0-9-]+)", modern))
+        self.assertTrue(used <= declared(light), used - declared(light))
+        self.assertEqual(text.count("<style"), 1)
+        self.assertEqual(text.count("</style>"), 1)
+
+    def test_text_floor_and_target_size_are_not_below_the_readable_minimum(self):
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        css = text[text.index("<style>"):text.index("</style>")]
+        sizes = sorted({float(s) for s in re.findall(r"font-size:\s*([\d.]+)px", css)})
+        self.assertTrue(all(s >= 11.5 for s in sizes), [s for s in sizes if s < 11.5])
+        self.assertIn("font:14px/1.5", css)
+        for rule in (".btn{", ".btn.sm{", ".btn.xs{", ".tg{", ".chip{", ".proj-del{",
+                     ".sk-pick{", ".badge{"):
+            body = css[css.index(rule):css.index(rule) + 340]
+            size = re.search(r"(?:min-)?height:\s*(\d+)", body)
+            self.assertTrue(size and int(size.group(1)) >= 22, rule)
+        # a token with a raw hex fallback is a colour that exists in one
+        # sheet and not in the palette
+        self.assertFalse(re.findall(r"var\(--[a-z0-9-]+\s*,\s*#", text))
+
+    def test_stage_state_reports_interrupted_and_failed(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node.js is not installed")
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        script = text[text.index("function stageState(stage){"):
+                      text.index("\nfunction epProgress(")] + r"""
+const assert = require("assert");
+const run = (proj, eps) => { global.S = {detail: {stage_status: proj, episodes: eps}};
+  return stageState("script"); };
+// a stopped stage is not a pending one: a console that calls it pending
+// tells the reader to start over instead of resuming
+assert.strictEqual(run({script: "interrupted"}, [{}]), "interrupted");
+assert.strictEqual(run({script: "failed"}, [{}]), "failed");
+assert.strictEqual(run({script: "running"}, [{}]), "running");
+assert.strictEqual(run({}, [{stage_status: {script: "interrupted"}}]), "interrupted");
+assert.strictEqual(run({}, [{stage_status: {script: "done"}},
+                            {stage_status: {script: "interrupted"}}]), "interrupted");
+assert.strictEqual(run({}, [{stage_status: {script: "done"}},
+                            {stage_status: {script: "failed"}}]), "partial");
+assert.strictEqual(run({}, [{stage_status: {script: "done"}},
+                            {stage_status: {script: "done"}}]), "done");
+assert.strictEqual(run({}, [{stage_status: {}}]), "pending");
+"""
+        result = subprocess.run([node, "-e", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_escaping_covers_single_quotes_and_handlers_carry_no_values(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node.js is not installed")
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        esc = text[text.index("const esc = s =>"):text.index("\nconst num =")]
+        script = esc + r"""
+const assert = require("assert");
+// a slug or skill name with an apostrophe in it used to close the string
+// around the handler and break the click
+assert.strictEqual(esc("O'Brien"), "O&#39;Brien");
+assert.strictEqual(esc(`<a"b'c&d>`), "&lt;a&quot;b&#39;c&amp;d&gt;");
+"""
+        result = subprocess.run([node, "-e", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # the values are passed as data attributes rather than into the
+        # handler text, so a quote in a name is data and not syntax
+        self.assertFalse(re.findall(r"on[a-z]+=\"[^\"]*'\$\{", text))
+        self.assertIn('data-del="${esc(p.slug)}"', text)
+        self.assertIn('data-skill="${esc(x.name)}"', text)
+
+    def test_delete_leaves_the_pages_that_named_the_project(self):
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        body = text[text.index("async function deleteProject(slug){"):
+                    text.index("\n}\n", text.index("async function deleteProject(slug){"))]
+        for call in ("renderProjects()", "renderCmdProj()", "renderHeader()", "switchPage("):
+            self.assertIn(call, body)
+        self.assertIn('S.detail=null', body)
+        # deleting is a named button, so it can be reached by keyboard
+        self.assertIn('class="proj-del"', text)
+        self.assertIn('aria-label="删除项目 ', text)
+
+    def test_media_is_named_and_a_running_job_is_not_given_an_invented_percent(self):
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        modern = (root / "dramakit/web/static/modern.js").read_text(encoding="utf-8")
+        for tag in re.findall(r"<img [^>]*>", text):
+            self.assertIn("alt=", tag, tag)
+        for tag in re.findall(r"<video [^>]*>", text):
+            self.assertIn("aria-label", tag, tag)
+        # the crawl bar is the honest answer to "how far along is it"
+        self.assertIn("job-progress indet", modern)
+        self.assertNotIn('? 8 : 0', modern)
+        self.assertIn("known ? `<div class=\"job-progress\">", modern)
+        # a preview must answer the keyboard and a tap, not only the mouse
+        self.assertIn("wireVideoPreview", text)
+        self.assertNotIn("onmouseenter=\"this.play()\"", text)
+
+    def test_overlays_are_dialogs_that_keep_and_return_the_caret(self):
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        for anchor in ("renderLightbox", "openReader"):
+            body = text[text.index(f"function {anchor}(") if anchor == "renderLightbox"
+                        else text.index(f"async function {anchor}("):]
+            body = body[:body.index("\n}\n")]
+            self.assertIn("aria-modal", body, anchor)
+            self.assertIn("trapFocus", body, anchor)
+        # each one puts the caret back where it was opened from
+        self.assertIn("lightbox.last?.focus?.()", text)
+        self.assertIn("_rdLast?.focus?.()", text)
+        # arrows belong to the field being typed in or the chapter being read
+        for handler in ("function lightboxKeys(e){", "function _rdKey(e){"):
+            body = text[text.index(handler):text.index(handler) + 420]
+            self.assertIn("isContentEditable", body, handler)
+
+    def test_pages_keep_their_frame_and_their_state_between_polls(self):
+        modern = (Path(__file__).parents[1] / "dramakit/web/static/modern.js").read_text(encoding="utf-8")
+        # the jobs frame is drawn once; a rebuild every poll closed the log
+        # panel and dropped the scroll position
+        self.assertIn("if (!jobsShell)", modern)
+        self.assertIn("jobsShell = true", modern)
+        # the config history card lived inside the tab that loadSettings
+        # rewrites whole, so it was thrown away on every visit
+        self.assertIn('getElementById("page-settings")', modern)
+        self.assertNotIn('getElementById("tab-settings")', modern)
+        # a trash list read once never shows what was deleted afterwards
+        self.assertIn('details.addEventListener("toggle", () => { if (details.open) renderTrash(); })',
+                      modern)
+        self.assertNotIn("renderTrash(); }, {once: true})", modern)
+        # the accessibility pass marks what it has already done
+        self.assertIn('node.dataset.dkA11y = "1"', modern)
+        self.assertNotIn("Math.random().toString(36)", modern)
+
+    def test_chapter_card_offers_both_scopes_and_they_reach_the_api(self):
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        # only one button existed, so the narrower job could not be asked for
+        self.assertIn('data-chap="season"', text)
+        self.assertIn('data-chap="script"', text)
+        self.assertIn('data-chap="mode"', text)
+        self.assertIn('else if(a==="mode") toggleChapMode();', text)
+        for func in ("chooseChapters", "startSeason"):
+            body = text[text.index("async function " + func + "(){"):]
+            body = body[:body.index("\n}\n")]
+            # chapters are the input: naming them is how a run is told to
+            # make part of a book rather than all of it
+            self.assertIn("chapters:chosen", body, func)
+            self.assertIn("runPreflight", body, func)
+
+    def test_every_page_is_reachable_and_the_bottom_bar_stays_short(self):
+        root = Path(__file__).parents[1]
+        text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
+        modern = (root / "dramakit/web/static/modern.js").read_text(encoding="utf-8")
+        css = (root / "dramakit/web/static/modern.css").read_text(encoding="utf-8")
+        # skills configure the stages, and had no way in except a button
+        # buried in Settings
+        self.assertIn('"skills"', modern[modern.index("const studioPages"):
+                                           modern.index("const jobNames")])
+        self.assertIn('data-studio="skills"', modern)
+        narrow = css[css.index("@media (max-width: 700px)"):]
+        # five destinations on a phone: the node pool moves up into the header
+        hidden = re.search(r"#rail \.brand[^{]*\{([^}]*)\}", narrow).group(1)
+        for selector in ("#healthBtn", '#rail [data-page="nodes"]'):
+            self.assertIn(selector, hidden)
+        self.assertIn(".header-nodes { display: inline-flex; }", narrow)
+        self.assertIn('id="nodesBtnHeader"', text)
+        self.assertIn('getElementById("nodesBtnHeader").onclick', modern)
+
 
 if __name__ == "__main__":
     unittest.main()
