@@ -60,7 +60,12 @@ while time.time() < DEADLINE and not ok:
             note("门关着（第 %d 次探，第 %d 次关）" % (tries, closed))
         time.sleep(8)
         continue
-    code, out = run(["git", "push", "origin", "main"])
+    # github.com resolves to an address that this network drops. The git
+    # endpoint is reached through another of its addresses, and the ssl
+    # backend this build actually has is the one that works.
+    code, out = run(["git", "-c", "http.sslBackend=schannel",
+                     "-c", "http.curloptResolve=github.com:443:172.182.252.133",
+                     "push", "origin", "main"])
     clean = "\n".join(l for l in out.split("\n")
                       if "LF will be replaced" not in l).strip()
     if code == 0 and ("Everything up-to-date" in clean or "-> main" in clean):

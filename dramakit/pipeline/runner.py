@@ -12,14 +12,20 @@ Now the run is in three parts. The stages that set everything up go first,
 because nothing downstream can start without them. Then two lanes: the
 one that writes - script, storyboard, prompts, voices, music - and the one
 that draws and renders, which picks up a shot as soon as that shot's
-prompts exist rather than when every prompt in the project does. Whatever
-needs both lanes finished goes last.
+prompts exist rather than when every prompt in the project does. A third
+lane puts each episode together as soon as its own shots are done, so
+the first episode can be watched while the last one is still being
+drawn. Whatever needs both lanes finished goes last.
 
 The lanes share one project, so saving it takes turns: the lock is on the
-write, not on the work, and the lanes still run at the same time.
+write, not on the work, and the lanes still run at the same time. And
+before any of them writes, it takes in what the others have finished -
+so a lane that is drawing and a lane that is putting a film together
+can write the same file without losing each other's work.
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -104,7 +110,7 @@ def _run_stage(ctx: Context, name: str, source_file: Optional[str],
         # episodes does - leaves it here for the stages that follow.
         if season_obj is None:
             season_obj = ctx.season
-        results[name] = res
+        results[name] = _merge_results(results.get(name), res)
         ctx.project.stage_status[name] = Status.DONE
         if season_obj is not None:
             season_obj.stage_status[name] = Status.DONE
@@ -155,6 +161,154 @@ def _complete_canon(ctx: Context, season_obj) -> None:
     if owned:
         season_obj.episode_range = [owned[0], owned[-1]]
     ctx.save()
+
+
+def _episode_ready(ctx: Context, ep) -> bool:
+    """Is every shot of this episode drawn?
+
+    The film is put together from the shots, so an episode can be made
+    when its shots are all there - it does not wait for the episodes
+    that come after it.
+    """
+    shots = [sh for sc in ep.scenes for sh in sc.shots]
+    if not shots:
+        return False
+    return all(getattr(sh, "video_path", "") for sh in shots)
+
+
+def _episode_made(ep) -> bool:
+    """Has this episode already been put together?"""
+    if not getattr(ep, "video_path", ""):
+        return False
+    return (ep.stage_status or {}).get("compose") == Status.DONE
+
+
+def _merge_results(prev, new):
+    """Add up the counts of two runs of the same stage.
+
+    A stage can run twice: once by the lane that puts an episode
+    together as it becomes ready, and once by the tail at the end of the
+    run. The report should say what was done in total, not what the last
+    one did - otherwise a run that made a film says it made nothing.
+    """
+    if not isinstance(prev, dict) or not isinstance(new, dict):
+        return new
+    out = dict(prev)
+    for k, v in new.items():
+        old = out.get(k)
+        if (isinstance(v, (int, float)) and not isinstance(v, bool)
+                and isinstance(old, (int, float)) and not isinstance(old, bool)):
+            out[k] = old + v
+        else:
+            out[k] = v
+    return out
+
+
+def _finish_one(ctx: Context, cfg: Config, ep_index: int,
+                results: dict, lock: threading.Lock, tail: list[str]) -> dict:
+    """Put one episode together, in a context of its own.
+
+    The stages take a context and work on the episodes that context
+    points at. The run's own context points at every episode, and the
+    run is drawing them, so the episode being finished gets a context of
+    its own with a copy of the settings that names only it.
+
+    What the two write is the same file, and the file is written whole
+    each time - so before either of them writes, it takes in what the
+    other has finished. That is what makes this safe to do while the
+    cards are still working.
+
+    Returns what was made, so the run's own copy of the episode knows
+    about it too - otherwise the run would put the same episode together
+    again the moment it looks.
+    """
+    from .base import Context
+    own_cfg = cfg.model_copy(deep=True)
+    own_cfg.pipeline.only_episodes = [ep_index]
+    # the run's own providers: they are the clients that answer, and
+    # building a second set would go and look at the cards all over
+    # again for nothing
+    own_ctx = Context(own_cfg, ctx.store, ctx.providers)
+    if getattr(ctx, "_stop", None) is not None:
+        own_ctx.bind_stop(ctx._stop)
+    for name in tail:
+        fn = _stage_fn(name)
+        if fn is None:
+            continue
+        try:
+            res = fn(own_ctx) or {}
+        except Exception as e:  # noqa: BLE001
+            log.error("第%d集 %s 失败: %s", ep_index, name, str(e)[:200])
+            continue
+        with lock:
+            results[name] = _merge_results(results.get(name), res)
+        log.info("第%d集 %s 完成: %s", ep_index, name,
+                 json.dumps(res, ensure_ascii=False)[:160])
+    own_ep = own_ctx.project.episode(ep_index)
+    if own_ep is None:
+        return {}
+    return {"video_path": own_ep.video_path,
+            "subtitle_path": own_ep.subtitle_path,
+            "status": own_ep.status,
+            "stage_status": dict(own_ep.stage_status or {}),
+            "qc_report": own_ep.qc_report,
+            "compose_blocked": own_ep.compose_blocked}
+
+
+def _finish_when_ready(ctx: Context, cfg: Config, results: dict,
+                       drawing_done: threading.Event,
+                       lock: threading.Lock, tail: list[str]) -> None:
+    """Put each episode together as soon as its shots are all drawn.
+
+    The film does not have to wait for the last shot of the last
+    episode. The cards are busy for hours, and an episode that is
+    finished can be put together while the others are still being
+    drawn: the machines keep working, and the first episode is ready
+    to watch long before the last one is.
+
+    An episode that cannot be made is not tried over and over: it is
+    tried again when its shots change, and otherwise it is left to the
+    tail at the end of the run.
+    """
+    tried: dict[int, tuple] = {}
+    while True:
+        worked = False
+        try:
+            episodes = list(ctx.target_episodes())
+        except Exception:  # noqa: BLE001
+            episodes = []
+        for ep in episodes:
+            if ctx.stopped:
+                return
+            if _episode_made(ep):
+                continue
+            shots = [sh for sc in ep.scenes for sh in sc.shots]
+            if not shots or not all(getattr(sh, "video_path", "") for sh in shots):
+                continue
+            ready = tuple(sh.id for sh in shots)
+            if tried.get(ep.index) == ready:
+                continue          # nothing new since the last attempt
+            tried[ep.index] = ready
+            log.info("第%d集《%s》的镜头齐了，开始合成", ep.index, ep.title)
+            made = _finish_one(ctx, cfg, ep.index, results, lock, tail)
+            # the run's own copy has to know, or it will put the same
+            # episode together again the moment it looks
+            if made:
+                ep.video_path = made.get("video_path") or ep.video_path
+                ep.subtitle_path = made.get("subtitle_path") or ep.subtitle_path
+                if made.get("status"):
+                    ep.status = made["status"]
+                if made.get("qc_report"):
+                    ep.qc_report = made["qc_report"]
+                ep.compose_blocked = made.get("compose_blocked") or ""
+                for k, v in (made.get("stage_status") or {}).items():
+                    if not ep.stage_status:
+                        ep.stage_status = {}
+                    ep.stage_status[k] = v
+            worked = True
+        if drawing_done.is_set() and not worked:
+            return
+        time.sleep(10)
 
 
 def _draw_until_done(ctx: Context, writes_done: threading.Event,
@@ -300,10 +454,12 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
         writes = _wanted(WRITES)
         draws = _wanted(DRAWS)
 
-        # ---- the two lanes that do not have to wait for each other -------
+        # ---- the lanes that do not have to wait for each other -------
         if writes and draws:
             log.info("── 两道并行：写作 %s / 绘制 %s ──", writes, draws)
             writes_done = threading.Event()
+            drawing_done = threading.Event()
+            results_lock = threading.Lock()
 
             def _write_lane():
                 try:
@@ -318,12 +474,26 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                     # be set even when the lane failed or was stopped
                     writes_done.set()
 
-            with ThreadPoolExecutor(max_workers=2) as pool:
+            def _draw_lane():
+                try:
+                    _draw_until_done(ctx, writes_done, results, cfg)
+                finally:
+                    # the finisher waits for this: an episode can only be
+                    # made once its shots are all drawn
+                    drawing_done.set()
+
+            with ThreadPoolExecutor(max_workers=3) as pool:
                 wfut = pool.submit(_write_lane)
-                dfut = pool.submit(_draw_until_done, ctx, writes_done,
-                                   results, cfg)
+                dfut = pool.submit(_draw_lane)
+                # the third lane puts each episode together as soon as its
+                # own shots are done, so the first episode can be watched
+                # while the last one is still being drawn
+                ffut = pool.submit(_finish_when_ready, ctx, cfg, results,
+                                   drawing_done, results_lock,
+                                   _wanted(TAIL))
                 wfut.result()
                 dfut.result()
+                ffut.result()
             if ctx.stopped:
                 return _finish(ctx, season_obj, stages, results)
         else:
@@ -336,6 +506,8 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                     return _finish(ctx, season_obj, stages, results)
 
         # ---- what needs both lanes finished -------------------------------
+        # The safety net: anything the third lane did not get to - an
+        # episode whose shots arrived too late to be caught - is made here.
         for name in _wanted(TAIL):
             if ctx.stopped:
                 break

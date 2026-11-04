@@ -414,23 +414,47 @@ class Context:
             self.store.save(self.project)
 
     def _adopt_finished_clips(self) -> None:
-        """Take in any clip that is on the disk but that this copy does not know.
+        """Take in what the disk knows and this copy does not.
 
-        The console can redraw a shot while a run is going - that is what
-        the redraw button is for, and it is the only way to fix one
-        camera without waiting for the run to reach it. That work is
-        written to the project by the console, but a run holds the
-        project in memory and writes it whole, so without this the run
-        writes over the console's change: the shot goes back to "not
-        done" while its clip is sitting on the disk, and the run draws
-        the same clip a second time.
+        Two things happen to a project while a run is going, and both
+        write the whole file:
 
-        The file is the truth here, not the record: a clip that is on
-        the disk was made, and the record that says otherwise is the
-        thing that is out of date. What the run has drawn itself is
-        left alone - it is newer, and it knows the details.
+        - the console can redraw a shot. That work is on the disk and
+          the run's copy of the project does not know about it, so
+          without this the run writes over it: the shot goes back to
+          "not done" while its clip is sitting there, and the run draws
+          the same clip again.
+
+        - the console can compose an episode, or another run can. The
+          finished film and the stages behind it are on the disk; the
+          run does not know, and would write over them.
+
+        So before writing, anything the disk has finished and this copy
+        does not know about is taken. The file is the truth: a clip that
+        is on the disk was made, and the record that says otherwise is
+        the thing that is out of date.
         """
+        try:
+            disk = self.store.load()
+        except Exception:  # noqa: BLE001
+            return
+        disk_eps = {e.index: e for e in disk.episodes}
         for ep in self.project.episodes:
+            other = disk_eps.get(ep.index)
+            if other is not None:
+                # a stage that finished stays finished
+                if not ep.stage_status:
+                    ep.stage_status = {}
+                for name, st in (other.stage_status or {}).items():
+                    if st == Status.DONE and ep.stage_status.get(name) != Status.DONE:
+                        ep.stage_status[name] = Status.DONE
+                if not ep.video_path and other.video_path:
+                    ep.video_path = other.video_path
+                if not ep.subtitle_path and other.subtitle_path:
+                    ep.subtitle_path = other.subtitle_path
+                # an episode that was put together is done, whoever did it
+                if other.status == Status.DONE and ep.status != Status.DONE:
+                    ep.status = Status.DONE
             for sc in ep.scenes:
                 for shot in sc.shots:
                     if not shot.video_path:

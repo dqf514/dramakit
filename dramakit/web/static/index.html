@@ -20,7 +20,7 @@ try{
     --bg:#f6f7f9; --bg2:#ffffff; --bg3:#eef1f5; --bg4:#e2e7ed;
     --line:#dfe4ea; --line2:#c7d0da;
     --fg:#1c2632; --fg2:#4e5c6d; --fg3:#5c6a7c;
-    --go:#16877b; --go2:#127065; --danger:#cf222e; --danger2:#b42318;
+    --go:#127065; --go2:#0f665c; --danger:#b42318; --danger2:#a01911;
     --confirm:#3267d6; --confirm2:#2858ba; --warn:#8a5a10; --ai:#6b46c1;
     --chip:#eef1f5; --r:8px;
     --rail:#f0f2f5; --rail-on:#e5ecfa;
@@ -85,9 +85,15 @@ try{
   /* ---------- icon rail ---------- */
   #rail{width:68px;flex:0 0 auto;background:var(--rail);border-right:1px solid var(--line);
     display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px}
-  .brand{width:38px;height:38px;border-radius:9px;background:linear-gradient(145deg,#2c6bed,#7c3aed);
+  /* the mark on the rail: a solid accent, because the console is not a
+    poster, and its letters take the accent's contrast partner */
+  .brand{width:38px;height:38px;border-radius:9px;background:var(--confirm);
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;
-    letter-spacing:.5px;color:#fff;margin-bottom:10px;box-shadow:0 4px 14px var(--brand-shadow)}
+    letter-spacing:.5px;color:var(--on-accent);margin-bottom:10px}
+  /* a divider between two groups of chips is a rule, not a character:
+    a pipe drawn in the border colour reads as a smudge and a screen
+    reader has nothing to do with it */
+  .chip-sep{align-self:stretch;width:1px;background:var(--line2);margin:2px 2px}
   .railbtn{width:54px;padding:7px 0 5px;border:0;background:transparent;color:var(--fg3);
     display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:8px;
     cursor:pointer;font-size:12px;font-family:inherit}
@@ -445,8 +451,8 @@ try{
   .gstep.cur{border-color:var(--confirm);box-shadow:0 0 0 2px var(--ai-focus)}
   .gnum{width:25px;height:25px;border-radius:50%;background:var(--bg4);color:var(--fg2);
     display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px}
-  .gstep.done .gnum{background:var(--go);color:#fff}
-  .gstep.cur .gnum{background:var(--confirm);color:#fff}
+  .gstep.done .gnum{background:var(--go);color:var(--on-accent)}
+  .gstep.cur .gnum{background:var(--confirm);color:var(--on-accent)}
   .gstep .gt{font-weight:650;font-size:12.5px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
   .gstep .gd{color:var(--fg3);font-size:12px;margin-top:1px;line-height:1.5}
   .gstep .ga{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -726,7 +732,8 @@ try{
 <div id="drawerMask"></div>
 <aside id="drawer">
   <div class="dhead"><span class="dt" id="dTitle">编辑</span>
-    <button class="btn sm ghost" id="dClose">×</button></div>
+    <button class="btn sm ghost icon" id="dClose" aria-label="关闭编辑面板">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="dbody" id="dBody"></div>
   <div class="dfoot" id="dFoot"></div>
 </aside>
@@ -742,6 +749,22 @@ const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const num = (v,d)=>{const x=parseFloat(v);return Number.isFinite(x)?x:d;};
 const attr = s => esc(s);
+// A mark that only decorates a word - a play triangle in front of 看成片 -
+// is not part of its name. Screen readers otherwise read the glyph out.
+const mark = ch => `<span aria-hidden="true">${ch}</span>`;
+// Keystrokes stay inside an overlay: Tab must not walk the page behind it.
+function trapFocus(rootEl){
+  const sel = 'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  rootEl.addEventListener("keydown", e => {
+    if (e.key !== "Tab") return;
+    const items = [...rootEl.querySelectorAll(sel)].filter(el =>
+      el.offsetParent !== null || getComputedStyle(el).position === "fixed");
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+}
 
 // A node's address is worth clicking: it is the card that is doing the
 // work, and its own console says what it is doing right now. Only a
@@ -1066,7 +1089,7 @@ function renderGuide(){
     {n:6,title:"配音 · 字幕 · 配乐",desc:"逐句 TTS 拿到真实音频时长，字幕和镜头都跟着这条时间轴走；再按场景情绪匹配 BGM。",
      st:gStagesState(["voice","subtitle","music"]),actions:runBtn("运行 配音→配乐",["voice","subtitle","music"])+gbtn("资产库","assets")},
     {n:7,title:"合成成片",desc:"ffmpeg 拼接镜头、混人声/BGM、烧硬字幕、响度归一，输出 9:16 成片、封面和 srt。",
-     st:gStagesState(["compose"]),actions:(ep?`<a class="btn sm confirm" href="${attr(ep.video)}" target="_blank">▶ 看成片</a>`:"")+runBtn("运行 合成",["compose"])},
+     st:gStagesState(["compose"]),actions:(ep?`<a class="btn sm confirm" href="${attr(ep.video)}" target="_blank">${mark("▶")} 看成片</a>`:"")+runBtn("运行 合成",["compose"])},
   ];
   let curSet=false;
   steps.forEach(o=>{ o.cur=!curSet&&o.st.state!=="done"; if(o.cur)curSet=true; });
@@ -1096,9 +1119,9 @@ function renderGuide(){
         </div>
       </div>
       <div class="gh-side">
-        <button class="btn go" data-gact="runall" ${dis}>▶ 一键跑完整流程</button>
+        <button class="btn go" data-gact="runall" ${dis}>${mark("▶")} 一键跑完整流程</button>
         <button class="btn confirm" data-gact="probe" ${S.guideProbing?"disabled":""}>${env.checked?"重新自检":"环境自检"}</button>
-        <button class="btn ghost" data-gact="new">＋ 新建项目</button>
+        <button class="btn ghost" data-gact="new">${mark("＋")} 新建项目</button>
       </div>
     </div>
     ${S.guideProbing?'<div class="gab"><span class="spin"></span> 正在探测 ffmpeg / 大模型 / ComfyUI / TTS…（远程 ComfyUI 可能要十几秒）</div>':""}
@@ -1698,13 +1721,18 @@ function renderWorkbench(){
                onclick="toggleChapMode()" title="切换 列表 / 图标">☰ 列表</span>
        </div>
        <div class="chap-tools">
-         <button class="btn" onclick="setAllChapters(true)">全选</button>
-         <button class="btn" onclick="setAllChapters(false)">全不选</button>
+         <button class="btn" data-chap="all">全选</button>
+         <button class="btn" data-chap="none">全不选</button>
          <span class="grow"></span>
          <span class="mini muted" id="epWantedNote">集数由系统按时长自动分</span>
        </div>
-       <button class="btn go" style="width:100%;margin-bottom:6px"
-               onclick="startSeason()">开始新的一季</button>
+       <!-- two different asks: one season through every stage, or these
+         chapters cut and scripted only. Only one button existed, so the
+         narrower job could not be asked for at all. -->
+       <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+         <button class="btn go" style="flex:1;min-width:150px" data-chap="season">开始新的一季</button>
+         <button class="btn confirm" style="flex:1;min-width:150px" data-chap="script">只做所选章的分集与剧本</button>
+       </div>
        <div class="chap-body" id="chapterList"></div>
      </div>`;
   const seasonHtml =
@@ -1727,10 +1755,10 @@ function renderWorkbench(){
       <div class="ebar"><i style="width:${epProgress(ep)}%"></i></div>
       <div class="ef">
         <span class="mini">${epProgress(ep)}% 完成</span>
-        ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ↗</a>':""}
+        ${ep.video?'<a class="mini" href="'+ep.video+'" target="_blank">成片 ${mark("↗")}</a>':""}
       ${ep.video_mtime?`<span class="muted" style="font-size:12px">${ago(ep.video_mtime)}</span>`:""}
-        ${ep.nle?'<a class="mini" href="'+ep.nle+'" target="_blank">FCPXML ↗</a>':""}
-        ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ↗</a>':""}
+        ${ep.nle?'<a class="mini" href="'+ep.nle+'" target="_blank">FCPXML ${mark("↗")}</a>':""}
+        ${ep.cover?'<a class="mini" href="'+ep.cover+'" target="_blank">封面 ${mark("↗")}</a>':""}
         ${ep.scenes.some(s=>s.shots.some(x=>x.video))?'<span class="mini" style="color:var(--go2)">有视频</span>':""}
         ${qcBadge(ep.qc)}
       </div>
@@ -1740,7 +1768,7 @@ function renderWorkbench(){
     <div class="wb-layout">
     <div class="wb-main">
     <div class="hero">
-      <div class="cover">${firstCover?`<img src="${firstCover}">`:'<div class="empty" style="padding:0;height:100%;display:flex;align-items:center;justify-content:center">无封面</div>'}</div>
+      <div class="cover">${firstCover?`<img src="${firstCover}" alt="${attr((d.meta.title||d.meta.name||"项目")+" 封面")}">`:'<div class="empty" style="padding:0;height:100%;display:flex;align-items:center;justify-content:center">无封面</div>'}</div>
       <div class="hb">
         <h1 class="page">${esc(d.meta.title||d.meta.name)}</h1>
         <div class="hm">${esc(d.art_direction.genre||"")} · ${esc(d.art_direction.style||"")} · ${esc(d.art_direction.aspect_ratio||"9:16")} · ${esc(d.art_direction.era||"")}</div>
@@ -1752,7 +1780,7 @@ function renderWorkbench(){
           <div class="stat"><b>${doneStages}/${STAGES.length}</b><span>阶段完成</span></div>
         </div>
         <div class="quick">
-          <button class="btn go" data-act="run-all">▶ 跑完整流程</button>
+          <button class="btn go" data-act="run-all">${mark("▶")} 跑完整流程</button>
           <button class="btn confirm" data-act="open-board">分镜台</button>
           <button class="btn ai" data-act="open-assets">AI 检索资产</button>
           <button class="btn ghost" onclick="reindex('${attr(d.slug)}',true)">AI 打标签</button>
@@ -1786,6 +1814,16 @@ function renderWorkbench(){
     if(a==="run-all"){ runSel=new Set(STAGES); switchPage("pipeline"); }
     if(a==="open-board") switchPage("board");
     if(a==="open-assets") switchPage("assets");
+  });
+  // the chapter card is wired by attribute rather than by an inline
+  // handler: the two runs it offers differ in scope and neither should
+  // have to be spelled inside a template string
+  $$("#page-workbench [data-chap]").forEach(b=>b.onclick=()=>{
+    const a=b.dataset.chap;
+    if(a==="all") setAllChapters(true);
+    else if(a==="none") setAllChapters(false);
+    else if(a==="season") startSeason();
+    else if(a==="script") chooseChapters();
   });
 }
 
@@ -1843,9 +1881,9 @@ function renderBoard(){
       </div>
     </div>
     <div class="muted" style="font-size:12.5px;margin-bottom:10px">第 ${ep.index} 集 · ${ep.scenes.length} 场 · ${shotCount} 镜
-      ${ep.video?`<a class="mini" href="${ep.video}" target="_blank" style="margin-left:6px">▶ 成片</a>`:""}
+      ${ep.video?`<a class="mini" href="${ep.video}" target="_blank" style="margin-left:6px">${mark("▶")} 成片</a>`:""}
       ${ep.video_mtime?`<span class="muted" style="font-size:12px;margin-left:6px">${ep.video_seconds?ep.video_seconds+"s · ":""}最后生成 ${ago(ep.video_mtime)}（${whenStr(ep.video_mtime)}）</span>`:""}
-      ${ep.nle?`<a class="mini" href="${ep.nle}" target="_blank" style="margin-left:6px">FCPXML ↗</a>`:""}
+      ${ep.nle?`<a class="mini" href="${ep.nle}" target="_blank" style="margin-left:6px">FCPXML ${mark("↗")}</a>`:""}
       ${qcBadge(ep.qc)}</div>
     <div id="boardBlocks">${blocks||'<div class="empty">本集还没有分镜</div>'}</div>`;
 
@@ -1858,10 +1896,30 @@ function renderBoard(){
     const sh=sc&&sc.shots.find(s=>s.id===c.dataset.shot);
     if(sh) openShotDrawer(ep,sc,sh);
   });
+  wireVideoPreview($("#page-board"));
   $$("#page-board .lineedit").forEach(x=>x.onclick=()=>{
     const line=ep.scenes.flatMap(s=>s.lines).find(l=>l.id===x.dataset.line);
     const sc=ep.scenes.find(s=>s.lines.some(l=>l.id===x.dataset.line));
     if(line) openLineDrawer(ep,sc,line);
+  });
+}
+// a preview that only answers the mouse is unreachable by keyboard and on
+// a phone: hover, focus and tap all start it, and leaving stops it
+function wireVideoPreview(root){
+  if(!root) return;
+  $$("[data-vprev], .shotcard video, .asset video", root).forEach(v=>{
+    if(v.dataset.wired) return;
+    v.dataset.wired="1";
+    const host = v.closest(".shotcard") || v.closest(".asset") || v;
+    const go=()=>{ const p=v.play(); if(p&&p.catch) p.catch(()=>{}); };
+    const stop=()=>{ v.pause(); try{v.currentTime=0;}catch(e){} };
+    host.addEventListener("pointerenter",go);
+    host.addEventListener("pointerleave",stop);
+    host.addEventListener("focusin",go);
+    host.addEventListener("focusout",stop);
+    if(!host.hasAttribute("tabindex") && host!==v) host.tabIndex=0;
+    // a tap starts it where there is no hover to do it
+    host.addEventListener("click",go);
   });
 }
 function matchesFilter(sh){
@@ -1872,9 +1930,11 @@ function matchesFilter(sh){
   return sh.status===f;
 }
 function shotCard(sh){
+  // the picture is the shot: it gets the shot's own words as its name
+  const what=attr(`第${sh.index||""}镜 ${sh.shot_type||""} ${sh.action||""}`.trim());
   let media="";
-  if(sh.video) media=`<video src="${sh.video}" muted loop preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause()"></video>`;
-  else if(sh.image) media=`<img src="${sh.image}" loading="lazy">`;
+  if(sh.video) media=`<video src="${sh.video}" muted loop preload="metadata" aria-label="${what}"></video>`;
+  else if(sh.image) media=`<img src="${sh.image}" loading="lazy" alt="${what}">`;
   else media='<div class="ph">无画面</div>';
   return `<div class="shotcard" data-sc="${attr(sh._sc||"")}" data-shot="${attr(sh.id)}" title="${attr(sh.action||"")}">
     <div class="media">${media}
@@ -1890,9 +1950,10 @@ function openShotDrawer(ep,sc,sh){
   sh._sc=sc.id;
   S.drawer={kind:"shot",ep,sc,shot:sh,line:null};
   const prev=[];
-  if(sh.image) prev.push(`<div class="dp"><img src="${sh.image}"><span>首帧</span></div>`);
-  if(sh.end_image) prev.push(`<div class="dp"><img src="${sh.end_image}"><span>尾帧</span></div>`);
-  if(sh.video) prev.push(`<div class="dp"><video src="${sh.video}" muted loop autoplay></video><span>视频</span></div>`);
+  const pname=attr(`第${sh.index||""}镜 ${sh.shot_type||""}`.trim());
+  if(sh.image) prev.push(`<div class="dp"><img src="${sh.image}" alt="${pname} 首帧"><span>首帧</span></div>`);
+  if(sh.end_image) prev.push(`<div class="dp"><img src="${sh.end_image}" alt="${pname} 尾帧"><span>尾帧</span></div>`);
+  if(sh.video) prev.push(`<div class="dp"><video src="${sh.video}" muted loop autoplay aria-label="${pname} 视频"></video><span>视频</span></div>`);
   const types=["特写","近景","中景","全景","远景","过肩","主观","空镜"];
   $("#dTitle").innerHTML=`镜 #${sh.index||""} <span class="muted" style="font-size:12px">${esc(sc.location||"")}</span>`;
   $("#dBody").innerHTML=`
@@ -2032,13 +2093,14 @@ function renderCast(){
     const imgs=[...new Set([c.ref_sheet_url||"",...(c.ref_urls||[])])].filter(Boolean);
     window.__castImgs[c.name]=imgs;
     const sheet=imgs[0]||"";
+    const who=attr(`${c.name||""} 参考图`.trim());
     return `<div class="castcard" data-name="${attr(c.name)}">
       <div class="casttop">
-        <div class="ref">${sheet?`<img src="${sheet}" loading="lazy" data-i="0">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:12px">无参考图</div>'}</div>
+        <div class="ref">${sheet?`<img src="${sheet}" loading="lazy" data-i="0" alt="${who}">`:'<div class="ph" style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:12px">无参考图</div>'}</div>
         <div class="cb">
           <div class="cn">${esc(c.name)} ${c.locked?'<span class="mini" style="color:var(--go2)">已锁定</span>':""}</div>
           <div class="cr">${esc(c.role||"")} · ${esc(c.gender||"")} ${c.age?"· "+esc(c.age):""}</div>
-          ${imgs.length>1?`<div class="reflist">${imgs.slice(0,5).map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")}</div>`:""}
+          ${imgs.length>1?`<div class="reflist">${imgs.slice(1,6).map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k+1}" alt="${who} 第 ${k+2} 张">`).join("")}</div>`:""}
         </div>
       </div>
       <div class="castbody">
@@ -2074,9 +2136,10 @@ function renderCast(){
   const locs=(d.locations||[]).map(l=>{
     const imgs=(l.ref_urls||[]).filter(Boolean);
     window.__locImgs[l.name]=imgs;
+    const where=attr(`${l.name||""} 参考图`.trim());
     return `<div class="loc" data-loc="${attr(l.name)}"><b>${esc(l.name)}</b>
     <div class="muted" style="font-size:12px;margin-top:2px">${esc((l.description||"").slice(0,44))}</div>
-    <div class="li">${imgs.map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}">`).join("")||'<span class="muted" style="font-size:12px">无参考图</span>'}</div>
+    <div class="li">${imgs.map((u,k)=>`<img src="${u}" loading="lazy" data-i="${k}" alt="${where} 第 ${k+1} 张">`).join("")||'<span class="muted" style="font-size:12px">无参考图</span>'}</div>
   </div>`;}).join("");
 
   box.innerHTML=`
@@ -2159,17 +2222,19 @@ async function loadAssets(){
   const box=$("#assetgrid");
   if(!S.assetRows.length){ box.innerHTML='<div class="empty">还没有此类资产</div>'; return; }
   box.innerHTML=S.assetRows.map(a=>{
+    const what=esc(a.title||a.category||a.kind);
     let media="";
-    if(a.kind==="video"&&a.media_url) media=`<video src="${a.media_url}" muted preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause()"></video>`;
-    else if((a.kind==="image"||a.kind==="cover")&&a.media_url) media=`<img src="${a.media_url}" loading="lazy">`;
+    if(a.kind==="video"&&a.media_url) media=`<video src="${a.media_url}" muted preload="metadata" aria-label="${attr(what)}"></video>`;
+    else if((a.kind==="image"||a.kind==="cover")&&a.media_url) media=`<img src="${a.media_url}" loading="lazy" alt="${attr(what)}">`;
     else if(a.kind==="audio"||a.kind==="bgm") media=`<div class="at" style="width:100%"><audio controls src="${a.media_url||""}" style="width:90%"></audio></div>`;
     else media=`<div class="at">${esc(a.kind)}<br>${esc(a.title||"")}</div>`;
-    return `<div class="asset">
+    return `<div class="asset" title="${attr(what)}">
       <div class="am">${media}</div>
-      <div class="ab"><div class="an">${esc(a.title||a.category||a.kind)}</div>
+      <div class="ab"><div class="an">${what}</div>
         <div class="ameta"><span class="mini">${esc(a.kind)}</span>${a.category?`<span class="mini">${esc(a.category)}</span>`:""}${a.status?badge(a.status):""}</div>
       </div></div>`;
   }).join("");
+  wireVideoPreview(box);
 }
 function jumpSearch(q){
   switchPage("assets");
@@ -2198,8 +2263,9 @@ function resultCard(a){
   const d=el("div","res");
   let thumb="";
   const murl=a.media_url||"";
-  if((a.kind==="image"||a.kind==="cover")&&murl) thumb=`<img src="${murl}" loading="lazy">`;
-  else if(a.kind==="video"&&murl) thumb=`<video src="${murl}" muted preload="metadata"></video>`;
+  const what=attr(`${a.title||a.kind||""} ${a.kind||""}`.trim());
+  if((a.kind==="image"||a.kind==="cover")&&murl) thumb=`<img src="${murl}" loading="lazy" alt="${what}">`;
+  else if(a.kind==="video"&&murl) thumb=`<video src="${murl}" muted preload="metadata" aria-label="${what}"></video>`;
   else thumb=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:12px">${esc(a.kind)}</div>`;
   d.innerHTML=`<div class="thumb">${thumb}</div>
     <div class="rb">
@@ -2208,7 +2274,7 @@ function resultCard(a){
       <div class="rx">${esc(a.summary||a.text||"")}</div>
       <div class="rtags">${(a.tags||[]).slice(0,10).map(t=>`<span class="mini">${esc(t)}</span>`).join("")}
         ${a.category?`<span class="mini" style="color:var(--confirm2)">${esc(a.category)}</span>`:""}</div>
-      ${murl?`<div style="margin-top:5px"><a href="${murl}" target="_blank" class="mini">打开文件 ↗</a></div>`:""}
+      ${murl?`<div style="margin-top:5px"><a href="${murl}" target="_blank" class="mini">打开文件 ${mark("↗")}</a></div>`:""}
     </div>`;
   return d;
 }
@@ -2237,7 +2303,7 @@ function renderRun(){
         ${STAGES.map(s=>`<span class="chip ${runSel.has(s)?"on":""}" data-stage="${s}">${STAGE_ZH[s]}</span>`).join("")}
       </div>
       <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
-        <button class="btn go" id="runGo">▶ 开始运行</button>
+        <button class="btn go" id="runGo">${mark("▶")} 开始运行</button>
         <button class="btn ghost sm" id="runAll">全选</button>
         <button class="btn ghost sm" id="runNone">清空</button>
         <span class="muted" id="runStat"></span>
@@ -2303,8 +2369,8 @@ function syncNodes(name,btn){
       if(job.status!=="running"){
         clearInterval(t);
         out.innerHTML = job.status==="done"
-          ? `<div class="mini" style="color:var(--go2);margin-top:6px">✓ 同步完成</div>`
-          : `<div class="mini" style="color:var(--danger2);margin-top:6px">✗ ${esc(job.error||"失败")}</div>`;
+          ? `<div class="mini" style="color:var(--go2);margin-top:6px">${mark("✓")} 同步完成</div>`
+          : `<div class="mini" style="color:var(--danger2);margin-top:6px">${mark("✗")} ${esc(job.error||"失败")}</div>`;
         btn.disabled=false; btn.textContent="同步模型";
         loadNodes();
       }
@@ -2496,7 +2562,7 @@ async function saveNode(name,btn){
   const r=await postJSON("/api/nodes/save",{nodes:[cfg]});
   btn.disabled=false; btn.textContent="保存这台节点";
   if(!r.ok){ if(msg) msg.innerHTML=`<span style="color:var(--danger2)">${esc(r.error||"保存失败")}</span>`; return; }
-  if(msg) msg.innerHTML=`<span style="color:var(--go2)">✓ 已保存</span>`;
+  if(msg) msg.innerHTML=`<span style="color:var(--go2)">${mark("✓")} 已保存</span>`;
   NODE_DIRTY[name]=false;
   setTimeout(()=>loadNodesPage(), 700);
 }
@@ -2523,14 +2589,14 @@ async function doRun(){
       $("#runGo").disabled=false;
       if(!res||job.status!=="done"){
         const msg=(job&&job.error)||"任务已中断，未产生完整结果";
-        $("#runStat").innerHTML=`<span style="color:var(--danger2)">✗ ${esc(msg)}</span>`;
+        $("#runStat").innerHTML=`<span style="color:var(--danger2)">${mark("✗")} ${esc(msg)}</span>`;
         $("#runOut").innerHTML=`<div class="card run-result fail"><h3>运行未完成</h3><p>${esc(msg)}</p><button class="btn ghost" onclick="switchPage('jobs')">查看任务与日志</button></div>`;
         return;
       }
       const stageResults=(res&&res.results)||res||{};
       const failed=Object.entries(stageResults).filter(([,v])=>v&&v.error);
       const rows=Object.entries(stageResults).map(([s,v])=>`<div class="result-row"><b>${esc(STAGE_ZH[s]||s)}</b>${v&&v.error?`<span class="badge fail">${esc(v.error)}</span>`:'<span class="badge done">完成</span>'}</div>`).join("");
-      $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)">✓ 运行完成</span>';
+      $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)">${mark("✓")} 运行完成</span>';
       $("#runOut").innerHTML=`<div class="card run-result"><h3>${failed.length?"部分完成":"运行完成"}</h3>${rows}<details><summary>查看原始结果</summary><pre>${esc(JSON.stringify(stageResults,null,1))}</pre></details></div>`;
       toast(failed.length?"部分阶段失败，请查看结果":"流水线完成",failed.length?"err":"ok");
       selectProject(body.project,true).then(()=>renderWorkbench());
@@ -2615,7 +2681,7 @@ async function saveProduction(){
   const r=await postJSON("/api/config/production",body);
   $("#prSave").disabled=false;
   if(!r.ok){ $("#prOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
-  $("#prOut").innerHTML='<span style="color:var(--go2)">✓ 已写回配置</span>';
+  $("#prOut").innerHTML='<span style="color:var(--go2)">${mark("✓")} 已写回配置</span>';
   toast("制作参数已保存","ok"); renderHeader();
 }
 
@@ -2636,8 +2702,8 @@ async function loadSettings(){
       <h3>模型清单 <span class="muted" id="mCount" style="font-weight:400;font-size:12px">${S.modelEntries.length} 个 · 顺序＝优先级</span></h3>
       <div class="chips" style="margin-bottom:10px">
         <span class="muted" style="font-size:12px;align-self:center">添加：</span>
-        <span class="chip" id="addOneAll" style="border-color:var(--confirm);color:var(--confirm)" title="新增一个勾选全部任务的模型并置顶设为默认：它一个人负责分析/分集/剧本/分镜/提示词/配置/动作/检索/打标。下方已有卡片原样保留，随时可改回分工模式">⚡ 一个模型跑全部</span>
-        <span class="muted" style="align-self:center;color:var(--line)">|</span>
+        <span class="chip" id="addOneAll" style="border-color:var(--confirm);color:var(--confirm)" title="新增一个勾选全部任务的模型并置顶设为默认：它一个人负责分析/分集/剧本/分镜/提示词/配置/动作/检索/打标。下方已有卡片原样保留，随时可改回分工模式">${mark("⚡")} 一个模型跑全部</span>
+        <span class="chip-sep" aria-hidden="true"></span>
         ${provs.map(p=>`<span class="chip" data-add="${esc(p.id)}" title="${esc(p.hint||"")}">${esc(p.label)}</span>`).join("")}
       </div>
       <div id="modelList"></div>
@@ -2690,8 +2756,10 @@ function renderModelList(){
         <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:${isDef?"var(--go2)":"var(--fg2)"};cursor:pointer">
           <input type="radio" name="mdef" value="${esc(m.id)}" ${isDef?"checked":""}> 默认兜底</label>
         <span style="flex:1"></span>
-        <button class="btn xs ghost" data-act="up" ${i===0?"disabled":""}>↑</button>
-        <button class="btn xs ghost" data-act="down" ${i===S.modelEntries.length-1?"disabled":""}>↓</button>
+        <button class="btn xs ghost icon" data-act="up" ${i===0?"disabled":""} title="上移（提高优先级）" aria-label="上移，提高优先级">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+        <button class="btn xs ghost icon" data-act="down" ${i===S.modelEntries.length-1?"disabled":""} title="下移（降低优先级）" aria-label="下移，降低优先级">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></button>
         <button class="btn xs confirm" data-act="test">测试</button>
         <button class="btn xs danger" data-act="del">删除</button>
       </div>
@@ -2808,8 +2876,8 @@ async function testModel(i){
     $$(".chip",chipsBox).forEach(c=>c.onclick=()=>{ $('[data-f="model"]',card).value=c.dataset.pick; });
   } else chipsBox.innerHTML="";
   out.innerHTML = r.ok
-    ? `<span style="color:var(--go2)">✓ ${esc(r.message||"连接成功")}</span>${r.used_saved_key?'<span class="muted">（用了已保存的 Key）</span>':""}`
-    : `<span style="color:var(--danger2)">✗ ${esc(r.error||"连接失败")}</span>`;
+    ? `<span style="color:var(--go2)">${mark("✓")} ${esc(r.message||"连接成功")}</span>${r.used_saved_key?'<span class="muted">（用了已保存的 Key）</span>':""}`
+    : `<span style="color:var(--danger2)">${mark("✗")} ${esc(r.error||"连接失败")}</span>`;
 }
 async function saveModels(){
   harvestModels();
@@ -2830,7 +2898,7 @@ async function saveModels(){
   $("#mSave").disabled=false;
   if(!r.ok){ $("#mSaveOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
   S.settings=r; S.modelEntries=r.entries||[]; S.modelDefault=r.default||"";
-  $("#mSaveOut").innerHTML='<span style="color:var(--go2)">✓ 已写回 default.yaml</span>';
+  $("#mSaveOut").innerHTML='<span style="color:var(--go2)">${mark("✓")} 已写回 default.yaml</span>';
   renderModelList(); toast("模型清单已保存","ok");
 }
 async function saveAI(){
@@ -2838,7 +2906,7 @@ async function saveAI(){
     language:$("#aiLang").value,main_timeout:num($("#aiMainTO").value,90)}};
   const r=await postJSON("/api/config/llm",body);
   if(!r.ok){ $("#aiSaveOut").innerHTML=`<span style="color:var(--danger2)">保存失败：${esc(r.error||"")}</span>`; return; }
-  $("#aiSaveOut").innerHTML='<span style="color:var(--go2)">✓ 已保存</span>';
+  $("#aiSaveOut").innerHTML='<span style="color:var(--go2)">${mark("✓")} 已保存</span>';
   toast("AI 行为设置已保存","ok"); boot();
 }
 
@@ -2915,7 +2983,7 @@ async function doSetup(){
   pollJob(r.job,res=>{
     $("#doSetup").disabled=false;
     if(!res){ stat.textContent=""; return; }
-    stat.innerHTML=res.used_llm?'<span style="color:var(--go2)">✓ 已由 AI 生成并写入</span>':'<span style="color:var(--warn)">✓ 已写入（未连到大模型，用模板规则生成）</span>';
+    stat.innerHTML=res.used_llm?'<span style="color:var(--go2)">${mark("✓")} 已由 AI 生成并写入</span>':'<span style="color:var(--warn)">${mark("✓")} 已写入（未连到大模型，用模板规则生成）</span>';
     $("#setupWizOut").innerHTML=`<div class="card" style="margin-top:9px"><h3>写入 ${esc(res.written||"config/default.yaml")}</h3>
       <pre style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-family:var(--mono);font-size:12px;margin:0">${esc(JSON.stringify(res.overrides||{},null,1))}</pre></div>`;
     toast("配置已更新","ok"); boot(); loadProduction();
@@ -2954,14 +3022,14 @@ async function execAction(a){
   if(r.job){
     toast("已提交，后台执行中…");
     pollJob(r.job,res=>{
-      toast("✓ "+a.title+" 完成","ok");
+      toast(${mark("✓")}+" "+a.title+" 完成","ok");
       if(a.kind==="search"&&res){ switchPage("assets"); jumpSearch(""); renderSearchResults(res); }
       boot(); if(S.current) selectProject(S.current,true);
     });
   } else if(r.result){
     const res=r.result;
     if(a.kind==="search"){ switchPage("assets"); renderSearchResults(res); }
-    else toast("✓ "+a.title+" 完成","ok");
+    else toast(${mark("✓")}+" "+a.title+" 完成","ok");
     boot();
   }
 }
@@ -3120,13 +3188,18 @@ async function loadChapters(slug){
 }
 async function chooseChapters(){
   const slug = S.current;
+  if(!slug){ toast("先新建或选择一个项目","err"); return; }
   const chosen = Array.from(_chapChosenSet());
   if(!chosen.length){ toast("先勾选要做的章节","err"); return; }
+  const stages=["segment","script","storyboard"];
+  // the same check every other run gets: what is about to be written,
+  // and against which services, before anything is written
+  if(window.runPreflight && !(await runPreflight(stages,"所选章节",{project:slug,chapters:chosen,episodes:[]}))) return;
   const r = await postJSON("/api/chapters/choose",{project:slug,chosen:chosen});
   if(!r || !r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
   toast("已选 "+chosen.length+" 章，开始分集与剧本…","",2200);
-  const run = await postJSON("/api/run",{project:slug,
-    stages:["segment","script","storyboard"]});
+  const run = await postJSON("/api/run",{project:slug,chapters:chosen,
+    stages:stages});
   if(!run || !run.ok){ toast("启动失败："+esc((run&&run.error)||"未知错误"),"err"); return; }
   // follow the job so the user sees it finish, or sees why it did not
   pollJob(run.job, (res,j)=>{
@@ -3177,7 +3250,7 @@ async function deleteProject(slug){
     const f=this.files&&this.files[0];
     if(!f){ label.textContent=""; return; }
     const kb=f.size/1024, sz=kb>1024?(kb/1024).toFixed(1)+" MB":Math.round(kb)+" KB";
-    label.textContent="✓ 已选 "+f.name+"（"+sz+"）";
+    label.innerHTML=${mark("✓")}+" 已选 "+esc(f.name)+"（"+sz+"）";
     if(path){ path.placeholder="（已选本地文件，路径可以留空）"; path.style.opacity=".55"; }
   });
 })();
@@ -3191,28 +3264,41 @@ async function deleteProject(slug){
 function _chapByIndex(idx){
   return (window.__chapters||[]).find(c=>c.index===idx) || null;
 }
+let _rdLast=null;
 async function openReader(idx){
   const slug=S.current;
   const root=document.getElementById("readerRoot");
   if(!root) return;
+  // remember where the reader was opened from, but only on the way in:
+  // turning to the next chapter reopens this sheet, and the caret should
+  // still go back to the chapter list afterwards
+  if(!root.firstChild) _rdLast=document.activeElement;
   // draw the shell first so the click feels instant, then fill it
-  root.innerHTML='<div class="rd-scrim" onclick="if(event.target===this)closeReader()">'+
-    '<div class="rd-sheet">'+
+  root.innerHTML='<div class="rd-scrim" data-rd-scrim>'+
+    '<div class="rd-sheet" role="dialog" aria-modal="true" aria-labelledby="rdTitle">'+
       '<div class="rd-head">'+
         '<span class="rd-t" id="rdTitle">读取中…</span>'+
         '<span class="rd-v" id="rdVol"></span>'+
         '<span style="flex:1"></span>'+
         '<span class="rd-v" id="rdPos"></span>'+
-        '<button class="btn ghost" onclick="closeReader()" title="关闭 (Esc)">✕</button>'+
+        '<button class="btn ghost icon" data-rd-close aria-label="关闭阅读器 (Esc)">'+
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+
       '</div>'+
-      '<div class="rd-body" id="rdBody">正在读取正文…</div>'+
+      '<div class="rd-body" id="rdBody" tabindex="0">正在读取正文…</div>'+
       '<div class="rd-foot">'+
-        '<button class="btn" id="rdPrev" onclick="_rdStep(-1)">← 上一章</button>'+
-        '<button class="btn" id="rdNext" onclick="_rdStep(1)">下一章 →</button>'+
+        '<button class="btn" id="rdPrev" data-rd-prev>← 上一章</button>'+
+        '<button class="btn" id="rdNext" data-rd-next>下一章 →</button>'+
         '<span style="flex:1"></span>'+
         '<span id="rdMeta"></span>'+
       '</div>'+
     '</div></div>';
+  const scrim=root.querySelector("[data-rd-scrim]");
+  scrim.onclick=e=>{ if(e.target===scrim) closeReader(); };
+  root.querySelector("[data-rd-close]").onclick=closeReader;
+  root.querySelector("[data-rd-prev]").onclick=()=>_rdStep(-1);
+  root.querySelector("[data-rd-next]").onclick=()=>_rdStep(1);
+  const closeBtn=root.querySelector("[data-rd-close]");
+  if(closeBtn) closeBtn.focus();
   window.__rdIdx=idx;
   document.addEventListener("keydown", _rdKey);
 
@@ -3247,11 +3333,13 @@ function _rdStep(dir){
 }
 function _rdTyping(e){
   const t=e.target||{};
-  return t.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(t.tagName||"");
+  // a field being typed in, and the chapter text itself: arrows inside
+  // the page being read move the page, not the chapter
+  return t.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(t.tagName||"")||t.id==="rdBody";
 }
 function _rdKey(e){
   if(e.key==="Escape"){ closeReader(); return; }
-  if(_rdTyping(e)) return;              // arrows belong to the field being typed in
+  if(_rdTyping(e)) return;              // arrows belong to what is being read or typed
   if(e.key==="ArrowLeft") _rdStep(-1);
   if(e.key==="ArrowRight") _rdStep(1);
 }
@@ -3259,6 +3347,8 @@ function closeReader(){
   const root=document.getElementById("readerRoot");
   if(root) root.innerHTML="";
   document.removeEventListener("keydown", _rdKey);
+  if(_rdLast&&_rdLast.focus) _rdLast.focus();
+  _rdLast=null;
 }
 </script>
 
@@ -3321,10 +3411,13 @@ async function startSeason(){
   const chosen = Array.from(_chapChosenSet());
   if(!chosen.length){ toast("先勾选要做的章节","err"); return; }
   const season = window.__nextSeason || 1;
+  if(window.runPreflight && !(await runPreflight(STAGES.slice(),"第"+season+"季",{project:slug,chapters:chosen,episodes:[]}))) return;
   const r = await postJSON("/api/chapters/choose",{project:slug,chosen:chosen});
   if(!r || !r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
+  // the chapters go with the run: naming them is how a season is told to
+  // make these chapters rather than the whole book again
   const run = await postJSON("/api/run",{project:slug,season:season,
-                                     stages:STAGES.slice()});
+                                     chapters:chosen,stages:STAGES.slice()});
   if(!run || !run.ok){ toast("启动失败："+esc((run&&run.error)||"未知错误"),"err"); return; }
   toast("第" + season + "季开始，共 " + chosen.length + " 章","",2400);
   pollJob(run.job, (res,j)=>{
@@ -3342,18 +3435,26 @@ async function startSeason(){
 // A reference sheet is a thumbnail beside a form, and a face you are meant
 // to be checking has to be checked. This opens it over the page, with the
 // character's other references a key away.
-let lightbox={imgs:[],i:0,label:""};
+let lightbox={imgs:[],i:0,label:"",last:null};
 function openLightbox(imgs,i,label){
   const list=(imgs||[]).filter(Boolean);
   if(!list.length) return;
-  lightbox={imgs:list,i:Math.max(0,Math.min(i||0,list.length-1)),label:label||""};
+  // last goes inside the object: assigning it before the rebuild below
+  // would be thrown away by it
+  lightbox={imgs:list,i:Math.max(0,Math.min(i||0,list.length-1)),
+            label:label||"",last:document.activeElement};
   renderLightbox();
   document.addEventListener("keydown",lightboxKeys);
+  const close=document.querySelector("#lightboxRoot [data-lb-close]");
+  if(close) close.focus();
 }
 function closeLightbox(){
   const r=document.getElementById("lightboxRoot");
   if(r) r.innerHTML="";
   document.removeEventListener("keydown",lightboxKeys);
+  // the caret returns to the picture the viewer clicked
+  if(lightbox.last&&lightbox.last.focus) lightbox.last.focus();
+  lightbox.last=null;
 }
 function lightboxStep(d){
   const n=lightbox.i+d;
@@ -3373,24 +3474,37 @@ function renderLightbox(){
   if(!root) return;
   const {imgs,i,label}=lightbox;
   const many=imgs.length>1;
-  root.innerHTML=`<div class="lb-scrim" onclick="if(event.target===this)closeLightbox()">
-    <div class="lb-box">
+  const head=(label||"图片");
+  root.innerHTML=`<div class="lb-scrim" data-lb-scrim>
+    <div class="lb-box" role="dialog" aria-modal="true" aria-label="${attr(head)}">
       <div class="lb-head">
         <span class="t">${esc(label)}</span>
         ${many?`<span class="n">${i+1} / ${imgs.length}</span>`:""}
         <span style="flex:1"></span>
-        <button class="btn ghost" onclick="closeLightbox()">✕</button>
+        <button class="btn ghost icon" data-lb-close aria-label="关闭图片">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>
-      <div class="lb-body" onclick="closeLightbox()">
-        <img src="${imgs[i]}" alt="">
+      <div class="lb-body" data-lb-body>
+        <img src="${imgs[i]}" alt="${attr(head+"：第 "+(i+1)+" 张，共 "+imgs.length+" 张")}">
       </div>
       <div class="lb-foot">
-        <button class="btn" ${i<=0?"disabled":""} onclick="event.stopPropagation();lightboxStep(-1)">← 上一张</button>
+        <button class="btn" ${i<=0?"disabled":""} data-lb-prev>← 上一张</button>
         <span class="muted">${many?"← → 翻页 · ":""}点击空白处或 Esc 关闭</span>
         <span style="flex:1"></span>
-        <button class="btn" ${i>=imgs.length-1?"disabled":""} onclick="event.stopPropagation();lightboxStep(1)">下一张 →</button>
+        <button class="btn" ${i>=imgs.length-1?"disabled":""} data-lb-next>下一张 →</button>
       </div>
     </div></div>`;
+  // only the space around the box closes it: a click on the picture itself
+  // was closing the thing the viewer had leaned in to look at
+  const scrim=root.querySelector("[data-lb-scrim]");
+  const body=root.querySelector("[data-lb-body]");
+  const closeOutside=e=>{ if(e.target===scrim||e.target===body) closeLightbox(); };
+  scrim.onclick=closeOutside;
+  body.onclick=closeOutside;
+  root.querySelector("[data-lb-close]").onclick=closeLightbox;
+  root.querySelector("[data-lb-prev]").onclick=()=>lightboxStep(-1);
+  root.querySelector("[data-lb-next]").onclick=()=>lightboxStep(1);
 }
 </script>
 

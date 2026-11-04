@@ -4,7 +4,13 @@
   const main = document.getElementById("main");
   const rail = document.getElementById("rail");
   const side = document.getElementById("side");
-  const studioPages = new Set(["board", "cast", "pipeline"]);
+  // Skills belong with the stages they write rules for, and they had no
+  // way in except a button buried in Settings. As a tab of the production
+  // workspace they sit beside the pipeline they configure, and the bottom
+  // bar on a phone is not made any longer.
+  const studioPages = new Set(["board", "cast", "pipeline", "skills"]);
+  const studioTabList = [["board", "分镜台"], ["cast", "角色库"],
+                         ["pipeline", "流水线"], ["skills", "技能"]];
   const jobNames = {
     run_pipeline: "制作流水线", health: "环境自检", setup: "智能配置",
     reindex: "资产索引", regen_shot: "镜头重新生成", character_refs: "角色参考图",
@@ -58,8 +64,9 @@
     });
     studioTabs.classList.toggle("show", studioPages.has(name));
     if (studioPages.has(name)) {
-      studioTabs.innerHTML = [["board", "分镜台"], ["cast", "角色库"], ["pipeline", "流水线"]]
+      studioTabs.innerHTML = studioTabList
         .map(([id, label]) => `<button class="studio-tab ${name === id ? "on" : ""}" data-studio="${id}" ${name === id ? 'aria-current="page"' : ""}>${label}</button>`).join("");
+      studioTabs.setAttribute("aria-label", "制作工作区");
       studioTabs.querySelectorAll("[data-studio]").forEach(btn => {
         btn.onclick = () => switchPage(btn.dataset.studio);
       });

@@ -152,13 +152,25 @@ class ComfyUIPool(BaseImageVideo):
         self._inflight[node.name] = self._inflight.get(node.name, 0) + 1
         return node
 
+    def _stopped(self) -> bool:
+        """Has a stop been asked for?"""
+        ev = getattr(self, "stop_event", None)
+        try:
+            return bool(ev is not None and ev.is_set())
+        except Exception:  # noqa: BLE001
+            return False
+
     def _dispatch(self, role: str, fn) -> str:
         """Give the job to a card that can take it.
 
-        When every card is busy the work waits for one, rather than being
-        stacked on top of work that is already there: a card that is
-        given two jobs renders them one after the other, and each takes
-        three times as long as it should.
+        Two kinds of "no card" have to be told apart. A card that is busy
+        is worth waiting for - the work will be done in a few minutes. A
+        card that has failed is not: if every card has failed, waiting
+        only delays the news that there is no card.
+
+        And a stop ends the wait wherever it is: a run that has been
+        asked to stop should not sit here for an hour because the card
+        it wants is busy with something else.
         """
         tried: list[str] = []
         last: Optional[Exception] = None
@@ -167,7 +179,10 @@ class ComfyUIPool(BaseImageVideo):
             with self._lock:
                 node = self._take(role, set(tried))
             if node is None:
-                if time.time() > deadline:
+                if len(tried) >= len(self.nodes):
+                    # every card has been tried and every one failed
+                    break
+                if self._stopped() or time.time() > deadline:
                     break
                 # every card is busy: wait for one and look again
                 time.sleep(2.0)
@@ -179,10 +194,8 @@ class ComfyUIPool(BaseImageVideo):
                 last = e
                 log.warning("节点 %s 渲染失败，转移: %s", node.name, str(e)[:160])
                 node.forget_queue()
-                # a card that failed may be the one that is free again
-                tried = [n for n in tried if n != node.name]
-                tried.append(node.name)
-                tried = tried[-len(self.nodes):]
+                if self._stopped():
+                    break
             finally:
                 with self._lock:
                     self._inflight[node.name] = max(

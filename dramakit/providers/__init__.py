@@ -79,14 +79,16 @@ class Providers:
             return
         if vis is None:
             return
+        # The pool itself has to hear it too: it is the one that waits
+        # for a card, and a stop that lands while it is waiting would
+        # otherwise not be noticed until the wait is over.
+        vis.stop_event = event
         nodes = getattr(vis, "nodes", None)
         if nodes:
             for node in nodes:
                 client = getattr(node, "client", None)
                 if client is not None:
                     client.stop_event = event
-        else:
-            vis.stop_event = event
 
     def llm_for(self, stage: str) -> BaseLLM:
         """LLM for a pipeline stage, resolved through the model registry.
