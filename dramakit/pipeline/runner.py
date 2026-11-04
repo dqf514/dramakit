@@ -98,6 +98,16 @@ def _run_stage(ctx: Context, name: str, source_file: Optional[str],
     if season_obj is not None:
         season_obj.stage_status[name] = Status.RUNNING
     ctx.save()
+    if name not in ("ingest", "analyze", "character", "segment"):
+        # A stage that is given nothing says so and finishes in a second,
+        # which reads like success.  The reason is almost always the
+        # filter: the run was asked for a set of episodes that this
+        # project does not have.
+        if not ctx.target_episodes():
+            log.warning("阶段 [%s]：这一轮没有要处理的集"
+                        "（只处理=%s，季=%s，项目现有 %d 集）",
+                        name, cfg.pipeline.only_episodes, ctx.season_index,
+                        len(ctx.project.episodes))
     try:
         if name == "ingest":
             res = ingest.run(ctx, source_file)

@@ -82,6 +82,14 @@ def run(ctx: Context) -> dict:
     cfg = ctx.cfg.segment
     todo = _chapters_to_cut(ctx)
     meta = ctx.project.meta
+    # The season this batch belongs to is settled before the episodes are
+    # made. An episode records the season it belongs to, and a run that
+    # has just created that season would otherwise tag them with the
+    # season it had before - which is none. Every stage after this one
+    # looks for the episodes in the season they were made in, and would
+    # find nothing there.
+    if todo:
+        ctx.seed_season([c.index for c in todo])
     season_idx = ctx.season_index
 
     # nothing new to cut, and the project already has episodes: done.
@@ -171,8 +179,9 @@ def run(ctx: Context) -> dict:
         already = set(meta.segmented_chapters or [])
         already.update(c.index for c in todo)
         meta.segmented_chapters = sorted(already)
-        # the season owns the chapters it was made from
-        season = ctx.seed_season([c.index for c in todo])
+        # the season owns the chapters it was made from - it was settled
+        # before the episodes were made, so this only records them
+        season = ctx.season or ctx.seed_season([c.index for c in todo])
         season.episode_range = [first_index, first_index + total_new - 1]
         ctx.mark_chapter_season([c.index for c in todo])
         # canon: what has been made, across all seasons

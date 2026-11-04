@@ -509,6 +509,15 @@ class Context:
                     break
             else:
                 self.use_season(self.project.current_season)
+        # Episodes made before the season was settled carry no season at
+        # all. They belong to this one - the run that just cut them is the
+        # run that made the season - so they are tagged now. Left
+        # untagged, every stage after this one looks for the episodes in
+        # the season they were made in, finds nothing there, and finishes
+        # in a second with nothing written.
+        for ep in (self.project.episodes or []):
+            if not getattr(ep, "season", 0):
+                ep.season = self.season_index
         s = self.season
         if s is None:
             s = Season(index=self.season_index, chapters=list(chapters))
@@ -535,7 +544,23 @@ class Context:
         """
         eps = self.project.episodes
         if self.season_scoped and self.season_index:
-            eps = [e for e in eps if getattr(e, "season", 1) == self.season_index]
+            here = [e for e in eps
+                    if getattr(e, "season", 1) == self.season_index]
+            if not here:
+                # Episodes that carry no season were made before the
+                # season was settled. They are this run's own work, and
+                # hiding them makes every stage after that one do nothing
+                # at all - and report that it did.
+                here = [e for e in eps if not getattr(e, "season", 0)]
+                if here:
+                    self.log.warning(
+                        "第%d季里没有集；%d 集没有季号，先当作本季的来用",
+                        self.season_index, len(here))
+                    # and say so in the record, so the next run finds them
+                    # in the right season without the warning
+                    for e in here:
+                        e.season = self.season_index
+            eps = here
         only = self.cfg.pipeline.only_episodes
         if not only:
             return eps

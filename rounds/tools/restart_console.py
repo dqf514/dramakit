@@ -38,11 +38,17 @@ def up(timeout=90.0) -> bool:
 def main():
     alive()
     time.sleep(3)
+    # the console keeps running when this script returns, so its output
+    # must not be tied to this one
     subprocess.Popen(
         [r"E:\dramakit\venv\Scripts\python.exe", "-X", "utf8",
          r"E:\dramakit\venv\Scripts\dj.exe", "serve", "--host", "0.0.0.0",
          "--port", "8080", "--no-browser"],
-        cwd=r"E:\dramakit")
+        cwd=r"E:\dramakit",
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if up():
         print("控制台起来了")
         return 0
