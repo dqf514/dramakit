@@ -417,21 +417,30 @@ assert.strictEqual(esc(`<a"b'c&d>`), "&lt;a&quot;b&#39;c&amp;d&gt;");
         self.assertIn('node.dataset.dkA11y = "1"', modern)
         self.assertNotIn("Math.random().toString(36)", modern)
 
-    def test_chapter_card_offers_both_scopes_and_they_reach_the_api(self):
+    def test_one_button_starts_the_work_and_the_scope_says_what_it_is(self):
         root = Path(__file__).parents[1]
         text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
-        # only one button existed, so the narrower job could not be asked for
-        self.assertIn('data-chap="season"', text)
-        self.assertIn('data-chap="script"', text)
+        # There were four ways to start, and one of them only ticked the
+        # steps off.  There is one button now, and it runs the steps that
+        # are picked.
+        self.assertIn('id="runGo"', text)
+        self.assertNotIn('data-act="run-all"', text)
+        self.assertNotIn('data-chap="season"', text)
+        self.assertNotIn('data-chap="script"', text)
+        self.assertNotIn("async function chooseChapters(", text)
+        self.assertNotIn("async function startSeason(", text)
+        # the chapters are the scope of the run, and the switch says which
+        self.assertIn('id="chapScope"', text)
+        self.assertIn("body.chapters=chosen", text)
+        self.assertIn("body.season=window.__nextSeason||1", text)
+        # and the button next to it says what the run is about
+        self.assertIn("function drawChapScope()", text)
+        self.assertIn('id="runScope"', text)
+        # the tick list still has its helpers
         self.assertIn('data-chap="mode"', text)
         self.assertIn('else if(a==="mode") toggleChapMode();', text)
-        for func in ("chooseChapters", "startSeason"):
-            body = text[text.index("async function " + func + "(){"):]
-            body = body[:body.index("\n}\n")]
-            # chapters are the input: naming them is how a run is told to
-            # make part of a book rather than all of it
-            self.assertIn("chapters:chosen", body, func)
-            self.assertIn("runPreflight", body, func)
+        self.assertIn('data-chap="all"', text)
+        self.assertIn('data-chap="none"', text)
 
     def test_every_page_is_reachable_and_the_bottom_bar_stays_short(self):
         root = Path(__file__).parents[1]

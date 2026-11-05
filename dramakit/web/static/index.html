@@ -265,6 +265,9 @@ try{
 
   /* ---------- workbench ---------- */
   .hero{display:flex;gap:16px;align-items:flex-start;margin-bottom:14px}
+  .hero .hsyn{margin-top:5px;font-size:12.5px;line-height:1.45;color:var(--fg2);
+    max-width:52ch;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+    overflow:hidden}
   .hero .cover{width:96px;height:170px;flex:0 0 auto;border-radius:7px;overflow:hidden;
     background:var(--media-bg);border:1px solid var(--line)}
   .hero .cover img{width:100%;height:100%;object-fit:cover}
@@ -717,16 +720,19 @@ try{
   .seg.on{background:var(--pcard-on);border-color:var(--proj-on-line);color:var(--fg);font-weight:650}
 
   /* ---------- the skills, one column per step ---------- */
-  .skgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:8px}
+  .skgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px;margin-top:8px}
   .skcol{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;min-width:0}
-  .skcol .skt{font-weight:650;font-size:12.5px;margin-bottom:6px}
+  .skcol .skt{font-weight:650;font-size:12.5px;margin-bottom:6px}  .skcol .skt{display:flex;align-items:center;gap:6px}
+  .skcol .skstep{font-weight:400;font-size:11.5px;color:var(--fg3);
+    border:1px solid var(--line);border-radius:4px;padding:0 4px}
   .skdim{color:var(--fg3);font-size:11.5px}
   .skgrp{margin-bottom:8px}
   .skgrp:last-child{margin-bottom:0}
   .skgrp .sks{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--fg2);
     margin-bottom:4px;white-space:nowrap}
   .skgrp .sks .muted{font-size:11.5px;margin-left:auto}
-  .skopts{max-height:190px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding-right:2px}
+  .skopts{columns:2;column-gap:10px;padding-right:2px}
+  .skopts .skck{break-inside:avoid}
   .skck{display:flex;align-items:flex-start;gap:5px;font-size:11.5px;color:var(--fg2);
     cursor:pointer;line-height:1.35}
   .skck:hover{color:var(--fg)}
@@ -882,21 +888,21 @@ const nodeLink = (url, label)=>{
        + `${esc(label||u)}</a>`;
 };
 
-const STAGES=["ingest","analyze","character","segment","script","storyboard","promptgen","voice","visual","subtitle","music","precheck","compose","qc"];
-const STAGE_ZH={ingest:"导入",analyze:"分析",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",voice:"配音",visual:"画面",subtitle:"字幕",music:"配乐",precheck:"预检",compose:"合成",qc:"质检"};
+const STAGES=["ingest","analyze","cover","character","segment","script","storyboard","promptgen","voice","visual","subtitle","music","precheck","compose","qc"];
+const STAGE_ZH={ingest:"导入",analyze:"分析",cover:"封面",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",voice:"音色",visual:"画面",subtitle:"字幕",music:"配乐",precheck:"预检",compose:"合成",qc:"质检"};
 function ago(ts){if(!ts)return "";const s=(Date.now()/1000-ts);if(s<60)return "刚刚";if(s<3600)return Math.floor(s/60)+" 分钟前";if(s<86400)return Math.floor(s/3600)+" 小时前";if(s<86400*7)return Math.floor(s/86400)+" 天前";return new Date(ts*1000).toLocaleDateString();}
 function whenStr(ts){if(!ts)return "";const d=new Date(ts*1000);const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
 // Five big steps. The pipeline still knows every stage; a step is just the
 // group a person thinks in. Everything after the picture - subtitles, music,
 // the check and the cut - is one step, because it is one job.
 const STEPS=[
-  {id:"prep",  zh:"准备", stages:["ingest","analyze","character","segment"], hint:"导入·分析·定妆·分集"},
-  {id:"script",zh:"剧本", stages:["script","storyboard","promptgen"],       hint:"剧本·分镜·提示词"},
-  {id:"voice", zh:"配音", stages:["voice"],                                 hint:"逐句 TTS"},
-  {id:"visual",zh:"画面", stages:["visual"],                                hint:"ComfyUI 出图/视频"},
-  {id:"final", zh:"成片", stages:["subtitle","music","precheck","compose","qc"], hint:"字幕·配乐·预检·合成·质检"},
+  {id:"prep",  zh:"准备", stages:["ingest","analyze","cover"],                     hint:"导入·分析·封面"},
+  {id:"cast",  zh:"定妆", stages:["character","voice"],                          hint:"参考图·音色样本（和文字活并排跑）"},
+  {id:"script",zh:"剧本", stages:["segment","script","storyboard","promptgen"],    hint:"分集·剧本·分镜·提示词"},
+  {id:"visual",zh:"画面", stages:["visual"],                                      hint:"ComfyUI 出图/视频"},
+  {id:"final", zh:"成片", stages:["lipsync","subtitle","music","precheck","compose","qc"], hint:"字幕·配乐·预检·合成·质检"},
 ];
-const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",character:"锚点 · 三视图",segment:"按钩子切集",script:"台词 · 旁白",storyboard:"场次 · 镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"逐句 TTS",subtitle:"跟着配音走",music:"情绪匹配 BGM",precheck:"成片前校验",compose:"ffmpeg 成片",qc:"成片质检"};
+const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",cover:"剧名 · 主视觉",character:"锚点 · 四视图 · 音色样本",segment:"按钩子切集",script:"台词 · 旁白",storyboard:"场次 · 镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"每个角色一段，给 H3 当音色参考（画面自带声音，不逐句配音）",subtitle:"跟着画面走",music:"情绪匹配 BGM",precheck:"成片前校验",compose:"ffmpeg 成片",qc:"成片质检"};
 
 const S = {
   state:null, templates:null, projects:[], current:"", tags:{}, tagSel:new Set(),
@@ -1330,28 +1336,27 @@ function skillsForStage(stage){
 function skillsPanelHtml(){
   if(!SK) return `<div class="card"><b>技能</b><span class="muted" style="font-size:12px">读取中…</span></div>`;
   const sel=SK.selection||{}, costs=SK.costs||{};
-  const cols=STEPS.map(sp=>{
-    const stages=sp.stages.filter(s=>SK_STAGE_ZH[s]);
-    if(!stages.length){
-      return `<div class="skcol"><div class="skt">${esc(sp.zh)}</div>
-        <div class="skdim">这一步不注入技能</div></div>`;
-    }
-    const body=stages.map(st=>{
-      const names=sel[st]||[];
-      const opts=skillsForStage(st).map(x=>`<label class="skck"
-          title="${attr(x.description||"")}"><input type="checkbox" data-skstage="${esc(st)}"
-          data-sk="${esc(x.name)}" ${names.indexOf(x.name)>=0?"checked":""}><span>${esc(skLabel(x))}</span></label>`).join("");
-      return `<div class="skgrp">
-        <div class="sks" id="skhead-${esc(st)}">${esc(SK_STAGE_ZH[st])}
-          <span class="muted">${names.length} 个 · ${fmtChars(costs[st]||0)}</span></div>
-        <div class="skopts">${opts}</div></div>`;
-    }).join("");
-    return `<div class="skcol"><div class="skt">${esc(sp.zh)}</div>${body}</div>`;
+  // A column for every stage that takes skills, and none for the steps
+  // that inject nothing: three empty columns were space taken for
+  // nothing.
+  const stepOf={analyze:"准备",script:"剧本",storyboard:"剧本",promptgen:"剧本"};
+  const cols=Object.keys(SK_STAGE_ZH).map(st=>{
+    const names=sel[st]||[];
+    const opts=skillsForStage(st).map(x=>`<label class="skck"
+        title="${attr(x.description||"")}"><input type="checkbox" data-skstage="${esc(st)}"
+        data-sk="${esc(x.name)}" ${names.indexOf(x.name)>=0?"checked":""}><span>${esc(skLabel(x))}</span></label>`).join("");
+    return `<div class="skcol">
+      <div class="skt">${esc(SK_STAGE_ZH[st])}
+        <span class="skstep">${esc(stepOf[st]||"")}</span>
+        <span class="muted" style="margin-left:auto">${names.length} 个 · ${fmtChars(costs[st]||0)}</span>
+      </div>
+      <div class="skopts">${opts}</div></div>`;
   }).join("");
+  const rec=SK.recommended?" · 按这本书推荐的":"";
   return `<div class="card">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <b>技能</b>
-      <span class="muted" style="font-size:12px">按步骤分列 · 勾上就存到本项目，下次跑流水线生效</span>
+      <span class="muted" style="font-size:12px">勾上就存到本项目，下次跑流水线生效${esc(rec)}</span>
     </div>
     <div class="skgrid">${cols}</div>
   </div>`;
@@ -1474,10 +1479,14 @@ function renderFlow(){
          <button class="btn" data-chap="none">全不选</button>
          <span class="grow"></span>
        </div>
-       <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-         <button class="btn go" style="flex:1;min-width:150px" data-chap="season">开始新的一季</button>
-         <button class="btn confirm" style="flex:1;min-width:150px" data-chap="script">只做所选章的分集与剧本</button>
-       </div>
+        <div class="chap-tools" style="margin-bottom:4px">
+          <label class="mini" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="chapScope" ${window.__chapScope?"checked":""}>
+            <span>本次只做勾选的章节</span>
+          </label>
+          <span class="muted" id="chapScopeHint" style="font-size:12px"></span>
+          <span class="grow"></span>
+        </div>
        <div class="chap-body" id="chapterList"></div>
      </div>`;
   const seasonHtml =
@@ -1498,6 +1507,7 @@ function renderFlow(){
             <div class="hb">
               <h1 class="ht">${esc(d.meta.title||d.meta.name)}</h1>
               <div class="hm">${esc(d.art_direction.genre||"")} · ${esc(d.art_direction.style||"")} · ${esc(d.art_direction.aspect_ratio||"9:16")}</div>
+              ${(d.meta.synopsis||d.season_synopsis||"")?`<div class="hsyn" title="${attr(d.meta.synopsis||d.season_synopsis||"")}">${esc(d.meta.synopsis||d.season_synopsis||"")}</div>`:""}
               <div class="statrow">
                 <div class="stat"><b>${eps.length}</b><span>集</span></div>
                 <div class="stat"><b>${eps.reduce((a,e)=>a+e.scenes.length,0)}</b><span>场</span></div>
@@ -1508,7 +1518,6 @@ function renderFlow(){
             </div>
           </div>
           <div class="runbar">
-            <button class="btn go" data-act="run-all">${mark("▶")} 跑完整流程</button>
             <button class="btn ghost" data-act="go-board">分镜</button>
             <button class="btn ghost" data-act="go-cast">角色</button>
             <button class="btn ghost" data-act="go-assets">资产</button>
@@ -1523,10 +1532,11 @@ function renderFlow(){
           <div class="runbar" style="margin-top:10px">
             <select class="f" id="runProj" style="width:170px">${projs||'<option>（无项目）</option>'}</select>
             <input class="f" id="runEps" placeholder="集数（留空=全部）" style="width:160px">
-            <button class="btn go" id="runGo">${mark("▶")} 开始运行</button>
-            <button class="btn ghost sm" id="runAll">全选</button>
+            <button class="btn go" id="runGo">${mark("▶")} 开始</button>
+            <button class="btn ghost sm" id="runAll">全选步骤</button>
             <button class="btn ghost sm" id="runNone">清空</button>
             <span class="muted" id="runStat" style="font-size:12px">${esc(selText)}</span>
+            <span class="muted" id="runScope" style="font-size:12px"></span>
           </div>
           ${envRow}
           <div id="runOut"></div>
@@ -1567,8 +1577,7 @@ function renderFlow(){
   });
   $$("#page-flow [data-act]").forEach(b=>b.onclick=()=>{
     const a=b.dataset.act;
-    if(a==="run-all"){ runSel=new Set(STEPS.flatMap(sp=>sp.stages)); renderFlow(); }
-    else if(a==="go-board") showWbTab("board");
+    if(a==="go-board") showWbTab("board");
     else if(a==="go-cast") showWbTab("cast");
     else if(a==="go-assets") showWbTab("assets");
     else if(a==="tag") reindex(S.current,true);
@@ -1583,11 +1592,14 @@ function renderFlow(){
     if(a==="all") setAllChapters(true);
     else if(a==="none") setAllChapters(false);
     else if(a==="mode") toggleChapMode();
-    else if(a==="season") startSeason();
-    else if(a==="script") chooseChapters();
   });
+  const cs=$("#chapScope"); if(cs) cs.onchange=()=>{
+    window.__chapScope=cs.checked;
+    renderFlow();
+  };
   const pr=$("#flowProbe"); if(pr) pr.onclick=()=>probeGuide();
   const rg=$("#runGo"); if(rg) rg.onclick=doRun;
+  drawChapScope();
   const ra=$("#runAll"); if(ra) ra.onclick=()=>{runSel=new Set(STEPS.flatMap(sp=>sp.stages));renderFlow();};
   const rn=$("#runNone"); if(rn) rn.onclick=()=>{runSel=new Set();renderFlow();};
   const rp=$("#runProj"); if(rp) rp.onchange=()=>{ if(rp.value!==S.current) selectProject(rp.value,true); };
@@ -2891,6 +2903,16 @@ async function doRun(){
     stages:[...runSel],overrides:{}};
   if(!body.project){ toast("请先选择项目","err"); return; }
   if(!body.stages.length){ toast("至少选一个阶段","err"); return; }
+  // the chapters, when the run is about the ticked ones and not the
+  // whole book
+  if(window.__chapScope){
+    const chosen=Array.from(_chapChosenSet());
+    if(!chosen.length){ toast("勾了「只做选中的章节」，但一章都没勾","err"); return; }
+    body.chapters=chosen;
+    body.season=window.__nextSeason||1;
+    const r=await postJSON("/api/chapters/choose",{project:body.project,chosen:chosen});
+    if(!r||!r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
+  }
   if(window.runPreflight && !(await runPreflight(body.stages,"流水线",body))) return;
   $("#runStat").innerHTML='<span class="spin"></span> 运行中…（可切到别处，稍后刷新）';
   $("#runGo").disabled=true;
@@ -3436,7 +3458,16 @@ function _chapChosenSet(){
     }
   }
   if(!window.__chosen) window.__chosen=new Set();
+  window.__chapChosen=window.__chosen;
   return window.__chosen;
+}
+// what the run is about: the ticked chapters, or the whole book
+function drawChapScope(){
+  const n=window.__chapChosen?window.__chapChosen.size:0;
+  const hint=document.getElementById("chapScopeHint");
+  if(hint) hint.textContent=window.__chapScope?("本次做这 "+n+" 章"):"本次做整本书";
+  const rs=document.getElementById("runScope");
+  if(rs) rs.textContent=window.__chapScope?("· 章节 "+n+" 章"):"";
 }
 function updateChapHint(){
   const hint=document.getElementById("chapterHint");
@@ -3527,29 +3558,7 @@ async function loadChapters(slug){
   const card = document.getElementById("work-chapters");
   if(card) card.style.display = "";
   _renderChapters();
-}
-async function chooseChapters(){
-  const slug = S.current;
-  if(!slug){ toast("先新建或选择一个项目","err"); return; }
-  const chosen = Array.from(_chapChosenSet());
-  if(!chosen.length){ toast("先勾选要做的章节","err"); return; }
-  const stages=["segment","script","storyboard"];
-  // the same check every other run gets: what is about to be written,
-  // and against which services, before anything is written
-  if(window.runPreflight && !(await runPreflight(stages,"所选章节",{project:slug,chapters:chosen,episodes:[]}))) return;
-  const r = await postJSON("/api/chapters/choose",{project:slug,chosen:chosen});
-  if(!r || !r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
-  toast("已选 "+chosen.length+" 章，开始分集与剧本…","",2200);
-  const run = await postJSON("/api/run",{project:slug,chapters:chosen,
-    stages:stages});
-  if(!run || !run.ok){ toast("启动失败："+esc((run&&run.error)||"未知错误"),"err"); return; }
-  // follow the job so the user sees it finish, or sees why it did not
-  pollJob(run.job, (res,j)=>{
-    if(!j){ return; }                              // pollJob already said why
-    if(j.status==="error"){ return; }
-    toast("剧本与分镜完成","",2600);
-    renderWorkbench();
-  });
+  drawChapScope();
 }
 </script>
 
@@ -3733,28 +3742,6 @@ async function loadSeasons(slug){
 // the pipeline - analysis through the finished film - not three stages of
 // it, because a batch of chapters is a batch of episodes and half of one
 // is not an episode anyone can watch.
-async function startSeason(){
-  const slug = S.current;
-  if(!slug){ toast("先选一个项目","err"); return; }
-  const chosen = Array.from(_chapChosenSet());
-  if(!chosen.length){ toast("先勾选要做的章节","err"); return; }
-  const season = window.__nextSeason || 1;
-  if(window.runPreflight && !(await runPreflight(STAGES.slice(),"第"+season+"季",{project:slug,chapters:chosen,episodes:[]}))) return;
-  const r = await postJSON("/api/chapters/choose",{project:slug,chosen:chosen});
-  if(!r || !r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
-  // the chapters go with the run: naming them is how a season is told to
-  // make these chapters rather than the whole book again
-  const run = await postJSON("/api/run",{project:slug,season:season,
-                                     chapters:chosen,stages:STAGES.slice()});
-  if(!run || !run.ok){ toast("启动失败："+esc((run&&run.error)||"未知错误"),"err"); return; }
-  toast("第" + season + "季开始，共 " + chosen.length + " 章","",2400);
-  pollJob(run.job, (res,j)=>{
-    if(!j) return;
-    if(j.status==="error") return;
-    toast("第" + season + "季完成","",3000);
-    selectProject(slug,true).then(()=>renderWorkbench());
-  });
-}
 </script>
 
 <div id="lightboxRoot"></div>

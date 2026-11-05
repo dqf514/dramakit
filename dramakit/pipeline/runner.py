@@ -55,8 +55,14 @@ ORDER = ["ingest", "analyze", "cover", "character", "segment", "script",
 # What runs first, what can overlap, and what has to wait. The middle is
 # split by machine: the writing stages need a model, the picture stage
 # needs a card, and neither has to finish before the other begins.
-SETUP = ("ingest", "analyze", "cover", "character", "segment")
-WRITES = ("script", "storyboard", "promptgen", "voice", "music")
+SETUP = ("ingest", "analyze", "cover")
+# The casting is the heaviest thing on the card - four reference pictures
+# for every character and a voice sample each - and the writing only
+# needs the names and the text of the cast.  So the casting runs beside
+# the writing instead of in front of it, and the one stage that waits
+# for it is the prompt writer, which puts the anchors into the prompts.
+CASTING = ("character",)
+WRITES = ("segment", "script", "storyboard", "promptgen", "voice", "music")
 # The stages that only need the script: the voice and the music do not
 # wait for the storyboard, so they are made beside it.
 SIDE_WRITES = ("voice", "music")
@@ -488,6 +494,7 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
 
         writes = _wanted(WRITES)
         draws = _wanted(DRAWS)
+        casting = _wanted(CASTING)
         # The chain: each stage writes what the next one reads.  The rest
         # only need the script, so they do not wait for the storyboard or
         # the prompts - the voice and the music are made while the shots
@@ -502,13 +509,32 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
             drawing_done = threading.Event()
             script_done = threading.Event()
             side_done = threading.Event()
+            cast_done = threading.Event()
             results_lock = threading.Lock()
+
+            def _cast_lane():
+                """The casting: the pictures of the cast and their voices."""
+                try:
+                    for name in casting:
+                        if ctx.stopped:
+                            break
+                        _lane(ctx, "定妆", name)
+                        _run_stage(ctx, name, None, season_obj, results, cfg)
+                        if _stop_if_wanted(name):
+                            break
+                finally:
+                    cast_done.set()
+                    _lane(ctx, "定妆", "")
 
             def _write_lane():
                 try:
                     for name in chain:
                         if ctx.stopped:
                             break
+                        if name == "promptgen":
+                            # the prompts carry the characters' anchors, so
+                            # this is the one stage that waits for the casting
+                            cast_done.wait()
                         _lane(ctx, "写作", name)
                         _run_stage(ctx, name, None, season_obj, results, cfg)
                         if name == "script":
@@ -549,8 +575,9 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                     # made once its shots are all drawn
                     drawing_done.set()
 
-            with ThreadPoolExecutor(max_workers=4) as pool:
+            with ThreadPoolExecutor(max_workers=5) as pool:
                 wfut = pool.submit(_write_lane)
+                cfut = pool.submit(_cast_lane)
                 sfut = pool.submit(_side_lane)
                 dfut = pool.submit(_draw_lane)
                 # the third lane puts each episode together as soon as its
@@ -560,13 +587,14 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                                    drawing_done, results_lock,
                                    _wanted(TAIL))
                 wfut.result()
+                cfut.result()
                 sfut.result()
                 dfut.result()
                 ffut.result()
             if ctx.stopped:
                 return _finish(ctx, season_obj, stages, results)
         else:
-            for name in chain + draws:
+            for name in list(casting) + chain + draws:
                 if ctx.stopped:
                     break
                 season_obj = _run_stage(ctx, name, None, season_obj,

@@ -938,6 +938,10 @@ def _make_handler(state: State):
             return {
                 "ok": True, "slug": slug,
                 "meta": proj.meta.model_dump(),
+                # the season's synopsis, for a project made before the
+                # summary was kept on the project itself
+                "season_synopsis": next((s.synopsis for s in (proj.seasons or [])
+                                         if s.synopsis), ""),
                 # the key art of the drama itself, with the title on it
                 "cover": _media_url(slug, proj.meta.cover_path),
                 "art_direction": proj.art_direction.model_dump(),
@@ -1094,6 +1098,9 @@ def _make_handler(state: State):
                 # silently dropped at load time, and better said here
                 clean[stage] = [n for n in names if str(n) in have]
             proj.meta.skills = clean
+            # a person picked these, so they are no longer the ones the
+            # book recommended
+            proj.meta.skills_recommended = False
             store.save(proj)
             # what each stage will actually use: the project's own choice
             # where it has one, the config's where it does not

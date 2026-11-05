@@ -60,25 +60,6 @@ models:
     - actions
     - search
     - tag
-  - id: mmw3hxil9
-    label: Strata
-    base_url: http://192.168.31.8:8080/v1
-    model: qwen3.8-flash-next-iq3_xxs
-    api_key: ollama
-    temperature: 0.7
-    max_tokens: 128000
-    timeout: 300.0
-    use_proxy: false
-    roles:
-    - analyze
-    - segment
-    - script
-    - storyboard
-    - promptgen
-    - config
-    - actions
-    - search
-    - tag
 
 # --------------------- AI 原生层（大脑/一键配置/标签/检索）------------------
 # 这一层让「所有事交给 AI」：探测环境自动生成配置、给素材打标签分类、

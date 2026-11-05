@@ -305,6 +305,10 @@ class ProjectMeta(BaseModel):
     # means none for that stage - a decision, not an absence - and a stage
     # with no entry here falls back to the config's list.
     skills: dict[str, list[str]] = {}
+    # true when the skills were recommended from the book rather than
+    # picked by hand - the console says so, so nobody thinks they were
+    # chosen for them
+    skills_recommended: bool = False
     episodes_wanted: int = 0
     # the picture of the drama: the cover the title is written on
     cover_path: str = ""
