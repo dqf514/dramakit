@@ -108,6 +108,26 @@ class ModelsConfig(BaseModel):
                     return e
         return self.entries[0]
 
+    def pick_all(self, role: str = "") -> list[ModelEntry]:
+        """Every model that claims `role`, in priority order.
+
+        One model is the usual case.  With more than one endpoint doing
+        the same task, the calls are spread over them: one endpoint
+        answering everything is no better than one endpoint when the
+        work is many calls at once.
+        """
+        if not self.entries:
+            return []
+        if role:
+            claimed = [e for e in self.entries if role in e.roles]
+            if claimed:
+                return claimed
+        if self.default:
+            for e in self.entries:
+                if e.id == self.default:
+                    return [e]
+        return [self.entries[0]]
+
 
 # --------------------------------------------------------------------------- #
 # AI 大脑（行为开关 + 旧版 light_* 兼容；模型清单见 ModelsConfig）
@@ -581,6 +601,10 @@ class PipelineConfig(BaseModel):
     only_episodes: list[int] = Field(default_factory=list)   # [] = all
     fail_fast: bool = False
     verbose: bool = True
+    # 文字阶段同时开多少个请求。0 = 用 llm.concurrency。
+    # 编剧、分镜、出提示词都是文字活，一集一集地做是浪费——接口能并行，
+    # 这里就并行。加了更多大模型接口的话，把这个数调大。
+    write_concurrency: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -663,6 +687,28 @@ class Config(BaseModel):
                 "max_retries": 1,
             })
         return self.llm
+
+    def resolve_llm_all(self, role: str = "") -> list[LLMConfig]:
+        """Every endpoint that answers for `role`.
+
+        One endpoint is the usual case.  More than one is how the work
+        of a stage gets wider than a single connection can take.
+        """
+        entries = self.models.pick_all(role)
+        if entries:
+            return [e.to_llm(self.llm) for e in entries]
+        if role == "tag" and self.ai.light_model and self.ai.light_base_url:
+            return [self.llm.model_copy(update={
+                "base_url": self.ai.light_base_url,
+                "api_key": self.ai.light_api_key or self.llm.api_key,
+                "model": self.ai.light_model,
+                "temperature": self.ai.light_temperature,
+                "max_tokens": self.ai.light_max_tokens,
+                "timeout": self.ai.light_timeout,
+                "use_proxy": self.ai.light_use_proxy,
+                "max_retries": 1,
+            })]
+        return [self.llm]
 
     def dump_yaml(self, path: str | Path) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)

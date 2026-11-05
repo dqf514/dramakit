@@ -1,6 +1,7 @@
 """Provider factory: build the right backend from config."""
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -16,8 +17,44 @@ __all__ = [
     "BaseLLM", "BaseTTS", "BaseImageVideo", "BaseMusic",
     "OpenAICompatLLM", "ComfyUIClient", "ComfyUIPool",
     "build_llm", "build_tts", "build_visual", "build_music", "resolve_voice",
-    "build_pool", "Providers",
+    "build_pool", "Providers", "LlmPool",
 ]
+
+
+class LlmPool:
+    """The models that answer for one task, handed out one at a time.
+
+    One model is the usual case, and the pool is that model.  With more
+    endpoints doing the same task, the calls are spread over them: one
+    endpoint answering everything is no better than one endpoint when
+    the work is many calls at once.
+
+    The handing out is round robin and not by load, because the work
+    of a stage is the same kind of work for every job - the endpoint
+    that is quick on one call is quick on the next.
+    """
+
+    def __init__(self, clients: list[BaseLLM]):
+        self.clients = list(clients)
+        self._n = 0
+        self._lock = threading.Lock()
+
+    def next(self) -> BaseLLM:
+        """The model that answers the next call."""
+        if not self.clients:
+            raise RuntimeError("没有可用的大模型")
+        if len(self.clients) == 1:
+            return self.clients[0]
+        with self._lock:
+            client = self.clients[self._n % len(self.clients)]
+            self._n += 1
+        return client
+
+    def __len__(self) -> int:
+        return len(self.clients)
+
+    def __bool__(self) -> bool:
+        return bool(self.clients)
 
 
 class Providers:
@@ -28,6 +65,7 @@ class Providers:
         self.root = root or Path(".")
         self._llm: Optional[BaseLLM] = None
         self._llm_roles: dict[str, BaseLLM] = {}
+        self._llm_pools: dict[str, LlmPool] = {}
         self._tts: Optional[BaseTTS] = None
         self._visual: Optional[BaseImageVideo] = None
         self._music: Optional[BaseMusic] = None
@@ -66,7 +104,10 @@ class Providers:
     def bind_stop(self, event) -> None:
         """Tell every client, present and future, that a stop can happen."""
         self._stop = event
-        for client in [self._llm, *self._llm_roles.values()]:
+        clients = [self._llm, *self._llm_roles.values()]
+        for pool in self._llm_pools.values():
+            clients.extend(pool.clients)
+        for client in clients:
             if client is not None:
                 client.stop_event = event
         # The renderers too. A clip is minutes long and the card holds it
@@ -107,3 +148,26 @@ class Providers:
         if isinstance(base, OpenAICompatLLM):
             return base.for_stage(stage)
         return base
+
+    def llm_pool(self, stage: str) -> LlmPool:
+        """Every model that answers for this stage, handed out one at a time.
+
+        One model is the usual case.  More than one endpoint doing the
+        same task means the calls of that task can be spread over them,
+        which is what makes the stage as wide as the connections allow.
+        """
+        if stage not in self._llm_pools:
+            clients: list[BaseLLM] = []
+            if self.cfg.models.entries:
+                for conf in self.cfg.resolve_llm_all(stage):
+                    client = build_llm(conf)
+                    client.stop_event = self._stop
+                    clients.append(client)
+            else:
+                base = self.llm
+                if isinstance(base, OpenAICompatLLM):
+                    clients = [base.for_stage(stage)]
+                else:
+                    clients = [base]
+            self._llm_pools[stage] = LlmPool(clients)
+        return self._llm_pools[stage]

@@ -13,7 +13,8 @@ from pathlib import Path
 from ..models import Shot, Status, is_narration
 from ..prompts import templates as T
 from . import frame as _frame
-from .base import Context, build_timeline
+from .base import (Context, build_timeline, llm_pool, run_jobs,
+                   write_workers)
 from .refs import _is_face
 
 # MiniMax H3 I2VA alignment line (official wording, first frame at 0.00s)
@@ -809,16 +810,17 @@ def _gen_score_prompt(ctx: Context, llm, sc) -> None:
 def run(ctx: Context) -> dict:
     cfg = ctx.cfg
     ad = ctx.project.art_direction
-    llm = ctx.providers.llm_for("promptgen")
+    pool = llm_pool(ctx, "promptgen")
     h3_needed = _h3_needed(ctx)
     count = 0
     # the two prompts of a shot are independent, and so are different shots:
     # the LLM round trips are the slowest part of this stage
-    workers = max(1, int(ctx.cfg.llm.concurrency or 1))
+    workers = write_workers(ctx)
+    jobs: list = []
+    scores: list = []
     for ep in ctx.target_episodes():
         ctx.check_stop()   # 一集一问：停止能在下一集生效
         dlg_map = _dialogue_by_shot(ctx, ep)
-        jobs = []
         for sc in ep.scenes:
             prev_action = ""
             for shot in sc.shots:
@@ -838,33 +840,40 @@ def run(ctx: Context) -> dict:
                 # without it the same conversation keeps re-posing itself
                 continuity = prev_action[:180] if prev_action else ""
                 jobs.append((shot, sc, visuals, flf, location_visual,
-                            need_img, need_h3, continuity))
+                             need_img, need_h3, continuity, dlg_map))
                 prev_action = shot.action or prev_action
+            # the music bed: one music-only clip per scene
+            if h3_needed:
+                for sc in ep.scenes:
+                    if not sc.score_prompt:
+                        scores.append(sc)
 
-        def _one(job):
-            shot, sc, visuals, flf, location_visual, need_img, need_h3, cont = job
-            if need_img:
-                _gen_image_prompt(ctx, llm, shot, sc, visuals, flf, location_visual,
-                                  continuity=cont)
-            if need_h3:
-                _gen_h3_prompt(ctx, llm, shot, sc, visuals, location_visual,
-                               dlg_map.get(shot.id, []), continuity=cont)
+    # Every shot of every episode is its own question, and they do not
+    # wait on each other - so they are asked together.
+    def _one(job):
+        shot, sc, visuals, flf, location_visual, need_img, need_h3, cont, dlg_map = job
+        if need_img:
+            _gen_image_prompt(ctx, pool.next(), shot, sc, visuals, flf,
+                              location_visual, continuity=cont)
+        if need_h3:
+            _gen_h3_prompt(ctx, pool.next(), shot, sc, visuals, location_visual,
+                           dlg_map.get(shot.id, []), continuity=cont)
 
-        if workers > 1 and len(jobs) > 1:
-            with ThreadPoolExecutor(max_workers=workers) as ex:
-                list(ex.map(_one, jobs))
-        else:
-            for job in jobs:
-                _one(job)
+    def _one_score(sc):
+        _gen_score_prompt(ctx, pool.next(), sc)
+
+    if jobs:
+        results = run_jobs(ctx, jobs, _one, workers=workers, label="promptgen")
+        for (_job, _res, err) in results:
+            if err:
+                ctx.log.warning("promptgen: 一个镜头失败(%s)", err[:140])
         count += len(jobs)
-        # the music bed: one music-only clip per scene
-        if h3_needed:
-            for sc in ep.scenes:
-                if sc.score_prompt:
-                    continue
-                _gen_score_prompt(ctx, llm, sc)
-                count += 1
+    if scores:
+        run_jobs(ctx, scores, _one_score, workers=workers, label="配乐提示词")
+        count += len(scores)
+
+    for ep in ctx.target_episodes():
         ctx.mark(ep, "promptgen", Status.DONE)
-        ctx.save()
+    ctx.save()
     ctx.log.info("promptgen: 生成 %d 个镜头提示词", count)
     return {"prompts": count}

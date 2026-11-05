@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import Counter
 
 from ..models import Status
-from .base import Context, build_timeline
+from .base import Context, build_timeline, run_jobs, write_workers
 
 
 def _dominant_mood(ep) -> str:
@@ -27,6 +27,7 @@ def run(ctx: Context) -> dict:
         return {"skipped": True}
     music = ctx.providers.music
     made = 0
+    jobs = []
     for ep in ctx.target_episodes():
         if ctx.stage_done(ep, "music"):
             continue
@@ -35,13 +36,22 @@ def run(ctx: Context) -> dict:
         duration = ctx.timeline(ep).duration
         if duration <= 0:
             continue
+        jobs.append((ep, duration))
+
+    # one track per episode, and the episodes do not wait on each other
+    def _one(job):
+        ep, duration = job
         mood = _dominant_mood(ep)
         out = ctx.store.bgm_path(ep)
         try:
-            path = music.get_track(mood, duration + 1.0, str(out))
+            return music.get_track(mood, duration + 1.0, str(out))
         except Exception as e:  # noqa: BLE001
             ctx.log.warning("music: 第%d集 BGM 失败(%s)", ep.index, e)
-            path = None
+            return None
+
+    for (job, path, err) in run_jobs(ctx, jobs, _one, workers=write_workers(ctx),
+                                     label="music"):
+        ep, _duration = job
         if path:
             ep.bgm_path = ctx.store.rel(path)
             made += 1
@@ -51,6 +61,6 @@ def run(ctx: Context) -> dict:
                 "成片的音乐将只来自 H3 原生音频",
                 ep.index, mc.library_dir)
         ctx.mark(ep, "music", Status.DONE if path else Status.SKIPPED)
-        ctx.save()
+    ctx.save()
     ctx.log.info("music: 生成 %d 集 BGM", made)
     return {"tracks": made}

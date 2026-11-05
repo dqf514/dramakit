@@ -5,7 +5,7 @@ import uuid
 
 from ..models import Line, LineKind, Scene, Status
 from ..prompts import templates as T
-from .base import Context
+from .base import Context, llm_pool, run_jobs, write_workers
 
 
 def _id(prefix: str) -> str:
@@ -21,11 +21,16 @@ def _to_kind(v: str) -> LineKind:
 
 def run(ctx: Context) -> dict:
     cfg = ctx.cfg
-    llm = ctx.providers.llm_for("script")
+    pool = llm_pool(ctx, "script")
     char_names = ", ".join(c.name for c in ctx.project.characters) or "（自行判断）"
     loc_names = ", ".join(l.name for l in ctx.project.locations) or "（自行判断）"
     genre = ctx.project.art_direction.genre
+    from ..skills import loader
+    from ..skills.film import SCREENWRITER_RULES
+    # the rules are the same for every episode, so they are read once
+    rules = SCREENWRITER_RULES + loader.for_stage(ctx, "script")
     done = 0
+    jobs: list = []
     for ep in ctx.target_episodes():
         ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "script") and ep.scenes:
@@ -43,25 +48,34 @@ def run(ctx: Context) -> dict:
         seconds = min(seconds, cfg.segment.max_episode_seconds or seconds)
         budget_chars = int(seconds * 4.5)
         budget_lines = max(4, int(seconds / 4.5))
-        from ..skills import loader
-        from ..skills.film import SCREENWRITER_RULES
-        rules = SCREENWRITER_RULES + loader.for_stage(ctx, "script")
         user = T.render(T.SCRIPT_USER, genre=genre, min_scenes=2, max_scenes=8,
                         screenwriter_rules=rules,
                         character_names=char_names, location_names=loc_names,
                         text=block[:12000],
                         budget_seconds=int(seconds), budget_chars=budget_chars,
                         budget_lines=budget_lines)
-        try:
-            data = llm.complete_json(T.SCRIPT_SYSTEM, user)
-        except Exception as e:  # noqa: BLE001
-            ctx.log.error("script: 第%d集失败 %s", ep.index, e)
-            ctx.mark(ep, "script", Status.FAILED)
-            if cfg.pipeline.fail_fast:
-                raise
-            continue
+        jobs.append((ep, user))
+
+    # The episodes are independent of each other, and the endpoint answers
+    # several calls at once - so they are asked together, not one after
+    # another.
+    def _one(job):
+        ep, user = job
+        data = pool.next().complete_json(T.SCRIPT_SYSTEM, user)
         if isinstance(data, list):
             data = data[0] if data else {}
+        return data
+
+    results = run_jobs(ctx, jobs, _one, workers=write_workers(ctx),
+                       label="script")
+    for (job, data, err) in results:
+        ep, _user = job
+        if err:
+            ctx.log.error("script: 第%d集失败 %s", ep.index, err)
+            ctx.mark(ep, "script", Status.FAILED)
+            if cfg.pipeline.fail_fast:
+                raise RuntimeError(err)
+            continue
         scenes = []
         for si, s in enumerate(data.get("scenes", []) or [], 1):
             sc = Scene(id=_id("sc"), index=si, location=s.get("location", ""),

@@ -57,6 +57,9 @@ ORDER = ["ingest", "analyze", "character", "segment", "script", "storyboard",
 # needs a card, and neither has to finish before the other begins.
 SETUP = ("ingest", "analyze", "character", "segment")
 WRITES = ("script", "storyboard", "promptgen", "voice", "music")
+# The stages that only need the script: the voice and the music do not
+# wait for the storyboard, so they are made beside it.
+SIDE_WRITES = ("voice", "music")
 DRAWS = ("visual",)
 TAIL = ("lipsync", "subtitle", "precheck", "compose", "qc")
 
@@ -470,26 +473,52 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
 
         writes = _wanted(WRITES)
         draws = _wanted(DRAWS)
+        # The chain: each stage writes what the next one reads.  The rest
+        # only need the script, so they do not wait for the storyboard or
+        # the prompts - the voice and the music are made while the shots
+        # are still being written.
+        chain = [s for s in writes if s not in SIDE_WRITES]
+        side = [s for s in writes if s in SIDE_WRITES]
 
         # ---- the lanes that do not have to wait for each other -------
         if writes and draws:
             log.info("── 两道并行：写作 %s / 绘制 %s ──", writes, draws)
             writes_done = threading.Event()
             drawing_done = threading.Event()
+            script_done = threading.Event()
+            side_done = threading.Event()
             results_lock = threading.Lock()
 
             def _write_lane():
                 try:
-                    for name in writes:
+                    for name in chain:
+                        if ctx.stopped:
+                            break
+                        _run_stage(ctx, name, None, season_obj, results, cfg)
+                        if name == "script":
+                            script_done.set()
+                        if _stop_if_wanted(name):
+                            break
+                finally:
+                    # the side lane waits for the script, and the drawer's
+                    # last pass waits for both lanes
+                    script_done.set()
+                    side_done.wait()
+                    writes_done.set()
+
+            def _side_lane():
+                try:
+                    # the voice and the music need the script and nothing
+                    # else, so they start as soon as it is written
+                    script_done.wait()
+                    for name in side:
                         if ctx.stopped:
                             break
                         _run_stage(ctx, name, None, season_obj, results, cfg)
                         if _stop_if_wanted(name):
                             break
                 finally:
-                    # the drawer's last pass is gated on this, so it has to
-                    # be set even when the lane failed or was stopped
-                    writes_done.set()
+                    side_done.set()
 
             def _draw_lane():
                 try:
@@ -499,8 +528,9 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                     # made once its shots are all drawn
                     drawing_done.set()
 
-            with ThreadPoolExecutor(max_workers=3) as pool:
+            with ThreadPoolExecutor(max_workers=4) as pool:
                 wfut = pool.submit(_write_lane)
+                sfut = pool.submit(_side_lane)
                 dfut = pool.submit(_draw_lane)
                 # the third lane puts each episode together as soon as its
                 # own shots are done, so the first episode can be watched
@@ -509,12 +539,20 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                                    drawing_done, results_lock,
                                    _wanted(TAIL))
                 wfut.result()
+                sfut.result()
                 dfut.result()
                 ffut.result()
             if ctx.stopped:
                 return _finish(ctx, season_obj, stages, results)
         else:
-            for name in writes + draws:
+            for name in chain + draws:
+                if ctx.stopped:
+                    break
+                season_obj = _run_stage(ctx, name, None, season_obj,
+                                        results, cfg) or season_obj
+                if _stop_if_wanted(name):
+                    return _finish(ctx, season_obj, stages, results)
+            for name in side:
                 if ctx.stopped:
                     break
                 season_obj = _run_stage(ctx, name, None, season_obj,

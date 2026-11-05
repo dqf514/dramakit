@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -24,6 +25,75 @@ class RunStopped(Exception):
 
 from ..providers import Providers
 from ..utils.text import estimate_reading_seconds
+
+
+def write_workers(ctx) -> int:
+    """How many requests the text stages may have open at once.
+
+    The text stages are the same kind of work for every job - a scene
+    here, a scene there - and the endpoints answer several calls at once,
+    so taking the episodes one after another leaves most of that
+    capacity unused.  The number is a ceiling, not a promise: the stages
+    that have one job simply use what they have.
+    """
+    cfg = ctx.cfg
+    n = int(getattr(cfg.pipeline, "write_concurrency", 0) or 0)
+    if n <= 0:
+        n = int(getattr(cfg.llm, "concurrency", 0) or 0)
+    return max(1, n)
+
+
+def llm_pool(ctx, stage: str):
+    """The models that answer for a stage, handed out one at a time.
+
+    One model is the usual case.  More than one endpoint doing the same
+    task means the calls of that task can be spread over them - which is
+    what makes the stage as wide as the connections allow.
+    """
+    providers = ctx.providers
+    getter = getattr(providers, "llm_pool", None)
+    if getter is not None:
+        return getter(stage)
+    # a provider that only knows one model
+    from ..providers import LlmPool
+    return LlmPool([providers.llm_for(stage)])
+
+
+def run_jobs(ctx, jobs, fn, *, workers: int = 1, label: str = ""):
+    """Run `fn(job)` over the jobs, several at a time.
+
+    The jobs are independent - a different episode, a different scene -
+    and each one writes its own part of the project, so they can be in
+    flight together.  A job that fails does not stop the others: the
+    error comes back with the job, and the caller decides what it means.
+
+    Returns (job, result, error) for every job, in the order they were
+    given.
+    """
+    jobs = list(jobs)
+    if not jobs:
+        return []
+    n = max(1, int(workers or 1))
+
+    def _one(job):
+        try:
+            return (job, fn(job), "")
+        except Exception as e:  # noqa: BLE001
+            return (job, None, str(e)[:300])
+
+    if n == 1 or len(jobs) == 1:
+        return [_one(job) for job in jobs]
+
+    out: list = [None] * len(jobs)
+    with ThreadPoolExecutor(max_workers=n) as ex:
+        futs = {ex.submit(_one, job): i for i, job in enumerate(jobs)}
+        done = 0
+        for fut in as_completed(futs):
+            out[futs[fut]] = fut.result()
+            done += 1
+            if done % 5 == 0 or done == len(jobs):
+                ctx.log.info("%s %d/%d", label or "并行", done, len(jobs))
+    return out
 
 
 @dataclass

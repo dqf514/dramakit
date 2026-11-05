@@ -8,7 +8,7 @@ from ..models import Shot, ShotType, Status, is_narration
 from ..prompts import templates as T
 from ..utils.text import estimate_reading_seconds
 from . import frame as _frame
-from .base import Context
+from .base import Context, llm_pool, run_jobs, write_workers
 
 
 def _id(prefix: str) -> str:
@@ -128,10 +128,18 @@ def _ref_rhythm_args(profile: dict) -> dict:
 
 def run(ctx: Context) -> dict:
     cfg = ctx.cfg.storyboard
-    llm = ctx.providers.llm_for("storyboard")
+    pool = llm_pool(ctx, "storyboard")
     char_names = ", ".join(c.name for c in ctx.project.characters) or "（自行判断）"
     dmin, dmax = (cfg.shot_duration_range + [2.0, 5.0])[:2]
     done = 0
+    from ..skills import loader as _loader
+    from ..skills.film import DIRECTOR_RULES
+    _rules = DIRECTOR_RULES + _loader.for_stage(ctx, "storyboard")
+    frame = _frame.prompt_frame(ctx)
+    system = T.render(T.STORYBOARD_SYSTEM, **frame)
+    prefer = "多用运动镜头增强节奏" if cfg.prefer_dynamic else "以固定镜头为主"
+    jobs: list = []
+    eps_done: list = []
     for ep in ctx.target_episodes():
         ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "storyboard"):
@@ -169,6 +177,11 @@ def run(ctx: Context) -> dict:
                         -(-need * total_need // max(dialogue_need, 1)))
             sc._shot_budget = min(share, cfg.max_shots_per_scene)
 
+        # how many shots the episode has already: the scenes that are done
+        # count, and the ones about to be made are counted as they are
+        # planned, so the budget is the same as it was when the scenes
+        # were taken one after another
+        made = sum(len(s.shots) for s in ep.scenes)
         for sc in ep.scenes:
             if sc.shots:
                 continue
@@ -182,18 +195,15 @@ def run(ctx: Context) -> dict:
             spoken_at = [i for i, l in enumerate(sc.lines, 1)
                          if not is_narration(l)]
             spoken_pos = {full: k + 1 for k, full in enumerate(spoken_at)}
-            prefer = "多用运动镜头增强节奏" if cfg.prefer_dynamic else "以固定镜头为主"
             # a short drama only holds attention if it cuts fast: the episode
             # gets a shot budget and every scene a share of what is left
             left = max(cfg.min_shots_per_scene,
-                       cfg.max_shots_per_episode - sum(len(s.shots) for s in ep.scenes))
+                       cfg.max_shots_per_episode - made)
             want = getattr(sc, "_shot_budget", 0)
             max_shots = max(cfg.min_shots_per_scene,
                             min(cfg.max_shots_per_scene, left, want) if want
                             else min(cfg.max_shots_per_scene, left))
-            from ..skills import loader as _loader
-            from ..skills.film import DIRECTOR_RULES
-            _rules = DIRECTOR_RULES + _loader.for_stage(ctx, "storyboard")
+            made += max_shots
             # how long this scene is, and how long a segment of it is on
             # average: concrete numbers, so the plan lands where it should
             share = max(1, int(getattr(sc, "_shot_budget", 0) or 1))
@@ -216,62 +226,79 @@ def run(ctx: Context) -> dict:
                             max_shots=max_shots, prefer_dynamic=prefer,
                             dur_min=dmin, dur_max=dmax, narration_seconds=narration_sec,
                             character_names=char_names,
-                            **_frame.prompt_frame(ctx),
+                            **frame,
                             **_ref_rhythm_args(cfg.ref_rhythm))
-            try:
-                data = llm.complete_json(
-                    T.render(T.STORYBOARD_SYSTEM, **_frame.prompt_frame(ctx)), user)
-            except Exception as e:  # noqa: BLE001
-                ctx.log.error("storyboard: 第%d集 场%d 失败 %s", ep.index, sc.index, e)
-                sc.status = Status.FAILED
-                if ctx.cfg.pipeline.fail_fast:
-                    raise
-                # fallback: one shot per line so the pipeline still proceeds
-                sc.shots = _fallback_shots(sc, dmin, dmax)
-                continue
-            if isinstance(data, list):
-                data = data[0] if data else {}
-            shots = []
-            n_lines = len(spoken_at)
-            for i, s in enumerate(data.get("shots", []) or [], 0):
-                # which lines this shot carries, so the cut can land on them
-                idx: list[int] = []
-                for v in (s.get("lines") or []):
-                    try:
-                        n = int(v)
-                    except (TypeError, ValueError):
-                        continue
-                    k = spoken_pos.get(n)
-                    if k and k not in idx:
-                        idx.append(k)
-                shots.append(Shot(
-                    id=_id("sh"), index=i, shot_type=_to_shot_type(s.get("shot_type", "中景")),
-                    camera_move=s.get("camera_move", "固定"),
-                    angle=_to_angle(s.get("angle", "")),
-                    height=_to_height(s.get("height", "")),
-                    lens=_to_lens(s.get("lens", "")),
-                    purpose=(s.get("purpose") or "").strip(),
-                    subject=(s.get("subject") or "").strip(),
-                    duration=_clamp(s.get("duration"), dmin, dmax, 3.0),
-                    action=_strip_facing_camera(s.get("action", "")),
-                    characters=[str(c) for c in (s.get("characters") or [])],
-                    line_indices=sorted(idx),
-                ))
-            sc.shots = shots or _fallback_shots(sc, dmin, dmax)
-            _repair_line_casts(sc)
-            _repair_characters(ctx, sc)
-            # a shot that carries too much dialogue gets a second shot
-            _split_long_shots(sc)
-            # the coverage rules: nobody talks to the lens, and no two
-            # shots in a row are the same picture
-            _enforce_coverage(sc)
+            jobs.append((ep, sc, spoken_at, spoken_pos, user))
+        eps_done.append(ep)
+
+    # Every scene is its own question to the model, and the scenes of
+    # different episodes do not wait on each other - so they are asked
+    # together.
+    def _one(job):
+        _ep, _sc, _spoken_at, _spoken_pos, user = job
+        return pool.next().complete_json(system, user)
+
+    results = run_jobs(ctx, jobs, _one, workers=write_workers(ctx),
+                       label="storyboard")
+
+    # the answers go back in
+    failed: set = set()
+    for (job, data, err) in results:
+        ep, sc, spoken_at, spoken_pos, _user = job
+        if err:
+            ctx.log.error("storyboard: 第%d集 场%d 失败 %s", ep.index, sc.index, err)
+            sc.status = Status.FAILED
+            failed.add(ep.index)
+            if ctx.cfg.pipeline.fail_fast:
+                raise RuntimeError(err)
+            # fallback: one shot per line so the pipeline still proceeds
+            sc.shots = _fallback_shots(sc, dmin, dmax)
+            continue
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        shots = []
+        for i, s in enumerate(data.get("shots", []) or [], 0):
+            # which lines this shot carries, so the cut can land on them
+            idx: list[int] = []
+            for v in (s.get("lines") or []):
+                try:
+                    n = int(v)
+                except (TypeError, ValueError):
+                    continue
+                k = spoken_pos.get(n)
+                if k and k not in idx:
+                    idx.append(k)
+            shots.append(Shot(
+                id=_id("sh"), index=i, shot_type=_to_shot_type(s.get("shot_type", "中景")),
+                camera_move=s.get("camera_move", "固定"),
+                angle=_to_angle(s.get("angle", "")),
+                height=_to_height(s.get("height", "")),
+                lens=_to_lens(s.get("lens", "")),
+                purpose=(s.get("purpose") or "").strip(),
+                subject=(s.get("subject") or "").strip(),
+                duration=_clamp(s.get("duration"), dmin, dmax, 3.0),
+                action=_strip_facing_camera(s.get("action", "")),
+                characters=[str(c) for c in (s.get("characters") or [])],
+                line_indices=sorted(idx),
+            ))
+        sc.shots = shots or _fallback_shots(sc, dmin, dmax)
+        _repair_line_casts(sc)
+        _repair_characters(ctx, sc)
+        # a shot that carries too much dialogue gets a second shot
+        _split_long_shots(sc)
+        # the coverage rules: nobody talks to the lens, and no two
+        # shots in a row are the same picture
+        _enforce_coverage(sc)
+
+    for ep in eps_done:
         # The lengths are the director's.  They are only kept inside the
         # range the video model can render - a segment outside it cannot be
         # made at all.
         for sc in ep.scenes:
             for sh in sc.shots:
                 sh.duration = round(max(dmin, min(dmax, float(sh.duration or dmin))), 2)
-        ctx.mark(ep, "storyboard", Status.DONE)
+        ctx.mark(ep, "storyboard",
+                 Status.FAILED if ep.index in failed else Status.DONE)
         ctx.save()
         done += 1
         ctx.log.info("storyboard: 第%d集 → %d 镜", ep.index, ep.total_shots)
