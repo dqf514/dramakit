@@ -550,6 +550,8 @@ pipeline:
   only_episodes: []                       # 空=全部集都做                         # 例: [1,2,3] 只处理这几集
   fail_fast: false                          # true=任一阶段报错即中止
   verbose: true
-  # 空=全部集都做                         # 例: [1,2,3] 只处理这几集
-  fail_fast: false                          # true=任一阶段报错即中止
-  verbose: true
+  # 文字阶段同时开多少个请求（编剧/分镜/出提示词）。0 = 用 llm.concurrency。
+  # 这些都是文字活，一集一集地做是浪费——接口能并行就并行。
+  # 加了更多大模型接口的话，把这个数调大；同一任务由多个接口分担时，
+  # 调用会轮流分给它们（见 models.entries 里同一个角色的多个条目）。
+  write_concurrency: 0
