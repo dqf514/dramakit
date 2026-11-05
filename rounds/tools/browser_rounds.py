@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -85,6 +86,8 @@ def main() -> int:
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: errors.append(m.text)
                 if m.type == "error" else None)
+        # the pool asks before it takes a card out; the check says yes
+        page.on("dialog", lambda d: d.accept())
 
         for i in range(args.rounds):
             errors.clear()
@@ -198,6 +201,85 @@ def main() -> int:
             check(f"第{i+1}轮 页面没有报错", not errors, "; ".join(errors[:3]))
             print(f"· 第{i+1}轮 {ratio} {want} · {style['name']}"
                   f" —— {checks} 项检查，{len(failures)} 项不通过", flush=True)
+
+        # ---- the node pool, added and taken out by hand --------------- #
+        # The pool is the list of cards in the config file.  A card is
+        # added here, changed and taken out again - and the cards that
+        # were there before are still there afterwards.
+        errors.clear()
+        page.goto(base, wait_until="domcontentloaded")
+        page.wait_for_selector('.railbtn[data-page="nodes"]', timeout=20000)
+        page.click('.railbtn[data-page="nodes"]')
+        page.wait_for_selector("#nodeList", timeout=20000)
+        # the cards are looked for on the machine: a card that is not
+        # answering takes its time, and the page waits for the lot
+        page.wait_for_selector("#nodeList .card", timeout=90000)
+        page.wait_for_timeout(500)
+        before = [n["name"] for n in get(base, "/api/nodes")["nodes"]]
+        check("节点池 页面上有节点", len(before) >= 1, str(before))
+
+        name = f"probe-{int(time.time())}"
+        page.click("#nodeAdd")
+        page.wait_for_selector('#nodeList [data-nf="name"]', timeout=10000)
+        # the settings of a card are behind a fold: open them all
+        page.evaluate(
+            "()=>document.querySelectorAll('#nodeList details')"
+            ".forEach(d=>d.open=true)")
+        # the new card is the one that has a name field
+        new_card = page.locator("#nodeList .card").filter(
+            has=page.locator('[data-nf="name"]'))
+        check("节点池 点添加出来一张新卡片", new_card.count() == 1,
+              f"{new_card.count()} 张")
+        new_card.locator('[data-nf="name"]').fill(name)
+        new_card.locator('[data-nf="base_url"]').fill("http://127.0.0.1:8188")
+        new_card.locator('[data-nf="roles"]').fill("i2v")
+        with page.expect_response(
+                lambda r: "/api/nodes/save" in r.url, timeout=20000) as ri:
+            new_card.locator("[data-save]").click()
+        saved = ri.value.json()
+        check("节点池 新增一台节点", bool(saved.get("ok")), str(saved)[:160])
+        after = [n["name"] for n in get(base, "/api/nodes")["nodes"]]
+        check("节点池 新增的节点在列表里了", name in after, str(after))
+        check("节点池 原来的节点一个都没少", set(before) <= set(after),
+              f"{before} -> {after}")
+        page.wait_for_selector(f'#nodeList [data-node="{name}"]', timeout=10000)
+        check("节点池 新增的节点在页面上",
+              page.locator(f'#nodeList [data-node="{name}"]').count() == 1)
+
+        # change it
+        page.evaluate(
+            "()=>document.querySelectorAll('#nodeList details')"
+            ".forEach(d=>d.open=true)")
+        card = page.locator(f'#nodeList [data-node="{name}"]')
+        card.locator('[data-nf="base_url"]').fill("http://127.0.0.1:8199")
+        with page.expect_response(
+                lambda r: "/api/nodes/save" in r.url, timeout=20000) as ri:
+            card.locator("[data-save]").click()
+        saved = ri.value.json()
+        check("节点池 改一台节点", bool(saved.get("ok")), str(saved)[:160])
+        card = next((n for n in get(base, "/api/nodes")["nodes"]
+                     if n["name"] == name), None)
+        check("节点池 改过的地址存住了",
+              bool(card) and card["config"]["base_url"] == "http://127.0.0.1:8199",
+              str((card or {}).get("config", {}).get("base_url")))
+
+        # and take it out again
+        page.wait_for_selector(f'#nodeList [data-node="{name}"]', timeout=10000)
+        page.evaluate(
+            "()=>document.querySelectorAll('#nodeList details')"
+            ".forEach(d=>d.open=true)")
+        card = page.locator(f'#nodeList [data-node="{name}"]')
+        with page.expect_response(
+                lambda r: "/api/nodes/save" in r.url, timeout=20000) as ri:
+            card.locator("[data-del]").click()
+        saved = ri.value.json()
+        check("节点池 删掉一台节点", bool(saved.get("ok")), str(saved)[:160])
+        left = [n["name"] for n in get(base, "/api/nodes")["nodes"]]
+        check("节点池 删掉的节点不在列表里了", name not in left, str(left))
+        check("节点池 删掉一台不影响别的", set(before) <= set(left),
+              f"{before} -> {left}")
+        check("节点池 页面没有报错", not errors, "; ".join(errors[:3]))
+        print(f"· 节点池 —— {checks} 项检查，{len(failures)} 项不通过", flush=True)
 
         browser.close()
 

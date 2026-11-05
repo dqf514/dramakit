@@ -41,6 +41,8 @@ import urllib.error
 import urllib.request
 from collections import Counter
 from http.server import ThreadingHTTPServer
+
+import yaml
 from pathlib import Path
 from unittest.mock import patch
 
@@ -321,7 +323,16 @@ class Console:
         self.fakes = fakes
         self.cfgs: list[Config] = []   # the settings each run was given
         self.providers = FakeProviders(fakes)
-        self.state = State(cfg, None, root)
+        # The console writes into the file it was given.  The harness
+        # gives it a copy of its own settings, so that what a round
+        # changes - the pool of cards, the look of a project - is
+        # changed in the copy and not on this machine.
+        self.cfg_path = root / "config" / "default.yaml"
+        self.cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        self.cfg_path.write_text(
+            yaml.safe_dump(cfg.model_dump(mode="json"), allow_unicode=True,
+                           sort_keys=False), encoding="utf-8")
+        self.state = State(cfg, self.cfg_path, root)
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0),
                                          _make_handler(self.state))
         self.thread = threading.Thread(target=self.httpd.serve_forever,
@@ -804,6 +815,68 @@ def _fake_lipsync(_ctx, jobs):
 # --------------------------------------------------------------------------- #
 
 
+def run_node_pool(console: Console, number: int = 90) -> Round:
+    """The pool of cards, added and taken out by hand.
+
+    The pool is the list of cards in the config file.  A card is added,
+    changed and taken out again here, and the cards that were there
+    before are still there afterwards: a request about one card must
+    not take the others with it.
+    """
+    rd = Round(number, "节点池：增删改")
+    try:
+        pool = console.get("/api/nodes")
+    except Exception as e:  # noqa: BLE001
+        rd.check("GET /api/nodes", False, repr(e))
+        return rd
+    before = [n["name"] for n in pool.get("nodes") or []]
+    rd.check("GET /api/nodes", bool(pool.get("ok")) and len(before) >= 1,
+             str(before))
+    name = "harness-card"
+
+    answer = console.post("/api/nodes/save", {"nodes": [{
+        "name": name, "base_url": "http://127.0.0.1:8188",
+        "roles": ["i2v"], "enabled": True}]})
+    rd.check("新增一台节点", bool(answer.get("ok")), str(answer)[:160])
+    now = [n["name"] for n in console.get("/api/nodes").get("nodes") or []]
+    rd.check("新增的节点在列表里了", name in now, str(now))
+    rd.check("原来的节点一个都没少", set(before) <= set(now),
+             f"{before} -> {now}")
+
+    cfg = Config.load(console.cfg_path)
+    card = next((n for n in cfg.comfyui.nodes if n.name == name), None)
+    rd.check("文件里记下了这台节点",
+             card is not None and card.base_url == "http://127.0.0.1:8188",
+             str(card))
+
+    console.post("/api/nodes/save", {"nodes": [{
+        "name": name, "base_url": "http://127.0.0.1:8199",
+        "roles": ["t2i", "i2v"], "enabled": True}]})
+    cfg = Config.load(console.cfg_path)
+    card = next((n for n in cfg.comfyui.nodes if n.name == name), None)
+    rd.check("改过的地址存住了",
+             card is not None and card.base_url == "http://127.0.0.1:8199",
+             str(getattr(card, "base_url", None)))
+    rd.check("改过的角色存住了",
+             card is not None and list(card.roles) == ["t2i", "i2v"],
+             str(getattr(card, "roles", None)))
+
+    answer = console.post("/api/nodes/save", {"remove": [name]})
+    rd.check("删掉一台节点", bool(answer.get("ok")), str(answer)[:160])
+    now = [n["name"] for n in console.get("/api/nodes").get("nodes") or []]
+    rd.check("删掉的节点不在列表里了", name not in now, str(now))
+    rd.check("删掉一台不影响别的", set(before) <= set(now),
+             f"{before} -> {now}")
+    cfg = Config.load(console.cfg_path)
+    rd.check("文件里也没有这台节点了",
+             all(n.name != name for n in cfg.comfyui.nodes),
+             str([n.name for n in cfg.comfyui.nodes]))
+    primary = next((n for n in console.get("/api/nodes").get("nodes") or []
+                    if (n.get("config") or {}).get("primary")), None)
+    rd.check("本机节点还在", bool(primary), str(primary)[:120])
+    return rd
+
+
 def run_faults(console: Console, tmp_root: Path) -> list[Round]:
     """What happens when something breaks."""
     out: list[Round] = []
@@ -1018,6 +1091,9 @@ def main() -> int:
                            style_id, skills, root, h3=(i % 3 == 2))
             rounds.append(rd)
             print(rd.report(args.verbose), flush=True)
+        rd = run_node_pool(console, 90)
+        rounds.append(rd)
+        print(rd.report(args.verbose), flush=True)
         if args.faults:
             for rd in run_faults(console, root):
                 rounds.append(rd)

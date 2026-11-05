@@ -487,16 +487,28 @@ def drift_cmd(
 
 @app.command(name="nodes")
 def nodes_cmd(
-    action: str = typer.Argument("list", help="list | check | sync"),
-    name: str = typer.Argument("", help="节点名（sync 时指定；留空=全部）"),
+    action: str = typer.Argument("list", help="list | check | sync | add | rm"),
+    name: str = typer.Argument("", help="节点名（sync/add/rm 时指定；留空=全部）"),
     config: Optional[str] = typer.Option(None, "--config", "-c"),
     models_dir: str = typer.Option("", "--models-dir", help="本地 ComfyUI models 目录（同步源）"),
-    role: str = typer.Option("", "--role", help="只看某个角色的节点（t2i / i2v）"),
+    role: str = typer.Option("", "--role", help="只看某个角色的节点（t2i / i2v）；add 时是新节点的角色"),
+    url: str = typer.Option("", "--url", help="add：新节点的地址，如 http://192.168.1.50:8188"),
+    transfer: str = typer.Option("", "--transfer", help="add：模型传输方式 none|shared|scp"),
+    ssh_host: str = typer.Option("", "--ssh-host", help="add：SSH 主机"),
+    ssh_user: str = typer.Option("", "--ssh-user", help="add：SSH 用户"),
+    ssh_key: str = typer.Option("", "--ssh-key", help="add：SSH 密钥"),
+    remote_models: str = typer.Option("", "--remote-models", help="add：远端 models 目录"),
+    local_models: str = typer.Option("", "--local-models", help="add：已挂载到本机的 models 目录"),
+    workflow_t2i: str = typer.Option("", "--workflow-t2i", help="add：这台机器跑哪个出图工作流"),
+    workflow_i2v: str = typer.Option("", "--workflow-i2v", help="add：这台机器跑哪个视频工作流"),
 ):
-    """节点池：查看/自检 ComfyUI 节点，并同步缺失的模型文件。
+    """节点池：查看/自检/增删 ComfyUI 节点，并同步缺失的模型文件。
 
     工作流即清单：扫描 config/comfyui/*.json 里的模型加载节点，
     自动得出每个节点需要哪些模型文件，缺什么就补什么。
+
+    节点池就是 config/default.yaml 里的 comfyui.nodes：dj nodes add 往
+    里加一台机器，dj nodes rm 把它拿掉，控制台里改的也是这一份。
     """
     from .providers.nodes import (check_node, manifest, nodes_from_config,
                                   sync_models, SyncReport)
@@ -540,7 +552,50 @@ def nodes_cmd(
         if action == "list":
             console.print("\n同步模型：dj nodes sync <名字>   "
                           "（节点需在 config/default.yaml 的 comfyui.nodes 里配置）")
+            console.print("增删：dj nodes add <名字> --url http://<IP>:8188 --role i2v"
+                          "   /   dj nodes rm <名字>")
             console.print("派发：给节点配 roles: [t2i] / [i2v]，出图和出视频会自动分流到对应机器")
+        return
+
+    if action in ("add", "rm", "remove", "del"):
+        from .ai import autoconfig
+        path = _find_config(config)
+        if not path:
+            console.print("[red]找不到配置文件（用 --config 指一份）[/red]")
+            raise typer.Exit(1)
+        if not name:
+            console.print("[red]要给哪台机器？给个名字[/red]")
+            raise typer.Exit(1)
+        if action in ("rm", "remove", "del"):
+            if not any(s.name == name for s in fleet):
+                console.print(f"[red]节点池里没有 {name}[/red]")
+                raise typer.Exit(1)
+            autoconfig.save_nodes(path, [], remove=[name])
+            console.print(f"[green]✓[/green] 已把 {name} 从节点池里拿掉"
+                          f"（{path}）")
+            return
+        if not url:
+            console.print("[red]新节点要有个地址：--url http://<IP>:8188[/red]")
+            raise typer.Exit(1)
+        entry: dict = {"name": name, "base_url": url.rstrip("/"),
+                       "enabled": True}
+        roles = [r.strip() for r in role.split(",") if r.strip()]
+        if roles:
+            entry["roles"] = roles
+        for key, value in (("transfer", transfer), ("ssh_host", ssh_host),
+                           ("ssh_user", ssh_user), ("ssh_key", ssh_key),
+                           ("remote_models", remote_models),
+                           ("local_models", local_models)):
+            if value:
+                entry[key] = value
+        wfs = {k: v for k, v in (("t2i", workflow_t2i), ("i2v", workflow_i2v))
+               if v}
+        if wfs:
+            entry["workflows"] = wfs
+        autoconfig.save_nodes(path, [entry])
+        console.print(f"[green]✓[/green] 已把 {name} 加进节点池"
+                      f"（{url}{'，角色 ' + ','.join(roles) if roles else ''}）")
+        console.print("自检：dj nodes check " + name)
         return
 
     if action == "sync":
@@ -585,7 +640,7 @@ def nodes_cmd(
                           f"{report.files_done}/{report.files_total} 个文件")
         return
 
-    console.print(f"[red]未知操作:[/red] {action}（list | check | sync）")
+    console.print(f"[red]未知操作:[/red] {action}（list | check | sync | add | rm）")
     raise typer.Exit(1)
 
 

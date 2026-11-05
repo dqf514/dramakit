@@ -76,6 +76,15 @@ class LogTail(logging.Handler):
         return list(self.lines)[-n:]
 
 
+# The settings a card in the pool has, and the only ones the page may
+# write.  The rest of a card - its password, its headers - is not on the
+# page, and a card that is written must not lose them.
+NODE_FIELDS = ("enabled", "roles", "base_url", "transfer", "ssh_host",
+               "ssh_user", "ssh_key", "remote_models", "local_models",
+               "auth", "auth_username", "auth_token", "max_concurrent",
+               "verify_tls", "extra_headers")
+
+
 class State:
     def __init__(self, cfg: Config, config_path: Optional[Path], projects_root: Path):
         self.lock = threading.RLock()
@@ -531,20 +540,38 @@ def _make_handler(state: State):
                 from ..providers.nodes import (check_node, manifest,
                                               nodes_from_config)
                 refs = manifest(state.cfg, Path("."))
-                fleet = [s for s in nodes_from_config(state.cfg) if s.enabled]
+                listed = {s.name for s in (state.cfg.comfyui.nodes or [])}
                 out = []
-                for spec in fleet:
-                    h = check_node(spec, refs)
-                    d = h.to_dict()
-                    d["transfer"] = spec.transfer
-                    d["roles"] = list(spec.roles or [])
+                fleet = nodes_from_config(state.cfg)
+                # the cards are checked side by side: a card that is not
+                # answering takes its ten seconds, and the page should
+                # not wait for it before it shows the others
+                from concurrent.futures import ThreadPoolExecutor
+
+                def _on(spec):
+                    """Whether this card is in service.
+
+                    The primary card's switch is the section's own
+                    `enabled`; every other card has one of its own.
+                    """
+                    if spec.name == "local" and spec.name not in listed:
+                        return bool(state.cfg.comfyui.enabled)
+                    return bool(spec.enabled)
+
+                def _health(spec):
+                    if not _on(spec):
+                        return None
+                    return check_node(spec, refs).to_dict()
+
+                with ThreadPoolExecutor(max_workers=max(1, len(fleet))) as pool:
+                    healths = list(pool.map(_health, fleet))
+                for spec, health in zip(fleet, healths):
                     # The settings the page edits, so it does not have to
                     # ask for them a second time: what the card is called,
                     # where it answers, how models reach it, and the
                     # weights it is told to load.
                     cfg_dump = spec.model_dump()
-                    if spec.name == "local" and spec.name not in {
-                            s.name for s in (state.cfg.comfyui.nodes or [])}:
+                    if spec.name == "local" and spec.name not in listed:
                         # The primary card is not in the list - its address
                         # and its role live at the top of the section, and
                         # the weights it loads are the section's own. The
@@ -553,6 +580,27 @@ def _make_handler(state: State):
                         cfg_dump["graph_overrides"] = dict(
                             state.cfg.comfyui.graph_overrides or {})
                         cfg_dump["primary"] = True
+                        cfg_dump["enabled"] = bool(state.cfg.comfyui.enabled)
+                        # the primary card runs the global workflows, so
+                        # the page shows them as the ones in force
+                        cfg_dump["workflows"] = {
+                            "t2i": state.cfg.comfyui.t2i_workflow,
+                            "i2v": state.cfg.comfyui.i2v_workflow,
+                        }
+                    if _on(spec):
+                        d = health or {"name": spec.name,
+                                       "base_url": spec.base_url,
+                                       "online": False, "error": "无法连接"}
+                    else:
+                        # A card that is switched off is still a card: it
+                        # is on the page, so it can be switched on again -
+                        # a card that vanished could not.
+                        d = {"name": spec.name, "base_url": spec.base_url,
+                             "online": False, "version": "", "device": "",
+                             "vram_total": 0, "vram_used": 0, "vram_free": 0,
+                             "missing": [], "installed": 0, "depth": 0,
+                             "error": "已停用"}
+                    d["transfer"] = spec.transfer
                     # what the page shows as this card's role is the role
                     # in force, not the one the list would give it
                     d["roles"] = list(cfg_dump.get("roles") or [])
@@ -1245,10 +1293,19 @@ def _make_handler(state: State):
             client = self._node_client(spec)
             try:
                 if not client.ping():
-                    return self._err("连不上该节点", 400)
+                    # A card that is not answering has no models to
+                    # list - that is what the page is told, rather than
+                    # an error the page would ask about again and again.
+                    return self._json({"ok": True, "node": name,
+                                       "files": {}, "kinds": {},
+                                       "overrides": spec.graph_overrides or {},
+                                       "error": "连不上该节点"})
                 info = client.object_info()
             except Exception as e:  # noqa: BLE001
-                return self._err(f"读取节点信息失败：{str(e)[:160]}", 400)
+                return self._json({"ok": True, "node": name,
+                                   "files": {}, "kinds": {},
+                                   "overrides": spec.graph_overrides or {},
+                                   "error": f"读取节点信息失败：{str(e)[:160]}"})
 
             files: dict[str, list] = {}
             for cls, field in (("UNETLoader", "unet_name"),
@@ -1285,11 +1342,24 @@ def _make_handler(state: State):
                                 "workflow": rel})
 
         def _api_nodes_save(self, body: dict) -> dict:
-            """Write the node pool's settings into the config."""
+            """Write the node pool's settings into the config.
+
+            The pool is a list of cards.  A card that is written goes into
+            the file, a card that is named in `remove` is taken out of it,
+            and every other card is left exactly as it was: the file is
+            where the fleet is documented, and the comments beside each
+            card's settings are the only record of why it is set up the
+            way it is.  Nothing here is dropped because it was not in the
+            request - a card that was not asked about is still a card.
+            """
             from ..ai import autoconfig
             nodes = body.get("nodes")
-            if not isinstance(nodes, list) or not nodes:
+            remove = body.get("remove")
+            if nodes is None and remove is None:
                 return self._err("没有要保存的节点", 400)
+            nodes = nodes if isinstance(nodes, list) else []
+            remove = [str(x).strip() for x in (remove or [])
+                      if str(x or "").strip()]
             # The primary card is not in the list: its address, its role and
             # its weights sit at the top of the section. Every other name
             # belongs in the list - including one that is not there yet,
@@ -1300,25 +1370,41 @@ def _make_handler(state: State):
             maps: dict = {}
             entries: list[dict] = []
             for node in nodes:
+                if not isinstance(node, dict):
+                    continue
                 name = str(node.get("name") or "").strip()
                 if not name:
                     continue
-                if name == primary:
-                    if "base_url" in node:
-                        scalars["base_url"] = node["base_url"]
+                if node.get("primary") or name == primary:
+                    # the primary card's settings are the section's own
+                    for key in ("base_url", "auth", "auth_username",
+                                "auth_token", "verify_tls", "enabled"):
+                        if key in node:
+                            scalars[key] = node[key]
                     if "roles" in node:
                         scalars["local_roles"] = node["roles"]
                     if "graph_overrides" in node:
                         maps["graph_overrides"] = node.get("graph_overrides") or {}
+                    wf = node.get("workflows") or {}
+                    for role, key in (("t2i", "t2i_workflow"),
+                                      ("i2v", "i2v_workflow"),
+                                      ("flf", "flf_workflow")):
+                        if role in wf:
+                            scalars[key] = str(wf.get(role) or "")
                     continue
-                entries.append(node)
+                if name == "local":
+                    return self._err("“local” 是本机节点的名字，这台机器请换个名字", 400)
+                entry = {k: v for k, v in node.items() if k in NODE_FIELDS}
+                entry["name"] = name
+                entries.append(entry)
             path = state.config_path or Path("config/default.yaml")
             try:
-                autoconfig.save_nodes(path, entries, scalars, maps)
+                autoconfig.save_nodes(path, entries, scalars, maps,
+                                      remove=remove)
             except Exception as e:  # noqa: BLE001
                 return self._err(f"写入配置失败：{str(e)[:240]}", 400)
             state.reload_config()
-            return self._json({"ok": True, "nodes": nodes})
+            return self._json({"ok": True, "nodes": nodes, "removed": remove})
 
         def _api_nodes_sync(self, body: dict) -> dict:
             """Ship the models a node is missing, with live progress."""

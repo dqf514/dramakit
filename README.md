@@ -524,6 +524,11 @@ TTS / 音乐同理实现 `BaseTTS` / `BaseMusic`，在 `providers/__init__.py` �
   （连通/版本/GPU/显存/模型齐全度）；**工作流即清单**——扫描 `config/comfyui/*.json`
   的模型加载节点自动推出要传的模型，`dj nodes sync <名字>` 缺什么补什么，
   带每文件与总体的进度、速度、ETA。前端「流水线 → 节点池」可直接点同步并看进度条。
+- **节点池可以人工增删改**：节点池就是 `config/default.yaml` 里的 `comfyui.nodes`，
+  控制台的「节点池」页上每台机器的地址、角色、传输方式（shared/scp）、SSH、
+  本机用的权重、工作流都能改，也能**加一台新的**或**把一台拿掉**，
+  写回的还是那一份 YAML（注释和别的机器都不动）；命令行上也可以：
+  `dj nodes add <名字> --url http://<IP>:8188 --role i2v` / `dj nodes rm <名字>`。
 - **FLUX 3 Image Klein 出图**（2026-10-15 发布，5.6B 开放权重）：
   FLUX 3 不读 SDXL 式关键词提示词，要的是**一段完整场景描述**（100~350 词）。
   `comfyui.prompt_format: flux3` 会切换提示词模板，`negative_prompt` 自动置空
@@ -625,6 +630,8 @@ dramakit/
 | `dj nodes` | 列出 ComfyUI 节点池并自检（连通/版本/显存/角色/队列深度/模型齐全度）|
 | `dj nodes sync <名字>` | 把工作流需要的模型同步到该节点（带进度、可断点续传）|
 | `dj nodes --role i2v` | 只看某个角色的节点（t2i 出图 / i2v 出视频）|
+| `dj nodes add <名字> --url http://<IP>:8188 --role i2v` | 往节点池里加一台机器（写回 `comfyui.nodes`）|
+| `dj nodes rm <名字>` | 把一台机器从节点池里拿掉（`comfyui.nodes` 里删掉那一段）|
 | `dj config [--init/--dump]` | 查看/导出配置 |
 | `dj clean <项目> --what tmp\|intermediates` | 清理中间产物 |
 

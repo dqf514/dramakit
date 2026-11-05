@@ -572,9 +572,36 @@ def _yaml_set_block(text: str, section: str, value) -> str:
     return "\n".join(lines)
 
 
+def _map_block(indent: str, mapping: dict, note: str = "",
+                key_holder: str = "") -> list[str]:
+    """The lines of a nested mapping under one key.
+
+    A value that is itself a map is written as a map and not as the text
+    of one: the loader overrides are `{"127": {"unet_name": "..."}}`, and
+    a loader written as a string is a loader that is not loaded.
+    """
+    out = [f"{indent}{key_holder}:{note}"]
+    for mk, mv in (mapping or {}).items():
+        if isinstance(mv, dict):
+            inner = "{" + ", ".join(
+                f"{_fmt_scalar(k)}: {_fmt_value(v)}" for k, v in mv.items()) + "}"
+            out.append(f"{indent}  {_fmt_scalar(mk)}: {inner}")
+        else:
+            value = str(mv) if mv is not None else ""
+            out.append(f'{indent}  {mk}: "{value}"' if value
+                       else f'{indent}  {mk}: ""')
+    return out
+
+
 def _yaml_set_map(text: str, section: str, key: str, mapping: dict) -> str:
     """Replace `section.key` (a nested mapping) in place, keeping the section
-    header and all sibling keys/comments. Used for comfyui.t2i_nodes / i2v_nodes."""
+    header and all sibling keys/comments. Used for comfyui.t2i_nodes / i2v_nodes.
+
+    A value that is itself a map is written as a map and not as the text of
+    one: the loader overrides are `{"127": {"unet_name": "..."}}`, and a
+    loader written as a string is a loader that is not loaded.  A key the
+    file does not have yet is written in under the section - the primary
+    card's own weights are the one map that may not be there yet."""
     lines = text.split("\n")
     sec_re = re.compile(rf"^{re.escape(section)}\s*:(\s#.*)?$")
     top_re = re.compile(r"^[A-Za-z_][\w\-]*\s*:")
@@ -602,13 +629,13 @@ def _yaml_set_map(text: str, section: str, key: str, mapping: dict) -> str:
             if cur <= len(indent):
                 break
             stop += 1
-        block = [f"{indent}{key}:{_trailing_comment(m.group(2))}"]
-        for mk, mv in mapping.items():
-            value = str(mv) if mv is not None else ""
-            block.append(f'{indent}  {mk}: "{value}"' if value else f'{indent}  {mk}: ""')
-        lines[j:stop] = block
+        lines[j:stop] = _map_block(indent, mapping,
+                                   _trailing_comment(m.group(2)), key)
         return "\n".join(lines)
-    return text
+    # the key is not in the file yet: it goes in under the section - the
+    # primary card's own weights are the one map that may not be there
+    lines[start + 1:start + 1] = _map_block("  ", mapping, key_holder=key)
+    return "\n".join(lines)
 
 
 def save_comfyui_settings(cfg_path: str | Path, scalars: dict,
@@ -760,15 +787,22 @@ def _yaml_append_node(text: str, node: dict, fields: dict,
     the card would never come back.
     """
     lines = text.split("\n")
-    sec_re = re.compile(r"^(\s*)nodes\s*:(\s#.*)?$")
+    sec_re = re.compile(r"^(\s*)nodes\s*:(.*)$")
     start = None
+    inline = False
     for i, ln in enumerate(lines):
-        if sec_re.match(ln):
+        m = sec_re.match(ln)
+        if m:
             start = i
+            # a list that was written empty on one line - `nodes: []` -
+            # is still a list: it becomes a list with something in it
+            inline = (m.group(2) or "").strip() in ("[]", "{}")
             break
     if start is None:
         return text
     indent = sec_re.match(lines[start]).group(1)
+    if inline:
+        lines[start] = f"{indent}nodes:"
     item = indent + "  "
     end = len(lines)
     for j in range(start + 1, len(lines)):
@@ -791,28 +825,6 @@ def _yaml_append_node(text: str, node: dict, fields: dict,
             block.append(f"{item}    {_fmt_scalar(mk)}: {inner}")
     lines[end:end] = block
     return "\n".join(lines)
-
-
-def _nodes_in_file(text: str) -> list[str]:
-    """The names of the cards the `nodes:` list currently holds."""
-    out = []
-    lines = text.split("\n")
-    in_list = False
-    for ln in lines:
-        if re.match(r"^\s*nodes\s*:", ln):
-            in_list = True
-            continue
-        if not in_list:
-            continue
-        if not ln.strip():
-            continue
-        cur = len(ln) - len(ln.lstrip())
-        if cur <= 2:
-            break
-        m = re.match(r"^\s*-\s*name:\s*(\S+)\s*$", ln)
-        if m:
-            out.append(m.group(1).strip('"\''))
-    return out
 
 
 def _yaml_remove_node(text: str, node_name: str) -> str:
@@ -850,15 +862,21 @@ def _yaml_remove_node(text: str, node_name: str) -> str:
 
 def save_nodes(cfg_path: str | Path, nodes: list[dict],
               scalars: dict | None = None,
-              maps: dict | None = None) -> dict:
+              maps: dict | None = None,
+              remove: list[str] | None = None) -> dict:
     """Write the node pool's settings into the config, preserving comments.
 
-    Every node is written by name; a node the file does not have yet is
-    added to the list rather than dropped, and a node that is no longer
-    in the list is taken out of it - the list is the list of cards there
-    are. The primary card is not in that list - its address, its role and
-    its weights sit at the top of the section - so those arrive as
-    scalars and maps instead.
+    Every node is written by name: a node the file does not have yet is
+    added to the list rather than dropped.  A node that is named in
+    `remove` is taken out of the list - a card that is no longer wanted
+    is taken out of service rather than left switched off in the file.
+
+    Every other card is left exactly as it was.  The list is not rewritten
+    wholesale: the comments beside each card's settings are the only
+    record of why it is set up the way it is, and a card that was not in
+    this request has nothing to do with it.  The primary card is not in
+    that list - its address, its role and its weights sit at the top of
+    the section - so those arrive as scalars and maps instead.
 
     The file is validated by reloading it, and the previous contents are
     put back if it will not parse: a config that does not load takes the
@@ -871,8 +889,6 @@ def save_nodes(cfg_path: str | Path, nodes: list[dict],
         text = _yaml_set_scalar(text, "comfyui", key, value)
     for key, value in (maps or {}).items():
         text = _yaml_set_map(text, "comfyui", key, value or {})
-    wanted = [str(n.get("name") or "").strip() for n in (nodes or [])
-              if str(n.get("name") or "").strip()]
     for node in (nodes or []):
         name = str(node.get("name") or "").strip()
         if not name:
@@ -888,9 +904,10 @@ def save_nodes(cfg_path: str | Path, nodes: list[dict],
         if not found:
             # the name is not in the file: this is a card that is being added
             text = _yaml_append_node(text, node, fields, maps_here)
-    # a card that is no longer in the list has been taken out of service
-    for name in _nodes_in_file(text):
-        if name not in wanted:
+    # a card that is named for removal is taken out of service
+    for name in (remove or []):
+        name = str(name or "").strip()
+        if name:
             text = _yaml_remove_node(text, name)
     if not text.strip():
         raise ValueError("配置为空")

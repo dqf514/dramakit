@@ -1081,7 +1081,14 @@ async function selectProject(slug, quiet){
   S.lookDraft=null;        // and so does the frame and the look
   renderProjects(); renderCmdProj();
   const d=await getJSON("/api/projects/"+encodeURIComponent(slug));
-  if(!d.ok){ toast("加载项目失败："+esc(d.error||""),"err"); return; }
+  if(!d.ok){
+    // The project is gone - it was deleted, or the page was left open on
+    // one that no longer exists.  Asking about it every few seconds
+    // would only produce errors, so the console stops asking.
+    S.current=""; S.detail=null;
+    toast("加载项目失败："+esc(d.error||""),"err");
+    return;
+  }
   S.detail=d;
   const summary=S.projects.find(p=>p.slug===slug);
   if(summary){
@@ -2502,10 +2509,13 @@ function syncNodes(name,btn){
 // which workflow it runs - lived in the config file, to be edited by
 // hand.
 //
-// This page is that file, per node.
+// This page is that file, per node. A card can be added, changed and
+// taken out again, and what is written here is the file the scheduler
+// reads: the fleet is edited where the fleet is run from.
 let NODE_WFS = [];
 let NODE_FILES = {};   // node -> {files, kinds, overrides}
 let NODE_DIRTY = {};
+let NODE_CARDS = [];   // the cards on the page, the new ones included
 
 function nodeRoleChips(roles){
   const rs=(roles&&roles.length)?roles:["any"];
@@ -2514,6 +2524,11 @@ function nodeRoleChips(roles){
 async function renderNodes(){
   const box=$("#page-nodes");
   box.innerHTML=`<div class="card"><h3>节点池</h3>
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn sm confirm" id="nodeAdd">+ 添加节点</button>
+      <button class="btn sm ghost" id="nodeProbe">重新探测</button>
+      <span class="muted" style="font-size:12px">这里改的就是 config/default.yaml 里的 comfyui.nodes：新增、修改、删除都写回那一份。</span>
+    </div>
     <div id="nodeList"><div class="empty"><span class="spin"></span> 探测节点…</div></div></div>
     <div class="card"><h3>ComfyUI 自动配置</h3>
       <div id="comfyPanel">${renderComfyPanel()}</div></div>`;
@@ -2522,6 +2537,10 @@ async function renderNodes(){
     if(b.dataset.gact==="cinspect") inspectComfy();
     else applyComfy();
   });
+  const add=$("#nodeAdd");
+  if(add) add.onclick=()=>addNodeCard();
+  const probe=$("#nodeProbe");
+  if(probe) probe.onclick=()=>loadNodesPage();
   await loadNodesPage();
 }
 async function loadNodesPage(){
@@ -2530,108 +2549,169 @@ async function loadNodesPage(){
   const r=await getJSON("/api/nodes");
   if(!r.ok){ box.innerHTML=`<div class="empty">加载失败：${esc(r.error||"")}</div>`; return; }
   NODE_WFS=r.workflows||[];
-  const nodes=r.nodes||[];
-  if(!nodes.length){
-    box.innerHTML=`<div class="empty">没有启用的节点。配置在 config/default.yaml 的 comfyui.nodes</div>`;
+  // A card that is being written is not in the list yet - and the list
+  // comes back on its own now and then.  It is kept, or what was typed
+  // into it would be lost while it is being written.
+  const drafts=NODE_CARDS.filter(c=>c._new);
+  NODE_CARDS=(r.nodes||[]).map(n=>({...n,_new:false,key:n.name}));
+  for(const d of drafts){
+    if(d.name && NODE_CARDS.some(c=>c.name===d.name)) continue;
+    NODE_CARDS.push(d);
+  }
+  renderNodeCards();
+}
+function renderNodeCards(){
+  const box=$("#nodeList");
+  if(!box) return;
+  if(!NODE_CARDS.length){
+    box.innerHTML=`<div class="empty">节点池里一台机器都没有。</div>`;
     return;
   }
-  box.innerHTML=nodes.map(n=>{
-    const c=n.config||{};
-    const roles=c.roles||[];
-    const wf=c.workflows||{};
-    return `<div class="card" data-node="${attr(n.name)}" style="margin-bottom:10px">
-      <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="dot ${n.online?"ok":"bad"}"></span>
-        ${esc(n.name)}
-        ${nodeRoleChips(roles)}
-        ${nodeLink(n.base_url)}
-        <span style="flex:1"></span>
-        ${n.online?`<span class="muted" style="font-size:12px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${(n.vram_free/1024**3).toFixed(1)}G 空闲${n.depth?` · 队列 ${n.depth}`:""}</span>`
-                  :`<span class="mini" style="color:var(--danger2)">离线</span>`}
-      </h3>
-      <div class="muted" style="font-size:12px;margin:-4px 0 8px">
-        ${(n.missing||[]).length?`<span style="color:var(--warn)">缺 ${n.missing.length} 个模型：${esc((n.missing||[]).slice(0,4).join("、"))}${n.missing.length>4?" …":""}</span>`
-          :`<span style="color:var(--go2)">权重齐全</span>`}
-      </div>
-      <details ${NODE_DIRTY[n.name]?"open":""}>
-        <summary class="fl" style="cursor:pointer">节点设置 / 模型设置 / 工作流设置</summary>
-        <div style="margin-top:8px">
-          <div class="fl">节点设置</div>
-          <div class="row" style="flex-wrap:wrap;gap:8px">
-            <label style="display:flex;align-items:center;gap:5px;font-size:12px">
-              <input type="checkbox" data-nf="enabled" ${c.enabled?"checked":""}> 启用</label>
-            <label style="font-size:12px">角色
-              <input class="f" data-nf="roles" value="${attr((roles||[]).join(","))}"
-                     placeholder="i2v" style="width:120px"></label>
-            ${(c.primary?[]:[
-              ["transfer", "模型传输", "select:none|shared|scp"],
-              ["ssh_host", "SSH 主机", "text"],
-              ["ssh_user", "SSH 用户", "text"],
-              ["ssh_key", "SSH 密钥", "text"],
-              ["remote_models", "远端模型目录", "text"],
-              ["local_models", "本地模型目录（shared）", "text"],
-            ]).concat([
-              ["base_url", "地址", "text"],
-              ["auth", "认证", "select:none|basic|bearer"],
-              ["auth_username", "认证用户名", "text"],
-              ["auth_token", "认证令牌", "text"],
-            ]).map(([k,label,kind])=>{
-              const v=c[k]==null?"":String(c[k]);
-              if(kind.startsWith("select:")){
-                const opts=kind.slice(7).split("|");
-                return `<label style="font-size:12px">${label}
-                  <select class="f" data-nf="${attr(k)}" style="width:150px">
-                    ${opts.map(o=>`<option value="${attr(o)}" ${v===o?"selected":""}>${esc(o||"(空)")}</option>`).join("")}
-                  </select></label>`;
-              }
-              return `<label style="font-size:12px">${label}
-                <input class="f" data-nf="${attr(k)}" value="${attr(v)}" style="width:190px"></label>`;
-            }).join("")}
-          </div>
-          <div class="fl" style="margin-top:9px">模型设置（这台机器用哪些权重）</div>
-          <div data-models="${attr(n.name)}" class="muted" style="font-size:12px">读取中…</div>
-          <div class="fl" style="margin-top:9px">工作流设置（这台机器跑哪个工作流）</div>
-          <div class="row" style="gap:8px;flex-wrap:wrap">
-            <label style="font-size:12px">t2i
-              <select class="f" data-wf="t2i" style="width:230px">
-                <option value="">(用全局的)</option>
-                ${NODE_WFS.map(w=>`<option value="${attr(w)}" ${wf.t2i===w?"selected":""}>${esc(w)}</option>`).join("")}
-              </select></label>
-            <label style="font-size:12px">i2v
-              <select class="f" data-wf="i2v" style="width:230px">
-                <option value="">(用全局的)</option>
-                ${NODE_WFS.map(w=>`<option value="${attr(w)}" ${wf.i2v===w?"selected":""}>${esc(w)}</option>`).join("")}
-              </select></label>
-          </div>
-          <div class="row" style="margin-top:10px;gap:8px;align-items:center">
-            <button class="btn sm confirm" data-save="${attr(n.name)}">保存这台节点</button>
-            ${n.online&&(n.missing||[]).length?`<button class="btn sm" data-sync="${attr(n.name)}">同步模型</button>`:""}
-            <span class="mini" data-msg="${attr(n.name)}"></span>
-          </div>
-        </div>
-      </details>
-    </div>`;
-  }).join("");
-
-  $$("#page-nodes [data-nf]").forEach(el=>{
+  box.innerHTML=NODE_CARDS.map(nodeCardHtml).join("");
+  $$("#nodeList [data-nf]").forEach(el=>{
+    el.onchange=()=>{ NODE_DIRTY[el.closest("[data-node]").dataset.node]=true; };
+    if(el.dataset.nf==="name"){
+      // the name of a card that is not saved yet is what it will be
+      el.oninput=()=>{
+        const card=NODE_CARDS.find(c=>c.key===el.closest("[data-node]").dataset.node);
+        if(card) card.name=(el.value||"").trim();
+      };
+    }
+  });
+  $$("#nodeList [data-wf]").forEach(el=>{
     el.onchange=()=>{ NODE_DIRTY[el.closest("[data-node]").dataset.node]=true; };
   });
-  $$("#page-nodes [data-wf]").forEach(el=>{
-    el.onchange=()=>{ NODE_DIRTY[el.closest("[data-node]").dataset.node]=true; };
-  });
-  $$("#page-nodes [data-save]").forEach(b=>b.onclick=()=>saveNode(b.dataset.save,b));
-  $$("#page-nodes [data-sync]").forEach(b=>b.onclick=()=>syncNodes(b.dataset.sync,b));
+  $$("#nodeList [data-save]").forEach(b=>b.onclick=()=>saveNode(b.dataset.save,b));
+  $$("#nodeList [data-del]").forEach(b=>b.onclick=()=>delNode(b.dataset.del,b));
+  $$("#nodeList [data-sync]").forEach(b=>b.onclick=()=>syncNodes(b.dataset.sync,b));
   // the model lists are read from each card, one at a time: they are the
   // only place that knows which files that card actually has
-  for(const n of nodes){
-    loadNodeModels(n.name);
+  for(const n of NODE_CARDS){
+    if(!n._new) loadNodeModels(n.name);
   }
 }
+function nodeCardHtml(n){
+  const c=n.config||{};
+  const roles=c.roles||[];
+  const wf=c.workflows||{};
+  const primary=!!c.primary;
+  const key=n.key||n.name||"";
+  const title=primary
+    ? `<span>本机（local）</span>`
+    : (n._new
+      ? `<input class="f" data-nf="name" value="${attr(n.name||"")}"
+                placeholder="节点名，如 gpu3090-b" style="width:170px">`
+      : `<span>${esc(n.name)}</span>`);
+  const state=n._new
+    ? `<span class="mini" style="color:var(--warn)">未保存</span>`
+    : (n.online
+      ? `<span class="muted" style="font-size:12px">v${esc(n.version)} · ${esc(n.device||"")} · 显存 ${((n.vram_free||0)/1024**3).toFixed(1)}G 空闲${n.depth?` · 队列 ${n.depth}`:""}</span>`
+      : `<span class="mini" style="color:var(--danger2)">${esc(n.error||"离线")}</span>`);
+  const models=(n.missing||[]).length
+    ? `<span style="color:var(--warn)">缺 ${n.missing.length} 个模型：${esc((n.missing||[]).slice(0,4).join("、"))}${n.missing.length>4?" …":""}</span>`
+    : (n._new?"":`<span style="color:var(--go2)">权重齐全</span>`);
+  const fields=(primary?[]:[
+    ["transfer", "模型传输", "select:none|shared|scp"],
+    ["ssh_host", "SSH 主机", "text"],
+    ["ssh_user", "SSH 用户", "text"],
+    ["ssh_key", "SSH 密钥", "text"],
+    ["remote_models", "远端模型目录", "text"],
+    ["local_models", "本地模型目录（shared）", "text"],
+  ]).concat([
+    ["base_url", "地址", "text"],
+    ["auth", "认证", "select:none|basic|bearer"],
+    ["auth_username", "认证用户名", "text"],
+    ["auth_token", "认证令牌", "text"],
+  ]).map(([k,label,kind])=>{
+    const v=c[k]==null?"":String(c[k]);
+    if(kind.startsWith("select:")){
+      const opts=kind.slice(7).split("|");
+      return `<label style="font-size:12px">${label}
+        <select class="f" data-nf="${attr(k)}" style="width:150px">
+          ${opts.map(o=>`<option value="${attr(o)}" ${v===o?"selected":""}>${esc(o||"(空)")}</option>`).join("")}
+        </select></label>`;
+    }
+    return `<label style="font-size:12px">${label}
+      <input class="f" data-nf="${attr(k)}" value="${attr(v)}" style="width:190px"></label>`;
+  }).join("");
+  const wfSel=(role,label)=>{
+    // The workflow in force is always one of the choices, even when the
+    // file it names is not in the list - otherwise the browser would
+    // quietly show the first one instead, and saving the card would
+    // change a workflow nobody touched.
+    const opts=NODE_WFS.slice();
+    const cur=wf[role]||"";
+    if(cur && !opts.includes(cur)) opts.unshift(cur);
+    return `<label style="font-size:12px">${label}
+    <select class="f" data-wf="${attr(role)}" style="width:230px">
+      ${primary?"":`<option value="">（用全局的）</option>`}
+      ${opts.map(w=>`<option value="${attr(w)}" ${cur===w?"selected":""}>${esc(w)}</option>`).join("")}
+    </select></label>`;
+  };
+  return `<div class="card" data-node="${attr(key)}" data-name="${attr(n.name||"")}" style="margin-bottom:10px">
+    <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="dot ${n.online?"ok":"bad"}"></span>
+      ${title}
+      ${nodeRoleChips(roles)}
+      ${n.base_url?nodeLink(n.base_url):""}
+      <span style="flex:1"></span>
+      ${state}
+    </h3>
+    <div class="muted" style="font-size:12px;margin:-4px 0 8px">${models}</div>
+    <details ${NODE_DIRTY[key]?"open":""}>
+      <summary class="fl" style="cursor:pointer">节点设置 / 模型设置 / 工作流设置</summary>
+      <div style="margin-top:8px">
+        <div class="fl">节点设置</div>
+        <div class="row" style="flex-wrap:wrap;gap:8px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px">
+            <input type="checkbox" data-nf="enabled" ${c.enabled?"checked":""}> 启用</label>
+          <label style="font-size:12px">角色
+            <input class="f" data-nf="roles" value="${attr((roles||[]).join(","))}"
+                   placeholder="i2v" style="width:120px"></label>
+          ${fields}
+        </div>
+        <div class="fl" style="margin-top:9px">模型设置（这台机器用哪些权重）</div>
+        <div data-models="${attr(n.name)}" class="muted" style="font-size:12px">${
+          n._new?"保存之后就能在这里挑这台机器上的权重":"读取中…"}</div>
+        <div class="fl" style="margin-top:9px">工作流设置（这台机器跑哪个工作流）</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          ${wfSel("t2i", primary?"全局出图工作流":"t2i")}
+          ${wfSel("i2v", primary?"全局视频工作流":"i2v")}
+        </div>
+        <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn sm confirm" data-save="${attr(key)}">保存这台节点</button>
+          ${!n._new&&!primary?`<button class="btn sm ghost" data-del="${attr(key)}">删除节点</button>`:""}
+          ${n.online&&(n.missing||[]).length?`<button class="btn sm" data-sync="${attr(n.name)}">同步模型</button>`:""}
+          <span class="mini" data-msg="${attr(key)}"></span>
+        </div>
+      </div>
+    </details>
+  </div>`;
+}
+function addNodeCard(){
+  // A card that is not in the file yet: it is filled in here and saved
+  // into the pool, and it is not asked of the machine until it is there.
+  const key="__new"+(NODE_CARDS.filter(c=>c._new).length+1);
+  NODE_CARDS.push({
+    name:"", key, _new:true, online:false, missing:[], version:"",
+    device:"", vram_free:0, vram_total:0, depth:0, base_url:"",
+    config:{enabled:true, roles:[], base_url:"", transfer:"none",
+            ssh_host:"", ssh_user:"", ssh_key:"", remote_models:"",
+            local_models:"", auth:"none", auth_username:"", auth_token:""},
+  });
+  renderNodeCards();
+  const el=$(`#nodeList [data-node="${CSS.escape(key)}"] [data-nf="name"]`);
+  if(el) el.focus();
+}
 async function loadNodeModels(name){
-  const holder=$(`#page-nodes [data-models="${CSS.escape(name)}"]`);
+  const holder=$(`#nodeList [data-models="${CSS.escape(name)}"]`);
   if(!holder) return;
   const r=await getJSON("/api/nodes/models?node="+encodeURIComponent(name));
   if(!r.ok){ holder.innerHTML=`<span style="color:var(--danger2)">${esc(r.error||"读取失败")}</span>`; return; }
+  if(r.error){
+    holder.innerHTML=`<span style="color:var(--danger2)">${esc(r.error)}</span>`;
+    return;
+  }
   NODE_FILES[name]=r;
   const kinds=r.kinds||{}, files=r.files||{}, over=r.overrides||{};
   const ids=Object.keys(over);
@@ -2656,17 +2736,20 @@ async function loadNodeModels(name){
         ${opts.includes(val)?"":`<option value="${attr(val)}" selected>${esc(val)}（本地）</option>`}
       </select></div>`;
   }).join("");
-  $$("#page-nodes [data-ov]").forEach(el=>{
+  $$("#nodeList [data-ov]").forEach(el=>{
     el.onchange=()=>{ NODE_DIRTY[el.dataset.ovn]=true; };
   });
 }
-async function saveNode(name,btn){
-  const card=$(`#page-nodes [data-node="${CSS.escape(name)}"]`);
+async function saveNode(key,btn){
+  const card=$(`#nodeList [data-node="${CSS.escape(key)}"]`);
   if(!card) return;
-  const msg=$(`#page-nodes [data-msg="${CSS.escape(name)}"]`);
-  const cfg={name};
+  const msg=$(`#nodeList [data-msg="${CSS.escape(key)}"]`);
+  // the name of a card that is already in the pool is the name it has;
+  // only a card that is being added has a name field of its own
+  const cfg={name:(card.dataset.name||"")};
   $$("[data-nf]",card).forEach(el=>{
     const k=el.dataset.nf;
+    if(k==="name"){ cfg.name=(el.value||"").trim(); return; }
     if(el.type==="checkbox") cfg[k]=el.checked;
     else if(k==="roles") cfg[k]=el.value.split(",").map(s=>s.trim()).filter(Boolean);
     else cfg[k]=el.value;
@@ -2679,13 +2762,49 @@ async function saveNode(name,btn){
     ov[el.dataset.ov]=Object.assign({}, ov[el.dataset.ov]||{}, {[el.dataset.ovf]: el.value});
   });
   cfg.graph_overrides=ov;
+  const node=NODE_CARDS.find(c=>c.key===key);
+  if(node&&node.config&&node.config.primary) cfg.primary=true;
+  if(!cfg.name && !cfg.primary){
+    if(msg) msg.innerHTML=`<span style="color:var(--danger2)">先给这台机器起个名字</span>`;
+    return;
+  }
   btn.disabled=true; btn.textContent="保存中…";
   const r=await postJSON("/api/nodes/save",{nodes:[cfg]});
   btn.disabled=false; btn.textContent="保存这台节点";
   if(!r.ok){ if(msg) msg.innerHTML=`<span style="color:var(--danger2)">${esc(r.error||"保存失败")}</span>`; return; }
   if(msg) msg.innerHTML=`<span style="color:var(--go2)">${mark("✓")} 已保存</span>`;
-  NODE_DIRTY[name]=false;
-  setTimeout(()=>loadNodesPage(), 700);
+  NODE_DIRTY[key]=false;
+  // What was saved is what the card is now.  The page does not ask the
+  // server again: looking at every card on the machine takes its time,
+  // and the answer is already in the form.
+  if(node){
+    node.config=Object.assign({}, node.config||{}, cfg);
+    node.base_url=cfg.base_url||node.base_url;
+    if(node._new){ node._new=false; node.name=cfg.name; node.key=cfg.name; }
+    renderNodeCards();
+  }
+  toast(cfg.primary?"本机设置已保存":"节点已保存","ok");
+}
+async function delNode(key,btn){
+  const card=$(`#nodeList [data-node="${CSS.escape(key)}"]`);
+  if(!card) return;
+  const node=NODE_CARDS.find(c=>c.key===key);
+  const name=(card.dataset.name||key);
+  if(node&&node._new){
+    // never written: it only has to go away from the page
+    NODE_CARDS=NODE_CARDS.filter(c=>c.key!==key);
+    renderNodeCards();
+    return;
+  }
+  if(!confirm(`把这台节点从节点池里删掉？\n${name}\n\n配置会从 config/default.yaml 的 comfyui.nodes 里移除。`)) return;
+  btn.disabled=true;
+  const r=await postJSON("/api/nodes/save",{remove:[name]});
+  btn.disabled=false;
+  if(!r.ok){ toast(r.error||"删除失败","err"); return; }
+  // the card is gone: the page says so at once
+  NODE_CARDS=NODE_CARDS.filter(c=>c.key!==key);
+  renderNodeCards();
+  toast("已删除 "+name,"ok");
 }
 function stageStateFor(ep,stage){ const v=(ep.stage_status||{})[stage]; return v==="done"?"done":v||"pending"; }
 function parseEps(str){
