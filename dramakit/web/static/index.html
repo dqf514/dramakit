@@ -1181,6 +1181,19 @@ function lookStyleOf(ad){
   return list.find(s=>(ad&&ad.style_prompt_prefix&&ad.style_prompt_prefix===s.prompt)
                      ||(ad&&ad.style===s.style)||(ad&&ad.style===s.name))||null;
 }
+// what ComfyUI will be asked for: the models want whole steps, so
+// 1080 wide is asked for as 1088 and the film is cut to 1080
+function snapSize(w,h){
+  const s=v=>Math.max(512,Math.round((v||0)/16)*16);
+  return [s(w),s(h)];
+}
+function lookSizeNote(w,h){
+  if(!w||!h) return "ComfyUI 出图与视频都按这个尺寸生成";
+  const [sw,sh]=snapSize(w,h);
+  return (sw===w&&sh===h)
+    ? `ComfyUI 出图与视频：${w}×${h}`
+    : `ComfyUI 出图与视频：${sw}×${sh}（模型要 16 的倍数）`;
+}
 function lookPanelHtml(d){
   const ad=(d&&d.art_direction)||{};
   // what the person has chosen but not yet saved.  The page draws itself
@@ -1217,6 +1230,7 @@ function lookPanelHtml(d){
     </div>
     <label class="fl">分辨率</label>
     <select class="f" id="lookSize">${sizeHtml}</select>
+    <div class="muted" style="font-size:11px" id="lookSizeNote">${esc(lookSizeNote(w,h))}</div>
     <label class="fl">整体风格</label>
     <select class="f" id="lookStyle">${styleHtml}</select>
     <div class="looknote" id="lookNote">${note}${en?`<br><span class="muted">${esc(en)}</span>`:""}</div>
@@ -1237,16 +1251,24 @@ function lookDraftSet(patch){
 }
 function bindLookPanel(){
   const row=$("#arRow"); if(!row) return;
+  const note=()=>{
+    const n=$("#lookSizeNote"), sz=$("#lookSize");
+    if(!n||!sz) return;
+    const wh=(sz.value||"").split("x");
+    n.textContent=lookSizeNote(parseInt(wh[0])||0,parseInt(wh[1])||0);
+  };
   $$("#arRow .seg").forEach(b=>b.onclick=()=>{
     $$("#arRow .seg").forEach(x=>x.classList.toggle("on",x===b));
     fillLookSizes(b.dataset.ar);
     // a new shape means a new size: the old one belongs to the old shape
     lookDraftSet({aspect_ratio:b.dataset.ar,width:0,height:0});
+    note();
   });
   const sz=$("#lookSize");
   if(sz) sz.onchange=()=>{
     const wh=(sz.value||"").split("x");
     lookDraftSet({width:parseInt(wh[0])||0,height:parseInt(wh[1])||0});
+    note();
   };
   const st=$("#lookStyle");
   if(st) st.onchange=()=>lookDraftSet({style:st.value});

@@ -236,24 +236,18 @@ def _render(ctx: Context, what: str, shot_id: str, fn, tries: int = 3):
 def _image_size(ctx: Context) -> tuple[int, int]:
     """The size the stills are made at.
 
-    The picture has to be made in the shape it is going to be shown in: a
-    still made in another shape is cropped to fit, and the crop is what takes
-    the faces off. The configured image size is kept as long as its shape
-    matches the delivery format.
+    The picture is made in the size of the film: a still made smaller
+    and blown up later is a soft picture, and a still made in another
+    shape is cropped to fit - and the crop is what takes the faces off.
+    The models want their width and height on whole steps, so the size
+    is snapped to those.
     """
-    c = ctx.cfg.comfyui
-    w, h = int(c.width or 1280), int(c.height or 720)
     dw, dh = int(ctx.cfg.compose.width or 0), int(ctx.cfg.compose.height or 0)
-    if dw <= 0 or dh <= 0:
-        return w, h
-    if abs((w / h) - (dw / dh)) <= 0.03:
-        return w, h
-    k = min(w / dw, h / dh)
-    nw = max(512, int(dw * k) // 16 * 16)
-    nh = max(512, int(dh * k) // 16 * 16)
-    ctx.log.warning("visual: 出图尺寸 %dx%d 与成片 %dx%d 比例不符，改用 %dx%d",
-                    w, h, dw, dh, nw, nh)
-    return nw, nh
+    if dw > 0 and dh > 0:
+        from .frame import snap_size
+        return snap_size(dw, dh)
+    c = ctx.cfg.comfyui
+    return int(c.width or 1280), int(c.height or 720)
 
 
 def _gen_image(ctx: Context, sc, shot: Shot) -> tuple[str, bool, str]:

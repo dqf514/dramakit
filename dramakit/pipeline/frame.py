@@ -6,36 +6,29 @@ quality check measures the result against it.  A picture made in another
 shape is cropped to fit, and the crop is what takes the faces off - so the
 project says what shape it wants and this module makes every stage agree.
 
-The size the project asks for is the delivery size.  The stills keep the
-size the config asks for, in the same shape - the picture models are
-happier with a smaller canvas, and the film upscales it anyway.
+The size the project asks for is the delivery size, and it is the size
+ComfyUI is asked for: the stills are made in it, the clips are made in it,
+and the film is put together in it.  A still made smaller and blown up
+later is a soft picture, so the picture model is given the size that was
+asked for - on whole steps, because that is what the models want.
 """
 from __future__ import annotations
-
-import math
 
 from ..ai import looks
 
 
-def _ratio_value(aspect_ratio: str) -> float:
-    """The width over the height of a ratio like "9:16"."""
-    a = looks.aspect(aspect_ratio)
-    return 9 / 16 if a["id"] == "9:16" else 16 / 9
+def snap_size(w: int, h: int, step: int = 16, floor: int = 512) -> tuple[int, int]:
+    """The size the models are given: on whole steps, and not too small.
 
+    A model asked for 1080 wide is asked for 1088: the picture models
+    want their width and height on multiples of eight, and ComfyUI is
+    happier with sixteen.  The film is still cut to the size that was
+    asked for - the eight pixels are cropped off, not stretched.
+    """
+    def snap(v: int) -> int:
+        return max(floor, int(round(int(v) / float(step))) * step)
 
-def fit_area(area: int, aspect_ratio: str) -> tuple[int, int]:
-    """The size with that area in that shape, on multiples of 16."""
-    area = max(1, int(area or 0))
-    ar = _ratio_value(aspect_ratio)
-    if ar >= 1:
-        h = math.sqrt(area / ar)
-        w = h * ar
-    else:
-        w = math.sqrt(area * ar)
-        h = w / ar
-    w = max(256, int(round(w / 16.0)) * 16)
-    h = max(256, int(round(h / 16.0)) * 16)
-    return w, h
+    return snap(w), snap(h)
 
 
 def project_frame(art, cfg=None) -> tuple[int, int]:
@@ -79,16 +72,13 @@ def apply_frame(cfg, art):
     c = cfg.model_copy(deep=True)
     w, h = project_frame(art, c)
     c.compose.width, c.compose.height = w, h
-    c.comfyui.video_width, c.comfyui.video_height = w, h
-    # the stills keep the size the config asks for, in the frame's shape
-    sw = int(getattr(c.comfyui, "width", 0) or 0)
-    sh = int(getattr(c.comfyui, "height", 0) or 0)
-    if sw > 0 and sh > 0:
-        sw, sh = fit_area(sw * sh, getattr(art, "aspect_ratio", "")
-                          or looks.DEFAULT_ASPECT)
-    else:
-        sw, sh = w, h
+    # the stills and the clips are made in the size that was asked for -
+    # the picture model is told the size of the picture, and the film is
+    # made of those pictures.  The models want whole steps, and the film
+    # is cut to the size that was asked for: the difference is cropped.
+    sw, sh = snap_size(w, h)
     c.comfyui.width, c.comfyui.height = sw, sh
+    c.comfyui.video_width, c.comfyui.video_height = sw, sh
     return c
 
 

@@ -51,6 +51,7 @@ if str(ROOT) not in sys.path:
 from dramakit.ai import looks  # noqa: E402
 from dramakit.config import Config  # noqa: E402
 from dramakit.media import ffmpeg as ff  # noqa: E402
+from dramakit.pipeline import frame as pframe  # noqa: E402
 from dramakit.pipeline.base import Context  # noqa: E402
 from dramakit.pipeline.runner import ORDER  # noqa: E402
 from dramakit.project import ProjectStore  # noqa: E402
@@ -318,6 +319,7 @@ class Console:
 
     def __init__(self, cfg: Config, root: Path, fakes: Fakes):
         self.fakes = fakes
+        self.cfgs: list[Config] = []   # the settings each run was given
         self.providers = FakeProviders(fakes)
         self.state = State(cfg, None, root)
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0),
@@ -440,6 +442,50 @@ def _size(aspect_id: str, size_id: str) -> dict:
     raise KeyError(size_id)
 
 
+def _check_workflow(rd: Round, aspect_id: str, size: dict, style: dict) -> None:
+    """What the workflow file carries to ComfyUI.
+
+    The frame is a setting in the workflow: the width and the height of
+    the node that makes the picture are written into the file that goes
+    to ComfyUI.  The look is not a setting at all - it is a sentence in
+    the prompt, and the workflow must not carry it.
+    """
+    import copy as _copy
+
+    from dramakit.models import ArtDirection
+    from dramakit.providers.comfyui import ComfyUIClient
+
+    art = ArtDirection(aspect_ratio=aspect_id, frame_width=size["w"],
+                       frame_height=size["h"],
+                       style_prompt_prefix=style["prompt"])
+    cfg = pframe.apply_frame(Config(), art)
+    client = ComfyUIClient(cfg.comfyui)
+    want = (cfg.comfyui.width, cfg.comfyui.height)
+    want_v = (cfg.comfyui.video_width, cfg.comfyui.video_height)
+    head = style["prompt"].split(",")[0].strip()
+    for kind, wf, sizes in (("出图", cfg.comfyui.t2i_workflow, want),
+                            ("出视频", cfg.comfyui.i2v_workflow, want_v)):
+        try:
+            graph = _copy.deepcopy(client._load_workflow(wf))
+            nm, _info, _refs = client._resolved_nodes(
+                "t2i" if kind == "出图" else "i2v", graph)
+            client._set(graph, nm, "width", "width", sizes[0])
+            client._set(graph, nm, "height", "height", sizes[1])
+        except Exception as e:  # noqa: BLE001
+            rd.check(f"{kind} 工作流能读", False, repr(e)[:160])
+            continue
+        found = [(nid, (n.get("inputs") or {}).get("width"),
+                  (n.get("inputs") or {}).get("height"))
+                 for nid, n in graph.items()
+                 if isinstance((n.get("inputs") or {}).get("width"), (int, float))
+                 and isinstance((n.get("inputs") or {}).get("height"), (int, float))]
+        rd.check(f"{kind} 工作流里带的是画幅的尺寸",
+                 any(f[1] == sizes[0] and f[2] == sizes[1] for f in found),
+                 f"要 {sizes[0]}x{sizes[1]}，工作流里有 {found}")
+        rd.check(f"{kind} 工作流里没有画风词",
+                 head not in json.dumps(graph, ensure_ascii=False), head)
+
+
 def run_round(console: Console, number: int, script_path: Path,
               aspect_id: str, size_id: str, style_id: str,
               skills: dict, tmp_root: Path, h3: bool = False) -> Round:
@@ -517,9 +563,14 @@ def run_round(console: Console, number: int, script_path: Path,
     console.fakes.llm_log.clear()
     console.fakes.image_log.clear()
     console.fakes.video_log.clear()
+    console.cfgs.clear()
 
     def make_context(cfg, store, providers=None):
-        return Context(cfg, store, console.providers)
+        ctx = Context(cfg, store, console.providers)
+        # the settings the stages are given are what ComfyUI will be
+        # asked for, so they are kept to be looked at
+        console.cfgs.append(ctx.cfg)
+        return ctx
 
     started = console.post("/api/run", {"project": slug, "chapters": [1],
                                          "stages": ORDER})
@@ -582,20 +633,50 @@ def run_round(console: Console, number: int, script_path: Path,
         rd.check("每个镜头都有图有视频",
                  all(store.abs(sh.image_path).is_file()
                      and store.abs(sh.video_path).is_file() for sh in shots), "")
-        # The still is made in the frame's *shape*, in the size the image
-        # model is happy with - the delivery size is the film's, not the
-        # picture model's (the character portraits are square on purpose).
-        # So the check is the shape, against the shape that was asked for.
+        # The still is made in the frame the project asked for: the same
+        # shape and, as near as the models allow, the same size.  The
+        # character portraits are square on purpose and are left out.
         imgs = [i for i in console.fakes.image_log if "shot_" in i["out"]]
         want_ratio = 16 / 9 if aspect_id == "16:9" else 9 / 16
+        want_w, want_h = pframe.snap_size(size["w"], size["h"])
         rd.check("出图用的是画幅的画幅比",
                  bool(imgs) and all(abs(i["width"] / i["height"]
-                                        - want_ratio) < 0.01 for i in imgs),
+                                        - want_w / want_h) < 0.005 for i in imgs),
                  ", ".join(f"{i['width']}x{i['height']}" for i in imgs[:4]))
+        rd.check("出图用的是画幅里的分辨率",
+                 bool(imgs) and all(i["width"] == want_w and i["height"] == want_h
+                                    for i in imgs),
+                 f"要 {want_w}x{want_h}，拿到 "
+                 + ", ".join(f"{i['width']}x{i['height']}" for i in imgs[:4]))
         # and the delivery size is that same shape, to within a hair
         rd.check("交付尺寸与画幅相符",
                  abs(size["w"] / size["h"] - want_ratio) / want_ratio < 0.02,
                  f"{size['w']}x{size['h']} 对 {aspect_id}")
+
+    # ---- ComfyUI 被要求的是这个尺寸 ------------------------------------- #
+    want_w, want_h = pframe.snap_size(size["w"], size["h"])
+    rd.check("ComfyUI 出图尺寸就是画幅里的尺寸",
+             bool(console.cfgs) and all(
+                 c.comfyui.width == want_w and c.comfyui.height == want_h
+                 for c in console.cfgs),
+             ", ".join(f"{c.comfyui.width}x{c.comfyui.height}"
+                       for c in console.cfgs[:3]))
+    rd.check("ComfyUI 视频尺寸就是画幅里的尺寸",
+             bool(console.cfgs) and all(
+                 c.comfyui.video_width == want_w
+                 and c.comfyui.video_height == want_h
+                 for c in console.cfgs),
+             ", ".join(f"{c.comfyui.video_width}x{c.comfyui.video_height}"
+                       for c in console.cfgs[:3]))
+    rd.check("成片尺寸就是画幅里的尺寸",
+             bool(console.cfgs) and all(
+                 c.compose.width == size["w"] and c.compose.height == size["h"]
+                 for c in console.cfgs),
+             ", ".join(f"{c.compose.width}x{c.compose.height}"
+                       for c in console.cfgs[:3]))
+
+    # ---- 工作流文件里带的是什么 ------------------------------------------ #
+    _check_workflow(rd, aspect_id, size, style)
 
     # ---- 前后贯穿 ------------------------------------------------------- #
     _check_continuity(rd, console, style, aspect_id, size, project)
