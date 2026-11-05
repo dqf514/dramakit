@@ -4,13 +4,6 @@
   const main = document.getElementById("main");
   const rail = document.getElementById("rail");
   const side = document.getElementById("side");
-  // Skills belong with the stages they write rules for, and they had no
-  // way in except a button buried in Settings. As a tab of the production
-  // workspace they sit beside the pipeline they configure, and the bottom
-  // bar on a phone is not made any longer.
-  const studioPages = new Set(["board", "cast", "pipeline", "skills"]);
-  const studioTabList = [["board", "分镜台"], ["cast", "角色库"],
-                         ["pipeline", "流水线"], ["skills", "技能"]];
   const jobNames = {
     run_pipeline: "制作流水线", health: "环境自检", setup: "智能配置",
     reindex: "资产索引", regen_shot: "镜头重新生成", character_refs: "角色参考图",
@@ -27,16 +20,10 @@
   let jobsShell = false;
   let lastDrawerFocus = null;
 
-  const jobsPage = document.createElement("section");
-  jobsPage.id = "page-jobs";
-  jobsPage.className = "page";
-  jobsPage.style.display = "none";
-  main.insertBefore(jobsPage, document.getElementById("page-assets"));
-
-  const studioTabs = document.createElement("nav");
-  studioTabs.className = "studio-tabs";
-  studioTabs.setAttribute("aria-label", "制作工作区");
-  main.insertBefore(studioTabs, main.firstChild);
+  // The task list is a tab of the workbench now. The console has three
+  // places to be - workbench, nodes, settings - and everything else is a
+  // tab inside one of them.
+  const jobsPage = document.getElementById("page-jobs");
 
   const sideScrim = document.createElement("div");
   sideScrim.id = "sideScrim";
@@ -56,21 +43,11 @@
 
   function updateNav(name) {
     document.querySelectorAll(".railbtn[data-page]").forEach(btn => {
-      const active = btn.dataset.page === name ||
-        (btn.dataset.group === "studio" && studioPages.has(name));
+      const active = btn.dataset.page === name;
       btn.classList.toggle("on", active);
       if (active) btn.setAttribute("aria-current", "page");
       else btn.removeAttribute("aria-current");
     });
-    studioTabs.classList.toggle("show", studioPages.has(name));
-    if (studioPages.has(name)) {
-      studioTabs.innerHTML = studioTabList
-        .map(([id, label]) => `<button class="studio-tab ${name === id ? "on" : ""}" data-studio="${id}" ${name === id ? 'aria-current="page"' : ""}>${label}</button>`).join("");
-      studioTabs.setAttribute("aria-label", "制作工作区");
-      studioTabs.querySelectorAll("[data-studio]").forEach(btn => {
-        btn.onclick = () => switchPage(btn.dataset.studio);
-      });
-    }
   }
 
   const sideToggle = document.getElementById("sideToggle");
@@ -108,7 +85,7 @@
   updateSideToggle();
   sideScrim.onclick = closeMobileSide;
   sideClose.onclick = closeMobileSide;
-  document.getElementById("brandBtn").onclick = () => switchPage("guide");
+  document.getElementById("brandBtn").onclick = () => switchPage("workbench");
   // On a phone the rail gives up its node-pool slot, so the header has to
   // offer it - otherwise the page exists but nothing reaches it.
   document.getElementById("nodesBtnHeader").onclick = () => switchPage("nodes");
@@ -117,37 +94,6 @@
     bar.classList.toggle("open");
     if (bar.classList.contains("open")) document.getElementById("cmd").focus();
   };
-
-  function simplifyGuide() {
-    const box = document.getElementById("page-guide");
-    if (!box || box.dataset.simplified === "1") return;
-    box.dataset.simplified = "1";
-    const cards = [...box.querySelectorAll(":scope > .card")];
-    const architecture = cards.find(card => card.querySelector("h3")?.textContent.includes("整体架构"));
-    if (architecture) {
-      const details = document.createElement("details");
-      details.className = "fold guide-details";
-      details.innerHTML = "<summary>查看系统架构与数据流</summary>";
-      architecture.before(details);
-      details.appendChild(architecture);
-    }
-    const creation = document.getElementById("guide-new");
-    if (creation) {
-      const trailing = [];
-      let node = creation.nextElementSibling;
-      while (node) {
-        trailing.push(node);
-        node = node.nextElementSibling;
-      }
-      if (trailing.length) {
-        const details = document.createElement("details");
-        details.className = "fold guide-details";
-        details.innerHTML = "<summary>外部程序接入手册与 CLI 命令</summary><div class='inner'></div>";
-        creation.after(details);
-        trailing.forEach(item => details.querySelector(".inner").appendChild(item));
-      }
-    }
-  }
 
   function fmtBytes(value) {
     const n = Number(value || 0);
@@ -176,7 +122,7 @@
     if (jobsLoading) return;
     jobsLoading = true;
     try {
-      const onJobs = S.activePage === "jobs";
+      const onJobs = S.activePage === "workbench" && S.wbTab === "jobs";
       const project = document.getElementById("jobProject")?.value || jobFilters.project;
       const status = document.getElementById("jobStatus")?.value || jobFilters.status;
       jobFilters = {project, status};
@@ -194,14 +140,14 @@
       count.setAttribute("aria-label", response.active ? `${response.active} 个任务进行中` : "");
       if (onJobs) renderJobs();
     } catch (error) {
-      if (S.activePage === "jobs") toast(`任务列表加载失败：${esc(error.message)}`, "err");
+      if (onJobs) toast(`任务列表加载失败：${esc(error.message)}`, "err");
     } finally {
       jobsLoading = false;
     }
   }
 
   function renderJobs() {
-    if (S.activePage !== "jobs") return;
+    if (S.activePage !== "workbench" || S.wbTab !== "jobs") return;
     const active = jobsRows.filter(j => ["queued", "running"].includes(j.status)).length;
     const stalled = jobsRows.filter(j => {
       const label = displayJobStatus(j)[0];
@@ -215,8 +161,7 @@
       // log panel the user had just opened and dropped the scroll
       // position every three seconds.
       jobsPage.innerHTML = `
-        <h1 class="page">任务中心</h1>
-        <div class="sub">任务按项目串行执行。状态、进度和结果保存在本地，重启控制台后仍可追溯。</div>
+        <h1 class="page">任务</h1>
         <div class="job-overview" id="jobStats"></div>
         <div class="job-filters">
           <div class="grow"><label class="fl" for="jobProject">项目</label><select class="f" id="jobProject"><option value="">全部项目</option>${S.projects.map(p => `<option value="${attr(p.slug)}">${esc(p.title)}</option>`).join("")}</select></div>
@@ -252,7 +197,9 @@
     const list = document.getElementById("jobList");
     list.innerHTML = jobsRows.length ? jobsRows.map(jobRow).join("")
       : '<div class="empty">还没有任务记录<button class="btn confirm empty-action" id="jobToStudio">去制作</button></div>';
-    document.getElementById("jobToStudio")?.addEventListener("click", () => switchPage("board"));
+    document.getElementById("jobToStudio")?.addEventListener("click", () => {
+      switchPage("workbench"); S.wbTab = "flow"; showWbTab("flow");
+    });
     list.querySelectorAll("[data-job-stop]").forEach(btn => btn.onclick = async () => {
       btn.disabled = true;
       const r = await postJSON("/api/jobs/stop", {job: btn.dataset.jobStop});
@@ -331,7 +278,7 @@
   };
 
   async function renderConfigHistory() {
-    const shell = document.getElementById("page-settings");
+    const shell = document.getElementById("page-settings-hist");
     if (!shell) return;
     // The card lives beside the settings tab, not inside it: the tab is
     // rewritten from scratch on every visit, and a card living in it was
@@ -342,12 +289,6 @@
       card.className = "card";
       card.id = "configHistoryCard";
       shell.appendChild(card);
-      const tools = document.createElement("div");
-      tools.className = "management-actions";
-      tools.innerHTML = '<button class="btn ghost" id="openSkillsSettings">技能配置</button><button class="btn ghost" id="openGuideSettings">新手导引与接入手册</button>';
-      card.before(tools);
-      document.getElementById("openSkillsSettings").onclick = () => switchPage("skills");
-      document.getElementById("openGuideSettings").onclick = () => switchPage("guide");
     }
     card.innerHTML = '<h3>配置版本 <span class="muted">读取中…</span></h3>';
     const r = await getJSON("/api/config/history");
@@ -382,16 +323,16 @@
   }
 
   function enhanceWorkbench() {
-    const box = document.getElementById("page-workbench");
-    const quick = box.querySelector(".quick");
-    if (!quick || box.querySelector("#projectManagement")) return;
+    const box = document.getElementById("page-flow");
+    // with no project there is nothing to rename, copy or restore
+    if (!box || !S.current || box.querySelector("#projectManagement")) return;
     const details = document.createElement("details");
     details.className = "fold";
     details.id = "projectManagement";
     details.innerHTML = `<summary>项目管理 · 重命名 / 复制 / 回收站</summary><div class="inner">
       <div class="management-grid"><div><b>当前项目</b><div class="muted" id="projectStorage">可查看磁盘占用或创建完整副本</div><div class="management-actions"><button class="btn ghost" id="renameProject">重命名</button><button class="btn ghost" id="duplicateProject">复制项目</button><button class="btn ghost" id="projectStats">统计占用</button></div></div>
       <div><b>回收站</b><div class="muted">删除的项目可在这里恢复</div><div id="trashList"></div></div></div></div>`;
-    quick.after(details);
+    box.appendChild(details);
     document.getElementById("renameProject").onclick = async () => {
       const current = S.detail?.meta?.title || S.current;
       const name = prompt("输入新的项目名称", current)?.trim();
@@ -516,26 +457,22 @@
     if (name !== "settings") S.unsaved = false;
     const result = originalSwitchPage(name, force);
     updateNav(name);
-    if (name === "jobs") { renderJobs(); loadJobs(); }
     enhanceA11y(main);
-    return result;
-  };
-
-  const originalRenderGuide = renderGuide;
-  renderGuide = function() {
-    const result = originalRenderGuide();
-    const box = document.getElementById("page-guide");
-    box.dataset.simplified = "0";
-    simplifyGuide();
-    enhanceA11y(box);
     return result;
   };
 
   const originalRenderWorkbench = renderWorkbench;
   renderWorkbench = function() {
     const result = originalRenderWorkbench();
-    enhanceWorkbench();
     enhanceA11y(document.getElementById("page-workbench"));
+    return result;
+  };
+
+  const originalRenderFlow = renderFlow;
+  renderFlow = function() {
+    const result = originalRenderFlow();
+    enhanceWorkbench();
+    enhanceA11y(document.getElementById("page-flow"));
     return result;
   };
 
@@ -543,7 +480,6 @@
   renderBoard = function() {
     const result = originalRenderBoard();
     renderFilmStrip();
-    updateNav("board");
     enhanceA11y(document.getElementById("page-board"));
     return result;
   };
@@ -553,8 +489,7 @@
     const result = await originalLoadSettings();
     S.unsaved = false;
     document.getElementById("unsavedBar")?.remove();
-    await renderConfigHistory();
-    enhanceA11y(document.getElementById("page-settings"));
+    enhanceA11y(document.getElementById("tab-settings"));
     return result;
   };
 
@@ -600,12 +535,16 @@
     return result;
   };
 
+  window.renderJobs = renderJobs;
+  window.loadJobs = loadJobs;
+  window.renderConfigHistory = renderConfigHistory;
+
   document.getElementById("toast").setAttribute("role", "status");
   document.getElementById("toast").setAttribute("aria-live", "polite");
   new MutationObserver(() => enhanceA11y(main)).observe(main, {childList: true, subtree: true});
   enhanceA11y();
   updateNav(S.activePage || "workbench");
   setInterval(() => {
-    if (S.activePage === "jobs" || !document.hidden) loadJobs();
+    if (!document.hidden) loadJobs();
   }, 3000);
 })();
