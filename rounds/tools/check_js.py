@@ -1,75 +1,45 @@
-"""Find where the added script stops parsing.
+"""Does the page's javascript still parse?
 
-The page came up blank with a syntax error, and a syntax error in a
-template literal is hard to see by eye - the braces of the markup and the
-braces of the interpolation look the same. So the added block is walked
-character by character, with the strings set aside, and the first place
-the nesting goes wrong is reported with its surroundings.
-
-It also checks the whole script, because a block that is balanced on its
-own can still break the file it sits in.
+esprima is an ES5 parser, so the blocks that use the newer syntax come
+back with an error that says nothing about the change.  So the file is
+compared with the one that was committed: the errors have to be the
+same ones.
 """
 import re
+import subprocess
 import sys
-from pathlib import Path
 
-HTML = Path(r"E:\dramakit\dramakit\web\static\index.html")
-text = HTML.read_text(encoding="utf-8")
+import esprima
 
-start = text.index("// ---------- 节点池：远程节点的设置、模型、工作流 ----------")
-end = text.index("function stageStateFor", start)
-block = text[start:end]
+REPO = r"E:\dramakit"
 
 
-def walk(src: str, label: str) -> None:
-    depth_p = depth_b = depth_s = 0
-    quote = None
-    prev = ""
-    line = 1
-    for k, ch in enumerate(src):
-        if ch == "\n":
-            line += 1
-        if quote:
-            if ch == quote and prev != "\\":
-                quote = None
-            prev = ch
-            continue
-        if ch in "`\"'":
-            quote = ch
-        elif ch == "(":
-            depth_p += 1
-        elif ch == ")":
-            depth_p -= 1
-        elif ch == "{":
-            depth_b += 1
-        elif ch == "}":
-            depth_b -= 1
-        elif ch == "[":
-            depth_s += 1
-        elif ch == "]":
-            depth_s -= 1
-        if depth_p < 0 or depth_b < 0 or depth_s < 0:
-            lo = max(0, k - 260)
-            print(f"--- {label}: 第 {line} 行，偏移 {k} 处提前闭合 ---")
-            print(repr(src[lo:k + 60]))
-            return
-    print(f"--- {label}: 走完未提前闭合 ( = {depth_p}  {{ = {depth_b}  [ = {depth_s} ---")
+def blocks(text):
+    return [b for b in re.findall(r"<script[^>]*>(.*?)</script>", text, re.S)
+            if b.strip()]
 
 
-print("=== 我新增的块 ===")
-walk(block, "新增块")
+def errors(text):
+    out = []
+    for i, b in enumerate(blocks(text)):
+        try:
+            esprima.parseScript(b)
+        except Exception as e:  # noqa: BLE001
+            out.append((i, str(e)[:120]))
+    return out
 
-# --- the whole script ---------------------------------------------------
-m = re.search(r"<script>(.*?)</script>", text, re.S)
-if m:
-    script = m.group(1)
-    print()
-    print("=== 整个 script ===")
-    walk(script, "script")
 
-    # where does my block start inside it?
-    off = script.find("// ---------- 节点池")
-    print(f"  新增块在 script 中的偏移 {off} / 总长 {len(script)}")
-    if off > 0:
-        print("  新增块之前:")
-        walk(script[:off], "新增块之前")
+now = open(REPO + r"\dramakit\web\static\index.html", encoding="utf-8").read()
+before = subprocess.run(
+    ["git", "-C", REPO, "show", "HEAD:dramakit/web/static/index.html"],
+    capture_output=True, text=True, encoding="utf-8").stdout
+
+a = errors(before)
+b = errors(now)
+print("  改动前 %d 块报错，改动后 %d 块报错" % (len(a), len(b)))
+for e in b:
+    print("    现在:", e)
+for e in a:
+    print("    之前:", e)
+same = [x[1].split(":")[0] for x in a] == [x[1].split(":")[0] for x in b]
+print("  一样（都是 esprima 读不懂的新语法）" if same else "  不一样！")

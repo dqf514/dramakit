@@ -684,7 +684,13 @@ try{
   .step.partial{border-color:var(--partial-line);background:var(--partial-bg)}
   .step.running{border-color:var(--confirm);box-shadow:0 0 0 1px var(--confirm)}
   .step.failed{border-color:var(--danger2);background:color-mix(in srgb,var(--danger2) 8%,var(--bg2))}
-  .step.on{outline:2px solid var(--confirm);outline-offset:1px}
+  .step.on{border-color:var(--confirm);outline:2px solid var(--confirm);
+    outline-offset:1px;background:color-mix(in srgb,var(--confirm) 14%,var(--bg2));
+    box-shadow:0 2px 10px rgba(0,0,0,.18)}
+  .step.on .sn{color:var(--confirm)}
+  .step.on .st{color:var(--fg)}
+  .step .tick{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--confirm);
+    border:1px solid var(--confirm);border-radius:9px;padding:0 6px;line-height:1.5}
   .step .sbar{display:block;height:3px;border-radius:2px;background:var(--bg4);margin-top:6px;overflow:hidden}
   .step .sbar i{display:block;height:100%;background:var(--go2)}
   .stepchip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--fg3);
@@ -703,7 +709,10 @@ try{
      The novel is what the whole page is about and it is the smallest
      thing on it, so it gets a column of its own that does not scroll
      away with the rest of the page. */
-  .wb-grid{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:12px;align-items:start}
+  .wb-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
+  .wb-setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;
+    align-items:start;margin-bottom:12px}
+  .wb-setup > .card{margin-bottom:0}
   .wb-main{min-width:0}
   .wb-side{position:sticky;top:8px;display:flex;flex-direction:column;gap:12px;
     height:calc(100vh - 76px);overflow:hidden;padding-right:2px}
@@ -739,6 +748,7 @@ try{
   .skck input{margin:2px 0 0;flex:0 0 auto}
 
   @media(max-width:1180px){.wb-grid{grid-template-columns:1fr}
+    .wb-setup{grid-template-columns:1fr}
     .wb-side{position:static;height:auto;max-height:none;overflow:visible}
     .wb-side #work-chapters{display:block}
     .wb-side .chap-body{max-height:calc(100vh - 210px)}
@@ -1284,7 +1294,10 @@ function bindLookPanel(){
     note();
   };
   const st=$("#lookStyle");
-  if(st) st.onchange=()=>lookDraftSet({style:st.value});
+  if(st) st.onchange=()=>{
+    lookDraftSet({style:st.value});
+    applyStyleSkills(st.value);
+  };
   const sv=$("#lookSave"); if(sv) sv.onclick=saveLook;
 }
 async function saveLook(){
@@ -1297,6 +1310,16 @@ async function saveLook(){
   const body={project:S.current,aspect_ratio:ratio,
               width:parseInt(wh[0])||0,height:parseInt(wh[1])||0};
   if(st&&st.value) body.style=st.value;
+  // the skills that came with the look are written first, so that the
+  // answer to the look's save is the last thing on the wire - a box
+  // ticked a moment later must not be written over by an earlier write
+  if(SK&&SK.selection){
+    const sr=await saveSkills(SK.selection);
+    if(sr&&sr.ok){
+      SK.selection=sr.selection||SK.selection;
+      SK.costs=sr.costs||SK.costs;
+    }
+  }
   const r=await postJSON("/api/project/look",body);
   if(!r||!r.ok) return toast("保存失败："+esc((r&&r.error)||"未知错误"),"err");
   if(S.detail) S.detail.art_direction=r.art_direction;
@@ -1304,6 +1327,40 @@ async function saveLook(){
   S.lookDraft=null;
   toast("已保存 · 画幅与风格会贯穿角色制图与视频提示词","ok",3600);
   renderFlow();
+}
+
+// The look decides what the writing has to be good at: a story set in
+// the Republican era is written with different craft than a sweet
+// romance.  Choosing a look brings its skills with it - and the person
+// can take anything off the list and add anything back, and the change
+// is saved as they make it.
+async function applyStyleSkills(styleId){
+  if(!styleId||!SK||!SK.by_style) return;
+  const got=SK.by_style[styleId];
+  if(!got||!got.skills) return;
+  try{
+    const names=(SK.skills||[]).map(x=>x.name);
+    const clean={};
+    for(const stage of ["analyze","script","storyboard","promptgen"]){
+      const want=(got.skills[stage]||[]).filter(n=>names.indexOf(n)>=0);
+      if(want.length) clean[stage]=want;
+    }
+    // on the page, not on the server: the 保存 button writes the look
+    // and the skills together, so a box ticked in between is not written
+    // over by the answer to an earlier write
+    SK.selection=clean;
+    SK.recommended=false;
+    syncSkillBoxes();
+    for(const stage of ["analyze","script","storyboard","promptgen"]){
+      const head=document.getElementById("skhead-"+stage);
+      if(!head) continue;
+      const n=(SK.selection[stage]||[]).length;
+      const c=head.querySelector(".muted");
+      if(c) c.textContent=n+" 个 · "+fmtChars(skillCost(stage,clean));
+    }
+    const note=document.getElementById("skNote");
+    if(note) note.textContent="按「"+esc(got.name)+"」换的一套，点保存一起写进去";
+  }catch(e){/* a failed save must not break the page */}
 }
 
 // ---------- the skills, listed by step ----------
@@ -1357,9 +1414,27 @@ function skillsPanelHtml(){
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <b>技能</b>
       <span class="muted" style="font-size:12px">勾上就存到本项目，下次跑流水线生效${esc(rec)}</span>
+      <span class="muted" id="skNote" style="font-size:12px"></span>
     </div>
     <div class="skgrid">${cols}</div>
   </div>`;
+}
+// The skill saves, in a line.  The look brings its own skills and the
+// boxes are ticked by hand, and the two must not write over each other.
+function skillCost(stage,selection){
+  const sel=selection||((SK&&SK.selection)||{});
+  const byName={};
+  ((SK&&SK.skills)||[]).forEach(x=>{ byName[x.name]=x.chars||0; });
+  let n=0;
+  (sel[stage]||[]).forEach(x=>{ n+=byName[x]||0; });
+  return n;
+}
+let skillSaveQueue=Promise.resolve();
+function saveSkills(selection){
+  skillSaveQueue=skillSaveQueue.then(()=>
+    postJSON("/api/skills/save",{project:S.current,selection}))
+    .catch(()=>null);
+  return skillSaveQueue;
 }
 // every box shows what the server now holds
 function syncSkillBoxes(){
@@ -1376,7 +1451,7 @@ function bindSkillChecks(){
     const list=(SK.selection[stage]=SK.selection[stage]||[]);
     const i=list.indexOf(name);
     if(cb.checked&&i<0) list.push(name); else if(!cb.checked&&i>=0) list.splice(i,1);
-    postJSON("/api/skills/save",{project:S.current,selection:{[stage]:list}}).then(r=>{
+    saveSkills({[stage]:list}).then(r=>{
       if(!r||!r.ok){ toast("技能保存失败","err"); return; }
       SK.selection=r.selection||SK.selection;
       SK.costs=r.costs||SK.costs;
@@ -1437,7 +1512,7 @@ function renderFlow(){
     return `<div class="step ${st}${stepSelected(sp)?" on":""}" data-step="${sp.id}" role="button" tabindex="0"
         title="${attr(sp.stages.map(s=>STAGE_ZH[s]).join(" -> "))}">
       <span class="sn">${String(i+1).padStart(2,"0")}</span>
-      <span class="st"><span class="dot ${dot}"></span>${sp.zh}</span>
+      <span class="st"><span class="dot ${dot}"></span>${sp.zh}${stepSelected(sp)?'<span class="tick">已选</span>':""}</span>
       <span class="sd">${sp.hint}</span>
       <span class="sbar"><i style="width:${pct}%"></i></span>
     </div>`;
@@ -1526,6 +1601,11 @@ function renderFlow(){
           </div>
         </div>
 
+        <div class="wb-setup">
+          ${lookPanelHtml(d)}
+          ${chapterHtml}
+        </div>
+
         <div class="card">
           <h3>制作步骤 <span class="muted" style="font-weight:400;font-size:12px">点一下选中或取消 · 已完成 ${doneSteps}/${STEPS.length}</span></h3>
           <div class="stepstrip">${stepHtml}</div>
@@ -1554,10 +1634,6 @@ function renderFlow(){
         </details>
       </div>
 
-      <aside class="wb-side">
-        ${lookPanelHtml(d)}
-        ${chapterHtml}
-      </aside>
     </div>
     `;
 

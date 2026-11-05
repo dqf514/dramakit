@@ -121,8 +121,11 @@
   async function loadJobs() {
     if (jobsLoading) return;
     jobsLoading = true;
+    // Whether the list is on screen. It is asked for before the try:
+    // the catch below reads it too, and a name declared inside the try
+    // is not there when the call fails.
+    const onJobs = S.activePage === "workbench" && S.wbTab === "jobs";
     try {
-      const onJobs = S.activePage === "workbench" && S.wbTab === "jobs";
       const project = document.getElementById("jobProject")?.value || jobFilters.project;
       const status = document.getElementById("jobStatus")?.value || jobFilters.status;
       jobFilters = {project, status};

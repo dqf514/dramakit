@@ -428,10 +428,19 @@ def _make_handler(state: State):
                            else list(getattr(cfg_skills, k) or []))
                        for k in stages}
                 costs = skillcat.cost(sel, getattr(cfg_skills, "refs", None))
+                recommended = False
+                if slug:
+                    store0 = state.open_store(slug)
+                    if store0:
+                        recommended = bool(
+                            (store0.load().meta.skills_recommended))
+                from ..skills import styles as _styles
                 return self._json({"ok": True,
                                    "skills": skillcat.catalog(),
                                    "selection": sel,
                                    "costs": costs,
+                                   "recommended": recommended,
+                                   "by_style": _styles.by_style(),
                                    "stages": list(stages)})
             if path == "/api/logs":
                 n = (query.get("n") or ["120"])[0]
