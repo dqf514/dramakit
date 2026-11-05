@@ -907,6 +907,7 @@ const S = {
   drawer:{kind:"",ep:null,sc:null,shot:null,line:null},
   production:null, booted:false, guideBusy:null, guideProbing:false,
   comfyInspect:null, comfyInspecting:false, comfyApplying:false, comfyUrl:"", comfyPick:null,
+  lookDraft:null,
 };
 
 // ---------- api ----------
@@ -1076,6 +1077,8 @@ async function renderTags(){
 async function selectProject(slug, quiet){
   S.current=slug;
   SK=null;                 // the skills belong to a project: read them again
+  SK_PROMISE=null; SK_FOR="";
+  S.lookDraft=null;        // and so does the frame and the look
   renderProjects(); renderCmdProj();
   const d=await getJSON("/api/projects/"+encodeURIComponent(slug));
   if(!d.ok){ toast("加载项目失败："+esc(d.error||""),"err"); return; }
@@ -1157,13 +1160,17 @@ function bindNewProject(){
 // shape of the picture and the look of it.  They are chosen here, they are
 // written on the project, and from there they travel into every character
 // picture, every shot prompt and every clip.
-let LOOKS=null;
+let LOOKS=null, LOOKS_PROMISE=null;
 async function loadLooks(){
   if(LOOKS) return;
-  const r=await getJSON("/api/looks");
-  if(!r||!r.ok) return;
-  LOOKS=r;
-  if(S.activePage==="workbench"&&S.wbTab==="flow") renderFlow();
+  if(LOOKS_PROMISE) return LOOKS_PROMISE;
+  LOOKS_PROMISE=(async()=>{
+    const r=await getJSON("/api/looks");
+    if(!r||!r.ok) return;
+    LOOKS=r;
+    if(S.activePage==="workbench"&&S.wbTab==="flow") renderFlow();
+  })();
+  return LOOKS_PROMISE;
 }
 function lookAspect(ratio){
   const list=(LOOKS&&LOOKS.aspects)||[];
@@ -1176,18 +1183,25 @@ function lookStyleOf(ad){
 }
 function lookPanelHtml(d){
   const ad=(d&&d.art_direction)||{};
-  const ratio=ad.aspect_ratio||"9:16";
+  // what the person has chosen but not yet saved.  The page draws itself
+  // again whenever the server says something new, and a re-draw that
+  // forgets the choice in front of them is worse than a slow page.
+  const draft=(S.lookDraft&&S.lookDraft.project===S.current)?S.lookDraft:null;
+  const ratio=(draft&&draft.aspect_ratio)||ad.aspect_ratio||"9:16";
   const A=lookAspect(ratio);
   const sizes=(A&&A.sizes)||[];
-  const w=ad.frame_width||0, h=ad.frame_height||0;
+  const w=(draft&&draft.width)||ad.frame_width||0;
+  const h=(draft&&draft.height)||ad.frame_height||0;
   const cur=sizes.find(s=>s.w===w&&s.h===h);
   const sizeHtml=sizes.map(s=>`<option value="${s.w}x${s.h}" ${cur&&cur.id===s.id?"selected":""}>${esc(s.label)}</option>`).join("");
   const groups={};
   ((LOOKS&&LOOKS.styles)||[]).forEach(s=>{const g=s.group||"其他";(groups[g]=groups[g]||[]).push(s);});
+  const curStyle=draft?draft.style:((lookStyleOf(ad)||{}).id);
   const styleHtml=Object.keys(groups).map(g=>`<optgroup label="${esc(g)}">`+
-    groups[g].map(s=>`<option value="${esc(s.id)}" ${lookStyleOf(ad)&&lookStyleOf(ad).id===s.id?"selected":""}>${esc(s.name)}</option>`).join("")
+    groups[g].map(s=>`<option value="${esc(s.id)}" ${curStyle===s.id?"selected":""}>${esc(s.name)}</option>`).join("")
     +`</optgroup>`).join("");
-  const cs=lookStyleOf(ad);
+  const cs=draft?((LOOKS&&LOOKS.styles||[]).find(s=>s.id===draft.style)||null)
+                :lookStyleOf(ad);
   const note=cs?`${esc(cs.era)} · ${esc(cs.palette||"")}`:"";
   const en=cs?cs.prompt:"";
   const aspects=(LOOKS&&LOOKS.aspects)||[{id:"9:16",label:"9:16 竖屏"},{id:"16:9",label:"16:9 横屏"}];
@@ -1213,12 +1227,29 @@ function fillLookSizes(ratio){
   const A=lookAspect(ratio);
   sel.innerHTML=((A&&A.sizes)||[]).map(s=>`<option value="${s.w}x${s.h}">${esc(s.label)}</option>`).join("");
 }
+// the choice in the card, before it is written to the project
+function lookDraftSet(patch){
+  if(!S.current) return;
+  const d=(S.lookDraft&&S.lookDraft.project===S.current)
+    ?Object.assign({},S.lookDraft):{project:S.current};
+  Object.assign(d,patch);
+  S.lookDraft=d;
+}
 function bindLookPanel(){
   const row=$("#arRow"); if(!row) return;
   $$("#arRow .seg").forEach(b=>b.onclick=()=>{
     $$("#arRow .seg").forEach(x=>x.classList.toggle("on",x===b));
     fillLookSizes(b.dataset.ar);
+    // a new shape means a new size: the old one belongs to the old shape
+    lookDraftSet({aspect_ratio:b.dataset.ar,width:0,height:0});
   });
+  const sz=$("#lookSize");
+  if(sz) sz.onchange=()=>{
+    const wh=(sz.value||"").split("x");
+    lookDraftSet({width:parseInt(wh[0])||0,height:parseInt(wh[1])||0});
+  };
+  const st=$("#lookStyle");
+  if(st) st.onchange=()=>lookDraftSet({style:st.value});
   const sv=$("#lookSave"); if(sv) sv.onclick=saveLook;
 }
 async function saveLook(){
@@ -1234,6 +1265,8 @@ async function saveLook(){
   const r=await postJSON("/api/project/look",body);
   if(!r||!r.ok) return toast("保存失败："+esc((r&&r.error)||"未知错误"),"err");
   if(S.detail) S.detail.art_direction=r.art_direction;
+  // it is on the project now; the card shows the project, not a draft
+  S.lookDraft=null;
   toast("已保存 · 画幅与风格会贯穿角色制图与视频提示词","ok",3600);
   renderFlow();
 }
@@ -1294,6 +1327,15 @@ function skillsPanelHtml(){
     <div class="skgrid">${cols}</div>
   </div>`;
 }
+// every box shows what the server now holds
+function syncSkillBoxes(){
+  if(!SK||!SK.selection) return;
+  $$("#page-flow .skck input").forEach(cb=>{
+    const list=SK.selection[cb.dataset.skstage]||[];
+    const want=list.indexOf(cb.dataset.sk)>=0;
+    if(cb.checked!==want) cb.checked=want;
+  });
+}
 function bindSkillChecks(){
   $$("#page-flow .skck input").forEach(cb=>cb.onchange=()=>{
     const stage=cb.dataset.skstage, name=cb.dataset.sk;
@@ -1304,6 +1346,9 @@ function bindSkillChecks(){
       if(!r||!r.ok){ toast("技能保存失败","err"); return; }
       SK.selection=r.selection||SK.selection;
       SK.costs=r.costs||SK.costs;
+      // the page and the server must say the same thing - the page may
+      // have been drawn again while the answer was on its way
+      syncSkillBoxes();
       const head=document.getElementById("skhead-"+stage);
       if(head){
         const names=SK.selection[stage]||[];
@@ -1315,11 +1360,21 @@ function bindSkillChecks(){
 async function loadSkillsForFlow(){
   if(SK) return;
   const slug=S.current;
-  const q=slug?("?project="+encodeURIComponent(slug)):"";
-  const r=await getJSON("/api/skills"+q);
-  if(!r||!r.ok) return;
-  SK=r;
-  if(S.activePage==="workbench"&&S.wbTab==="flow") renderFlow();
+  // One load at a time, and only for the project being looked at.  Two
+  // loads at once means two answers, and the older one can land after
+  // the person has ticked something - and put the old answer on the
+  // page, while the server has the new one.
+  if(SK_PROMISE&&SK_FOR===slug) return SK_PROMISE;
+  SK_FOR=slug;
+  SK_PROMISE=(async()=>{
+    const q=slug?("?project="+encodeURIComponent(slug)):"";
+    const r=await getJSON("/api/skills"+q);
+    if(!r||!r.ok) return;
+    if(S.current!==slug) return;      // the person has moved on
+    SK=r;
+    if(S.activePage==="workbench"&&S.wbTab==="flow") renderFlow();
+  })();
+  return SK_PROMISE;
 }
 
 function renderFlow(){
@@ -3601,6 +3656,7 @@ toast("已请求停止：当前这一步的调用结束后停下（约 1 分钟�
 const SK_STAGES=[["analyze","分析"],["script","编剧"],
                  ["storyboard","分镜"],["promptgen","提示词"]];
 let SK=null;   // {skills, selection, costs}
+let SK_PROMISE=null, SK_FOR="";   // the load on its way, and for whom
 
 function fmtChars(n){ return n>=10000 ? (n/10000).toFixed(1)+"万字" : (n||0)+"字"; }
 

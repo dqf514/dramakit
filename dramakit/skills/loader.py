@@ -118,7 +118,10 @@ def for_stage(ctx, stage: str, *, refs: bool | list[str] = False) -> str:
         project_sel = ctx.project.meta.skills or {}
     except Exception:  # noqa: BLE001
         project_sel = {}
-    if stage in project_sel:
+    # a project that chose its own skills for this stage has said what it
+    # wants, and the config's references are not added to that answer
+    chosen_by_project = stage in project_sel
+    if chosen_by_project:
         names = list(project_sel.get(stage) or [])
     else:
         names = list(getattr(cfg, stage, None) or [])
@@ -147,14 +150,18 @@ def for_stage(ctx, stage: str, *, refs: bool | list[str] = False) -> str:
         text = load(n, refs=ask if ask else refs)
         if text:
             out.append(f"\n\n=== 规矩（来自 skill：{n}）===\n{text}")
-    # a skill whose documents are wanted but whose own rules are not
-    for n, docs in wanted_refs.items():
-        if n in seen:
-            continue
-        seen.add(n)
-        text = load_refs(n, docs)
-        if text:
-            out.append(f"\n\n=== 规矩（来自 skill：{n} 的参考文档）===\n{text}")
+    # a skill whose documents are wanted but whose own rules are not.
+    # The config asks for those by name; a project that chose its own
+    # skills has already answered, and a skill it did not pick brings
+    # nothing with it - not even its documents.
+    if not chosen_by_project:
+        for n, docs in wanted_refs.items():
+            if n in seen:
+                continue
+            seen.add(n)
+            text = load_refs(n, docs)
+            if text:
+                out.append(f"\n\n=== 规矩（来自 skill：{n} 的参考文档）===\n{text}")
     if not out:
         log.info("skills: %s 阶段没有可用的 skill，用内置规矩", stage)
     return "".join(out)

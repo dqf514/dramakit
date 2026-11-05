@@ -202,6 +202,10 @@ def run(ctx: Context) -> dict:
             scene_avg = round(scene_seconds / share, 1)
             user = T.render(T.STORYBOARD_USER, location=sc.location or "场景",
                             director_rules=_rules,
+                            # the look the whole drama is made in: the
+                            # camera language of the plan belongs to it
+                            style=(ctx.project.art_direction.style_prompt_prefix
+                                   or ctx.project.art_direction.style or ""),
                             episode_seconds=episode_seconds,
                             avg_seconds=round(avg, 1),
                             scene_seconds=scene_seconds,

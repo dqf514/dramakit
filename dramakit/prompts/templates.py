@@ -229,6 +229,7 @@ STORYBOARD_USER = """为下面这场戏设计分镜（{{aspect_ratio}} {{aspect_
 
 分镜规则：
 - **画幅是 {{aspect_ratio}}（{{frame_size}}，{{aspect_orientation}}）**：{{frame_note}}
+- **全剧画风是 {{style}}**：镜头语言按这个画风走——焦段、色调、光线、氛围都要像这一部剧
 - 生成 {{min_shots}}~{{max_shots}} 个镜头，覆盖本场全部台词与动作
 - **这一集大约 {{episode_seconds}} 秒（参考值；一集三到六分钟都成立，跟着剧情走）**。
   **本场大概 {{scene_seconds}} 秒，请分成大约 {{scene_shots}} 个片段，
@@ -354,6 +355,10 @@ PROMPT_USER = """为下面这个{{aspect}}镜头生成AI绘画提示词。
 本场剧情：{{scene_summary}}
 全剧画风：{{style}}；画幅：{{aspect_ratio}}（{{frame_size}}）；年代：{{era}}；色调：{{color_palette}}
 镜头情绪：{{mood}}
+{% if prompt_rules %}
+作图规矩（必须遵守）：
+{{prompt_rules}}
+{% endif %}
 
 规则：
 - prompt: 英文提示词。结构必须是【角色锚点在前】+ 动作表情 + 环境 + 光线 + 镜头(shot type,角度)+ 画风 + 画质词；{{composition}}
@@ -412,6 +417,10 @@ FLUX3_IMAGE_USER = """为下面这个{{aspect}}镜头写一段 FLUX 3 完整场�
 本场剧情：{{scene_summary}}
 全剧画风：{{style}}；画幅：{{aspect_ratio}}（{{frame_size}}）；年代：{{era}}；色调：{{color_palette}}
 镜头情绪：{{mood}}
+{% if prompt_rules %}
+作图规矩（必须遵守）：
+{{prompt_rules}}
+{% endif %}
 {% if continuity %}
 上一镜结束时的状态（**必须接得上**：人物的站位、姿势、朝向、与环境的相对位置要连贯）：{{continuity}}
 {% endif %}

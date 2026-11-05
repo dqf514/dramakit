@@ -325,6 +325,25 @@ def _aspect(ctx: Context) -> tuple[str, str]:
     return "横屏(16:9)", "横屏构图 horizontal composition, 16:9"
 
 
+def _ensure_look(ctx: Context, text: str) -> str:
+    """The look, in the prompt even when the model left it out.
+
+    The prompt says what style the drama is in, and the model is asked to
+    write it in.  Sometimes it does not - and a picture that came out in
+    another style is a picture that belongs to another drama.  So the
+    look is put back: at the end, because the anchor of a character has
+    to be the first thing in the prompt, and because FLUX 3 wants its
+    caption to open with the medium.
+    """
+    ad = ctx.project.art_direction
+    style = (ad.style_prompt_prefix or ad.style or "").strip()
+    if not style or not text:
+        return text
+    if style.lower() in text.lower():
+        return text
+    return f"{text.rstrip().rstrip(',.')}, {style}"
+
+
 def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                       flf: bool, location_visual: str,
                       continuity: str = "") -> None:
@@ -339,6 +358,7 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
     system = T.FLUX3_IMAGE_SYSTEM if flux3 else T.PROMPT_SYSTEM
     template = T.FLUX3_IMAGE_USER if flux3 else T.PROMPT_USER
     aspect, composition = _aspect(ctx)
+    from ..skills import loader as _loader
     user = T.render(template, shot_type=shot.shot_type.value,
                     camera_move=shot.camera_move,
                     angle=shot.angle, height=shot.height, lens=shot.lens,
@@ -350,16 +370,20 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     style=ad.style_prompt_prefix or ad.style, era=ad.era,
                     color_palette=ad.color_palette, mood=sc.mood, end_frame=flf,
                     aspect=aspect, composition=composition,
+                    # the rules the user chose for the pictures
+                    prompt_rules=_loader.for_stage(ctx, "promptgen"),
                     **_frame.prompt_frame(ctx),
                     continuity=continuity)
     try:
         data = llm.complete_json(system, user)
         if isinstance(data, list):
             data = data[0] if not data else {}
-        shot.prompt = (data.get("prompt") or "").strip() or _fallback_prompt(ctx, shot, sc)
+        shot.prompt = _ensure_look(
+            ctx, (data.get("prompt") or "").strip()) or _fallback_prompt(ctx, shot, sc)
         shot.negative_prompt = (data.get("negative_prompt") or "").strip()
         if flf:
-            shot.end_prompt = (data.get("end_prompt") or "").strip()
+            shot.end_prompt = _ensure_look(
+                ctx, (data.get("end_prompt") or "").strip()) or shot.prompt
     except Exception as e:  # noqa: BLE001
         ctx.log.warning("promptgen: 镜 %s 失败(%s)，用模板兜底", shot.id, e)
         shot.prompt = _fallback_prompt(ctx, shot, sc)
@@ -706,6 +730,8 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     f"itself, with its own light and its own furniture, never "
                     f"a plain studio backdrop and never an empty gray wall.")
         if desc:
+            # the look, even if the model left it out of the description
+            desc = _ensure_look(ctx, desc)
             if ctx.cfg.comfyui.native_audio:
                 # the sound comes with the picture: the clip carries the
                 # voice, the room and the music, and nothing is laid
@@ -761,8 +787,8 @@ def _gen_score_prompt(ctx: Context, llm, sc) -> None:
             soundscape = str(data.get("overall_soundscape") or "").strip()
             music = str(data.get("non_diegetic_music") or "").strip()
             if desc:
-                sc.score_prompt = _assemble_h3_prompt(desc, soundscape or "N/A",
-                                                      music or "N/A")
+                sc.score_prompt = _assemble_h3_prompt(
+                    _ensure_look(ctx, desc), soundscape or "N/A", music or "N/A")
                 return
         except Exception as e:  # noqa: BLE001
             ctx.log.warning("promptgen: 场%d 配乐提示词失败(%s)，重试",

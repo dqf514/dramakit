@@ -375,7 +375,10 @@ class Context:
         # the one that draws - and save() replaces the file by renaming a
         # temporary one over it. Two threads doing that at once is how a
         # project.json becomes a half-written mix of both.
-        self._save_lock = threading.Lock()
+        # The lock is the project's, not this copy's: the run and the
+        # lane that puts an episode together hold two copies of the same
+        # project, and they write the same file.
+        self._save_lock = getattr(store, "lock", None) or threading.Lock()
         # The season being made, if a run is making one. Zero means none:
         # a plain run is not scoped to a season, and filtering its episodes
         # by the next season number - which is what current_season is - would
@@ -413,7 +416,10 @@ class Context:
 
     def save(self) -> None:
         # serialised on the write, not on the work: the lanes still run
-        # together, only the moment the file changes takes turns
+        # together, only the moment the file changes takes turns.
+        # The lock is the project's own, not this copy's: a run holds two
+        # copies of the same project - its own and the one that puts an
+        # episode together - and they write the same file.
         with self._save_lock:
             self._adopt_finished_clips()
             self.store.save(self.project)

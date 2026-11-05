@@ -17,8 +17,11 @@ Directory layout (all paths inside a project are stored RELATIVE to root):
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -40,12 +43,74 @@ def now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+# The lock on a project file is on the file, not on whoever opened it:
+# the console opens the project again on every request, and a run holds
+# two copies of it at once - the run's own and the one that puts an
+# episode together.  A lock that belonged to the object would let those
+# write over each other, and on Windows the second write fails outright
+# because the file it wants to replace is open elsewhere.
+_LOCKS: dict[str, threading.RLock] = {}
+_LOCKS_GUARD = threading.Lock()
+
+
+def lock_for(path: str | Path) -> threading.RLock:
+    """The lock that belongs to one project file."""
+    key = str(Path(path).resolve()).lower()
+    with _LOCKS_GUARD:
+        lock = _LOCKS.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _LOCKS[key] = lock
+        return lock
+
+
+def _replace(tmp: Path, dst: Path, tries: int = 10) -> None:
+    """Put the new file over the old one, and wait out the readers.
+
+    Windows will not rename a file over another one that somebody has
+    open - and the console reads the project on every request, so the
+    window is small but real.  A rename that fails for that reason is
+    not a failure: the reader will be gone in a moment.
+    """
+    for attempt in range(tries):
+        try:
+            os.replace(tmp, dst)
+            return
+        except PermissionError:
+            if attempt == tries - 1:
+                raise
+            time.sleep(0.02 * (attempt + 1))
+        except OSError:
+            # the temporary file is ours: do not leave it behind
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
+
+
+def _read_json(path: Path, tries: int = 10) -> dict:
+    """Read a JSON file, waiting out a writer that is renaming over it."""
+    for attempt in range(tries):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except PermissionError:
+            if attempt == tries - 1:
+                raise
+            time.sleep(0.02 * (attempt + 1))
+    return {}
+
+
 class ProjectStore:
     """Read/write helper bound to one project directory."""
 
     def __init__(self, root: str | Path):
         self.root = Path(root).resolve()
         self.manifest = self.root / "project.json"
+        # the lock belongs to the file: everybody who opens this project
+        # shares it, whoever opened it
+        self.lock = lock_for(self.manifest)
         for d in SUBDIRS:
             (self.root / d).mkdir(parents=True, exist_ok=True)
 
@@ -86,15 +151,26 @@ class ProjectStore:
 
     # ---------------------------------------------------------------- persist
     def load(self) -> Project:
-        with open(self.manifest, "r", encoding="utf-8") as f:
-            return Project.model_validate(json.load(f))
+        with self.lock:
+            return Project.model_validate(_read_json(self.manifest))
 
     def save(self, proj: Project) -> None:
-        proj.meta.updated_at = now()
-        tmp = self.manifest.with_suffix(".json.tmp")
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(proj.model_dump(), f, ensure_ascii=False, indent=2)
-        tmp.replace(self.manifest)
+        """Write the whole manifest, whole or not at all.
+
+        The file is written to a temporary name and renamed over the
+        old one, so a reader sees either the old project or the new one
+        and never half of each.  The temporary name carries the writer's
+        own id, because two writers of the same project would otherwise
+        be writing the same temporary file and the reader would see the
+        mix of two projects.
+        """
+        with self.lock:
+            proj.meta.updated_at = now()
+            tmp = self.manifest.with_suffix(
+                f".json.{os.getpid()}.{threading.get_ident()}.tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(proj.model_dump(), f, ensure_ascii=False, indent=2)
+            _replace(tmp, self.manifest)
 
     # ---------------------------------------------------------------- helpers
     def rel(self, p: str | Path) -> str:

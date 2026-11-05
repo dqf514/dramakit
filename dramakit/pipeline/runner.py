@@ -388,20 +388,27 @@ def _draw_until_done(ctx: Context, writes_done: threading.Event,
             _tally(res)
             if res.get("shots_total"):
                 continue
-            ok = failed = 0
+            ok = failed = no_still = 0
+            wants_still = ctx.cfg.comfyui.mode in ("image", "image_then_video")
             for ep in ctx.target_episodes():
                 for sc in ep.scenes:
                     for shot in sc.shots:
                         if not (shot.prompt or "").strip():
                             continue   # nothing to draw from yet
-                        if shot.status == Status.DONE:
-                            ok += 1
-                        else:
+                        if shot.status != Status.DONE:
                             failed += 1
+                        elif wants_still and not (shot.image_path or "").strip():
+                            # the clip is there, but the still it was to
+                            # continue from is not: it was made from the
+                            # text alone, and the report must not call
+                            # that a success
+                            no_still += 1
+                        else:
+                            ok += 1
             results["visual"] = {
-                "shots_ok": ok, "shots_total": ok + failed,
+                "shots_ok": ok, "shots_total": ok + failed + no_still,
                 "images_ok": images_ok, "videos_ok": videos_ok,
-                "failed": failed}
+                "failed": failed + no_still, "no_still": no_still}
             _mark(Status.DONE)
             log.info("── 阶段 [visual] 完成（%d 趟）: %s ──", passes,
                      results["visual"])

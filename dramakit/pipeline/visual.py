@@ -512,6 +512,11 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0,
                 extra=extra))
         shot.video_path = ctx.store.rel(vid_out)
         meta["flf"] = use_flf
+        if c.mode in ("image", "image_then_video") and not img_out.exists():
+            # the still never came: the clip was made from the text alone
+            meta["still_missing"] = True
+            ctx.log.warning("visual: 镜 %s 没有首帧（出图失败），"
+                            "这一段是照文字生成的", shot.id)
         shot.gen_meta = meta
         shot.status = Status.DONE
         return shot.id, True, ""
@@ -748,16 +753,28 @@ def run(ctx: Context) -> dict:
         _gen_scores(ctx)
     ctx.save()
 
+    # A clip whose still never came is not the clip that was planned: it
+    # was made from the text alone, without the picture the scene was
+    # composed around.  It is watchable, and it is worth keeping - but it
+    # is not a success, and the report says so.
+    no_still = 0
+    if do_image:
+        for (_ep, _sc, shot) in jobs:
+            if not (shot.image_path or "").strip():
+                no_still += 1
+
     for ep in ctx.target_episodes():
         ctx.check_stop()   # 一集一问：停止能在下一集生效
         if all(sh.status == Status.DONE for sc in ep.scenes for sh in sc.shots) \
                 and ep.total_shots > 0:
             ctx.mark(ep, "visual", Status.DONE)
     ctx.save()
-    return {"shots_ok": videos_ok if do_video else images_ok,
+    made = videos_ok if do_video else images_ok
+    return {"shots_ok": made,
             "shots_total": len(jobs),
             "images_ok": images_ok, "videos_ok": videos_ok,
-            "failed": len(jobs) - (videos_ok if do_video else images_ok)}
+            "failed": len(jobs) - made + no_still,
+            "no_still": no_still}
 
 
 def regen_shot(store: ProjectStore, cfg: Config, ep_index: int, shot_id: str,
