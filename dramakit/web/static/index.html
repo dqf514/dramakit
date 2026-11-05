@@ -1418,7 +1418,9 @@ function renderFlow(){
   }
   const eps=d.episodes||[];
   const shots=eps.reduce((a,e)=>a+e.scenes.reduce((x,s)=>x+s.shots.length,0),0);
-  const firstCover=eps.map(e=>e.cover).find(Boolean)||"";
+  // the key art of the drama comes first; the first episode's frame is
+  // what is there until the cover is made
+  const firstCover=d.cover||eps.map(e=>e.cover).find(Boolean)||"";
   const doneSteps=STEPS.filter(sp=>stepState(sp)==="done").length;
   const projs=S.projects.map(p=>`<option value="${esc(p.slug)}" ${p.slug===S.current?"selected":""}>${esc(p.title)}</option>`).join("");
   const selSteps=STEPS.filter(stepSelected);

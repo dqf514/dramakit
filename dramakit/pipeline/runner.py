@@ -37,7 +37,7 @@ from ..models import Status
 from ..project import ProjectStore
 from ..providers import Providers
 from ..seasons import complete_season
-from . import (analyze, character, compose, ingest, lipsync, music_stage,
+from . import (analyze, character, compose, cover, ingest, lipsync, music_stage,
                precheck, promptgen, qc, script, segment, storyboard, subtitle,
                visual, voice)
 from .base import Context, RunStopped
@@ -48,14 +48,14 @@ log = logging.getLogger("dramakit.runner")
 # The voice comes before the picture: the shot lengths are derived from the
 # dialogue, so the video has to be shot to the timing of the finished lines
 # rather than to an estimate of them.
-ORDER = ["ingest", "analyze", "character", "segment", "script", "storyboard",
-         "promptgen", "voice", "visual", "lipsync", "subtitle", "music",
-         "precheck", "compose", "qc"]
+ORDER = ["ingest", "analyze", "cover", "character", "segment", "script",
+         "storyboard", "promptgen", "voice", "visual", "lipsync", "subtitle",
+         "music", "precheck", "compose", "qc"]
 
 # What runs first, what can overlap, and what has to wait. The middle is
 # split by machine: the writing stages need a model, the picture stage
 # needs a card, and neither has to finish before the other begins.
-SETUP = ("ingest", "analyze", "character", "segment")
+SETUP = ("ingest", "analyze", "cover", "character", "segment")
 WRITES = ("script", "storyboard", "promptgen", "voice", "music")
 # The stages that only need the script: the voice and the music do not
 # wait for the storyboard, so they are made beside it.
@@ -82,6 +82,7 @@ def _stage_fn(name: str) -> Optional[Callable]:
     return {
         "ingest": None,  # handled specially (needs source_file)
         "analyze": analyze.run,
+        "cover": cover.run,
         "character": character.run,
         "segment": segment.run,
         "script": script.run,

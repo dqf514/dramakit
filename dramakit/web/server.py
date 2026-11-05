@@ -938,6 +938,8 @@ def _make_handler(state: State):
             return {
                 "ok": True, "slug": slug,
                 "meta": proj.meta.model_dump(),
+                # the key art of the drama itself, with the title on it
+                "cover": _media_url(slug, proj.meta.cover_path),
                 "art_direction": proj.art_direction.model_dump(),
                 "characters": [_char(c) for c in proj.characters],
                 "locations": locations,

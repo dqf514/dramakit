@@ -253,6 +253,10 @@ class ProjectStore:
     def cover_path(self, ep: Episode) -> Path:
         return self.root / "covers" / f"ep_{ep.index:03d}_cover.jpg"
 
+    def project_cover_path(self) -> Path:
+        """The picture of the drama itself: the key art with the title on it."""
+        return self.root / "covers" / "project_cover.jpg"
+
     def log_path(self, name: str) -> Path:
         return self.root / "logs" / f"{name}.log"
 

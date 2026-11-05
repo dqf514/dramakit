@@ -373,6 +373,44 @@ PROMPT_USER = """为下面这个{{aspect}}镜头生成AI绘画提示词。
 
 
 # --------------------------------------------------------------------------- #
+# COVER — the picture of the drama
+#
+# The cover is the one picture somebody decides on before they decide on
+# anything else.  It is a poster, not a still: the hero, the world and
+# the light, with room left at the bottom for the title.
+# --------------------------------------------------------------------------- #
+COVER_SYSTEM = """你是短剧封面美术指导，为一部短剧画宣传封面。
+只输出JSON。"""
+
+COVER_USER = """为下面这部短剧写一张**宣传封面**的画面描述（英文）。剧名后期会烧在封面上。
+
+剧名：{{title}}
+题材：{{genre}}
+年代：{{era}}
+剧情：{{synopsis}}
+全剧画风：{{style}}
+色调：{{color_palette}}
+画幅：{{aspect}}（{{frame_size}}，{{orientation}}）
+主要角色：
+{{characters}}
+
+要求：
+- prompt: **一段连续的英文散文**，不是关键词堆叠（FLUX 3 要的就是这个）。
+  顺序：媒介与风格 → 场景与光线 → 人物（位置/外貌/服装/表情）→ 前景与背景。
+- **这是海报构图，不是剧照**：主体人物清晰、有分量，视线看向画外而不是看镜头；
+  背景是这部剧的世界（地点、气氛、一件能说明故事的道具）
+- **画面下方留出空**：约下方 18% 不要放脸、不要放重要元素，剧名会烧在那里
+- **画面里绝对不要出现任何文字**（不要让模型写字，剧名后期加）
+- 构图要有纵深：前景、中景、背景各一层
+- 光线要能说话：主光方向明确，明暗对比有情绪
+- negative_prompt: 英文负面词，至少包含 text, watermark, logo, extra fingers,
+  bad anatomy, blurry, 多余人物
+
+输出JSON：
+{"prompt":"","negative_prompt":""}"""
+
+
+# --------------------------------------------------------------------------- #
 # PROMPTGEN — FLUX 3 Image Klein (full scene caption, not keyword soup)
 #
 # FLUX 3 does not read SDXL-style prompts. It takes one continuous scene

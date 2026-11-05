@@ -553,6 +553,7 @@ pipeline:
   stages_enabled:                           # 想跳过某步就从这里删掉
     - ingest
     - analyze
+    - cover
     - character
     - segment
     - script

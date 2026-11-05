@@ -306,6 +306,8 @@ class ProjectMeta(BaseModel):
     # with no entry here falls back to the config's list.
     skills: dict[str, list[str]] = {}
     episodes_wanted: int = 0
+    # the picture of the drama: the cover the title is written on
+    cover_path: str = ""
     created_at: str = ""
     updated_at: str = ""
     # The run that was under way, kept so a run that stops can be started
