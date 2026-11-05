@@ -134,7 +134,12 @@ class Prop(BaseModel):
 class ArtDirection(BaseModel):
     genre: str = "都市"
     style: str = "写实电影感"
-    aspect_ratio: str = "16:9"
+    aspect_ratio: str = "9:16"
+    # the delivery size, in pixels: the stills, the clips and the finished
+    # film are all made in it.  Zero means "ask the looks for the size that
+    # goes with the ratio".
+    frame_width: int = 0
+    frame_height: int = 0
     era: str = "当代"
     color_palette: str = ""
     global_negative_prompt: str = (

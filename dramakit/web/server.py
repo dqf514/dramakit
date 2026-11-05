@@ -380,6 +380,9 @@ def _make_handler(state: State):
             if path == "/api/templates":
                 from ..ai.templates import all_templates
                 return self._json({"ok": True, **all_templates()})
+            if path == "/api/looks":
+                from ..ai import looks
+                return self._json({"ok": True, **looks.looks()})
             if path == "/api/projects":
                 return self._json({"ok": True, "projects": self._api_projects()})
             if path.startswith("/api/projects/"):
@@ -400,25 +403,27 @@ def _make_handler(state: State):
             if path == "/api/skills":
                 from ..skills import catalog as skillcat
                 slug = (query.get("project") or [""])[0]
-                sel, costs = {}, {}
+                proj_sel: dict = {}
                 if slug:
                     store = state.open_store(slug)
                     if store:
                         proj = store.load()
-                        sel = proj.meta.skills or {}
+                        proj_sel = proj.meta.skills or {}
                 from ..config import Config as _C
                 cfg_skills = _C.load(state.config_path).skills
-                if not sel:
-                    # nothing chosen for this project: what the config says
-                    sel = {k: list(getattr(cfg_skills, k) or [])
-                           for k in ("analyze", "script", "storyboard", "promptgen")}
+                stages = ("analyze", "script", "storyboard", "promptgen")
+                # what each stage actually uses: the project's own choice
+                # for that stage, and the config's for the stages the
+                # project has not said anything about
+                sel = {k: (list(proj_sel[k]) if k in proj_sel
+                           else list(getattr(cfg_skills, k) or []))
+                       for k in stages}
                 costs = skillcat.cost(sel, getattr(cfg_skills, "refs", None))
                 return self._json({"ok": True,
                                    "skills": skillcat.catalog(),
                                    "selection": sel,
                                    "costs": costs,
-                                   "stages": ["analyze", "script",
-                                              "storyboard", "promptgen"]})
+                                   "stages": list(stages)})
             if path == "/api/logs":
                 n = (query.get("n") or ["120"])[0]
                 try:
@@ -592,6 +597,8 @@ def _make_handler(state: State):
                 return self._json(self._api_upload(body))
             if path == "/api/new":
                 return self._json(self._api_new(body))
+            if path == "/api/project/look":
+                return self._json(self._api_project_look(body))
             if path == "/api/chapter/read":
                 return self._json(self._api_chapter_read(body))
             if path == "/api/catalog":
@@ -1010,7 +1017,10 @@ def _make_handler(state: State):
                 return {"ok": False, "error": "selection 必须是对象"}
             from ..skills import catalog as skillcat
             have = {s["name"] for s in skillcat.catalog()}
-            clean: dict[str, list[str]] = {}
+            proj = store.load()
+            # the stages that are not in the request keep what they had:
+            # saving one stage's skills must not quietly empty the others
+            clean: dict[str, list[str]] = dict(proj.meta.skills or {})
             for stage in ("analyze", "script", "storyboard", "promptgen"):
                 if stage not in sel:
                     continue
@@ -1020,11 +1030,17 @@ def _make_handler(state: State):
                 # only what exists: a name from a deleted skill would be
                 # silently dropped at load time, and better said here
                 clean[stage] = [n for n in names if str(n) in have]
-            proj = store.load()
             proj.meta.skills = clean
             store.save(proj)
-            return {"ok": True, "selection": clean,
-                    "costs": skillcat.cost(clean, _cfg_refs(state))}
+            # what each stage will actually use: the project's own choice
+            # where it has one, the config's where it does not
+            from ..config import Config as _C
+            cfg_skills = _C.load(state.config_path).skills
+            eff = {k: (list(clean[k]) if k in clean
+                        else list(getattr(cfg_skills, k) or []))
+                   for k in ("analyze", "script", "storyboard", "promptgen")}
+            return {"ok": True, "selection": eff, "project_selection": clean,
+                    "costs": skillcat.cost(eff, getattr(cfg_skills, "refs", None))}
 
         def _api_skills_recommend(self, body: dict) -> dict:
             """Which skills suit this project, and why.
@@ -1540,6 +1556,60 @@ def _make_handler(state: State):
                     "chapters": [c.model_dump() for c in proj.meta.chapters],
                     "chosen": proj.meta.chosen_chapters,
                     "episodes_wanted": proj.meta.episodes_wanted}
+
+        def _api_project_look(self, body: dict) -> dict:
+            """Write the frame and the look of a project.
+
+            The two things a short drama is decided by before a word is
+            written: the shape of the picture and the look of it.  They
+            belong to the project, not to the settings - and they travel
+            from here into every character picture, every shot prompt and
+            every clip.
+            """
+            slug = str(body.get("project") or "").strip()
+            store = state.open_store(slug)
+            if not store:
+                return {"ok": False, "error": "项目不存在"}
+            from ..ai import looks
+            proj = store.load()
+            ad = proj.art_direction
+            ratio = str(body.get("aspect_ratio") or "").strip()
+            if ratio:
+                if ratio not in {a["id"] for a in looks.ASPECTS}:
+                    return {"ok": False, "error": f"不认识的画幅：{ratio}"}
+                if ratio != ad.aspect_ratio:
+                    # a new shape means a new size: the old one belongs to
+                    # the old shape
+                    ad.frame_width = ad.frame_height = 0
+                ad.aspect_ratio = ratio
+            try:
+                w = int(body.get("width") or 0)
+                h = int(body.get("height") or 0)
+            except (TypeError, ValueError):
+                return {"ok": False, "error": "尺寸要是数字"}
+            if w > 0 and h > 0:
+                ad.frame_width, ad.frame_height = w, h
+            sid = str(body.get("style") or "").strip()
+            if sid:
+                st = looks.style(sid)
+                ad.style = st["style"]
+                # the prefix is what every prompt carries, and it is what
+                # the analysis stage is not allowed to overwrite
+                ad.style_prompt_prefix = st["prompt"]
+                if body.get("era"):
+                    ad.era = str(body["era"])
+                elif not ad.era:
+                    ad.era = st["era"]
+                if body.get("color_palette"):
+                    ad.color_palette = str(body["color_palette"])
+                elif not ad.color_palette:
+                    ad.color_palette = st["palette"]
+            store.save(proj)
+            from ..pipeline import frame as _frame
+            fw, fh = _frame.project_frame(ad, state.cfg)
+            return {"ok": True, "art_direction": ad.model_dump(),
+                    "frame": {"width": fw, "height": fh,
+                              "aspect_ratio": ad.aspect_ratio}}
 
         def _api_new(self, body: dict) -> dict:
             name = (body.get("name") or "").strip()

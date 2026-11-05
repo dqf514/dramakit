@@ -332,7 +332,9 @@
     details.innerHTML = `<summary>项目管理 · 重命名 / 复制 / 回收站</summary><div class="inner">
       <div class="management-grid"><div><b>当前项目</b><div class="muted" id="projectStorage">可查看磁盘占用或创建完整副本</div><div class="management-actions"><button class="btn ghost" id="renameProject">重命名</button><button class="btn ghost" id="duplicateProject">复制项目</button><button class="btn ghost" id="projectStats">统计占用</button></div></div>
       <div><b>回收站</b><div class="muted">删除的项目可在这里恢复</div><div id="trashList"></div></div></div></div>`;
-    box.appendChild(details);
+    // the management panel belongs under the work, not beside the book
+    const host = box.querySelector(".wb-main") || box;
+    host.appendChild(details);
     document.getElementById("renameProject").onclick = async () => {
       const current = S.detail?.meta?.title || S.current;
       const name = prompt("输入新的项目名称", current)?.trim();
@@ -489,7 +491,7 @@
     const result = await originalLoadSettings();
     S.unsaved = false;
     document.getElementById("unsavedBar")?.remove();
-    enhanceA11y(document.getElementById("tab-settings"));
+    enhanceA11y(document.getElementById("page-settings"));
     return result;
   };
 

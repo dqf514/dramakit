@@ -357,10 +357,15 @@ class Context:
 
     def __init__(self, cfg: Config, store: ProjectStore,
                  providers: Optional[Providers] = None):
-        self.cfg = cfg
         self.store = store
-        self.providers = providers or Providers(cfg, store.root)
         self.project: Project = store.load()
+        # The project says what shape its pictures are in, and every stage
+        # works in that shape - the stills, the clips, the finished film.
+        # The settings are copied rather than changed: the frame belongs to
+        # this project, not to the next one the console opens.
+        from . import frame as _frame
+        self.cfg = _frame.apply_frame(cfg, self.project.art_direction)
+        self.providers = providers or Providers(self.cfg, store.root)
         self.log: logging.Logger = logging.getLogger("dramakit")
         # set when someone asks the run to stop. Stages that loop over
         # many episodes or many calls ask between items, so a stop lands

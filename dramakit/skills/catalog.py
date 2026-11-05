@@ -37,6 +37,37 @@ FAMILY_ZH = {
     "screenwriting-theory": "编剧理论",
 }
 
+# The theory skills carry English names in their frontmatter, which is fine
+# for a model and unreadable for a person choosing between them.
+TITLE_ZH = {
+    "screenwriting-theory/chekhov-dramaturgy": "契诃夫式剧作",
+    "screenwriting-theory/ozu-screenplay-style": "小津式调度",
+    "screenwriting-theory/succession-series-writing": "权谋剧集写作",
+    "screenwriting-theory/sw-american-case-studies": "美剧案例",
+    "screenwriting-theory/sw-character-conflict": "人物冲突",
+    "screenwriting-theory/sw-chinese-opera-banqiang": "板腔剧作",
+    "screenwriting-theory/sw-chinese-opera-banqiang-cases": "板腔剧作案例",
+    "screenwriting-theory/sw-chinese-opera-qupai": "曲牌剧作",
+    "screenwriting-theory/sw-chinese-opera-qupai-cases": "曲牌剧作案例",
+    "screenwriting-theory/sw-chinese-series-practice": "华语剧集实践",
+    "screenwriting-theory/sw-dialogue": "台词写作",
+    "screenwriting-theory/sw-format-adaptation": "形式改编",
+    "screenwriting-theory/sw-genre-anatomy": "类型解剖",
+    "screenwriting-theory/sw-industry-business": "行业与商业",
+    "screenwriting-theory/sw-japanese-screenwriting": "日式编剧",
+    "screenwriting-theory/sw-korean-french-screenwriting": "韩法编剧",
+    "screenwriting-theory/sw-premise-theme": "前提与主题",
+    "screenwriting-theory/sw-scene-craft": "场景写作",
+    "screenwriting-theory/sw-series-case-studies": "剧集案例",
+    "screenwriting-theory/sw-series-engine-bible": "剧集引擎圣经",
+    "screenwriting-theory/sw-series-structure": "剧集结构",
+    "screenwriting-theory/sw-sitcom-comedy": "情景喜剧",
+    "screenwriting-theory/sw-story-structure": "故事结构",
+    "screenwriting-theory/sw-truby-anatomy": "特里比结构",
+    "screenwriting-theory/sw-workflow": "编剧流程",
+    "screenwriting-theory/sw-writers-room": "编剧室协作",
+}
+
 
 def _frontmatter(text: str) -> dict:
     """The YAML-ish header of a SKILL.md: name, description, license.
@@ -107,6 +138,7 @@ def catalog() -> list[dict]:
         out.append({
             "name": rel.as_posix(),
             "title": fm.get("name") or rel.name,
+            "title_zh": TITLE_ZH.get(rel.as_posix(), ""),
             "description": fm.get("description") or "",
             "family": fam,
             "family_zh": fam_zh,

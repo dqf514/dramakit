@@ -158,10 +158,16 @@ def run(ctx: Context) -> dict:
     # art direction: this season's, falling back to what the canon holds
     ad = data.get("art_direction", {}) or {}
     base = ctx.project.art_direction
+    # A look the user chose is the look of the whole drama: the analysis
+    # may read the book and say what kind of story it is, but it does not
+    # get to change the picture the user asked for.
+    locked = bool((base.style_prompt_prefix or "").strip())
     ctx.project.art_direction = ArtDirection(
         genre=data.get("genre") or base.genre,
-        style=ad.get("style") or base.style,
+        style=(base.style if locked else (ad.get("style") or base.style)),
         aspect_ratio=base.aspect_ratio,
+        frame_width=base.frame_width,
+        frame_height=base.frame_height,
         era=ad.get("era") or base.era,
         color_palette=ad.get("color_palette") or base.color_palette,
         global_negative_prompt=base.global_negative_prompt,

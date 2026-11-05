@@ -19,6 +19,7 @@ from ..models import Character, Location, Status
 from ..project import ProjectStore
 from ..prompts import templates as T
 from ..seasons import LOOK_FIELDS, snapshot_look
+from . import frame as _frame
 from .base import Context
 
 VIEW_TEXT = {
@@ -89,6 +90,7 @@ def build_anchors(ctx: Context, chars: list[Character]) -> int:
     if not chars:
         return 0
     cfg = ctx.cfg.characters
+    ad = ctx.project.art_direction
     before = sum(1 for c in chars if c.anchor_prompt)
     pending = [c for c in chars if not c.anchor_prompt and not c.locked]
     if pending and cfg.use_llm_anchor:
@@ -102,7 +104,9 @@ def build_anchors(ctx: Context, chars: list[Character]) -> int:
             data = llm.complete_json(
                 T.CHARACTER_SHEET_SYSTEM,
                 T.render(T.CHARACTER_SHEET_USER, characters=lines,
-                         max_chars=cfg.anchor_max_chars))
+                         max_chars=cfg.anchor_max_chars,
+                         style=ad.style_prompt_prefix or ad.style or "",
+                         era=ad.era or "", **_frame.prompt_frame(ctx)))
             if isinstance(data, list):
                 data = {"characters": data}
             by_name = {str(x.get("name", "")).strip(): x
@@ -130,7 +134,10 @@ def build_anchors(ctx: Context, chars: list[Character]) -> int:
 def _ref_prompt(ctx: Context, c: Character, view: str,
                 derived: bool = False) -> str:
     ad = ctx.project.art_direction
-    style = ad.style_prompt_prefix or ad.style or "cinematic realistic"
+    # the look and the frame both travel: the reference pictures are made
+    # for the same drama the shots are
+    style = (ad.style_prompt_prefix or ad.style or "cinematic realistic")
+    style = f"{style}, {_frame.english_frame(ctx)}"
     if derived:
         # the same person as in the reference picture, only turned
         return (
@@ -207,6 +214,7 @@ def _ref_prompt(ctx: Context, c: Character, view: str,
 def _loc_prompt(ctx: Context, loc: Location) -> str:
     ad = ctx.project.art_direction
     style = ad.style_prompt_prefix or ad.style or "cinematic realistic"
+    style = f"{style}, {_frame.english_frame(ctx)}"
     desc = loc.visual_prompt or loc.description or loc.name
     if ctx.cfg.comfyui.prompt_format == "flux3":
         return (
@@ -580,7 +588,8 @@ def cast_voices(ctx: Context, chars: list[Character]) -> int:
             T.VOICE_CAST_SYSTEM,
             T.render(T.VOICE_CAST_USER, characters=lines, voices=voices_doc,
                      genre=ad.genre or "", style=ad.style or "", era=ad.era or "",
-                     tone=ad.color_palette or ""))
+                     tone=ad.color_palette or "",
+                     **_frame.prompt_frame(ctx)))
         if isinstance(data, list):
             data = {"characters": data}
         by_name = {str(x.get("name", "")).strip(): x

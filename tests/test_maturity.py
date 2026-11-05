@@ -391,7 +391,13 @@ assert.strictEqual(esc(`<a"b'c&d>`), "&lt;a&quot;b&#39;c&amp;d&gt;");
         # arrows belong to the field being typed in or the chapter being read
         for handler in ("function lightboxKeys(e){", "function _rdKey(e){"):
             body = text[text.index(handler):text.index(handler) + 420]
-            self.assertIn("isContentEditable", body, handler)
+            # the guard may sit in the handler or in the helper it calls
+            self.assertTrue("isContentEditable" in body or "_rdTyping(e)" in body,
+                            handler)
+        # and the helper itself knows what counts as typing
+        typing = text[text.index("function _rdTyping(e){"):]
+        typing = typing[:typing.index("\n}\n")]
+        self.assertIn("isContentEditable", typing)
 
     def test_pages_keep_their_frame_and_their_state_between_polls(self):
         modern = (Path(__file__).parents[1] / "dramakit/web/static/modern.js").read_text(encoding="utf-8")
@@ -433,13 +439,14 @@ assert.strictEqual(esc(`<a"b'c&d>`), "&lt;a&quot;b&#39;c&amp;d&gt;");
         modern = (root / "dramakit/web/static/modern.js").read_text(encoding="utf-8")
         css = (root / "dramakit/web/static/modern.css").read_text(encoding="utf-8")
         # skills configure the stages, and had no way in except a button
-        # buried in Settings
-        self.assertIn('"skills"', modern[modern.index("const studioPages"):
-                                           modern.index("const jobNames")])
-        self.assertIn('data-studio="skills"', modern)
+        # buried in Settings. They are a tab of Settings, and they are
+        # also on the workbench, where the steps that use them are.
+        self.assertIn('["skills","技能"]', text)
+        self.assertIn('skillsPanelHtml()', text)
+        self.assertIn('id="page-skills"', text)
         narrow = css[css.index("@media (max-width: 700px)"):]
         # five destinations on a phone: the node pool moves up into the header
-        hidden = re.search(r"#rail \.brand[^{]*\{([^}]*)\}", narrow).group(1)
+        hidden = re.search(r"([^{}]*#rail \.brand[^{}]*)\{", narrow).group(1)
         for selector in ("#healthBtn", '#rail [data-page="nodes"]'):
             self.assertIn(selector, hidden)
         self.assertIn(".header-nodes { display: inline-flex; }", narrow)

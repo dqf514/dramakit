@@ -682,7 +682,7 @@ try{
   .step.running{border-color:var(--confirm);box-shadow:0 0 0 1px var(--confirm)}
   .step.failed{border-color:var(--danger2);background:color-mix(in srgb,var(--danger2) 8%,var(--bg2))}
   .step.on{outline:2px solid var(--confirm);outline-offset:1px}
-  .step .sbar{height:3px;border-radius:2px;background:var(--bg4);margin-top:6px;overflow:hidden}
+  .step .sbar{display:block;height:3px;border-radius:2px;background:var(--bg4);margin-top:6px;overflow:hidden}
   .step .sbar i{display:block;height:100%;background:var(--go2)}
   .stepchip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--fg3);
     border:1px solid var(--line);border-radius:9px;padding:1px 7px;background:var(--bg)}
@@ -695,9 +695,52 @@ try{
     border:1px solid var(--line);border-radius:9px;padding:1px 8px;background:var(--bg)}
   .envchip.ok{color:var(--go2);border-color:color-mix(in srgb,var(--go2) 40%,var(--line))}
   .envchip.bad{color:var(--danger2);border-color:color-mix(in srgb,var(--danger2) 40%,var(--line))}
+
+  /* ---------- the workbench: the work on the left, the book on the right --
+     The novel is what the whole page is about and it is the smallest
+     thing on it, so it gets a column of its own that does not scroll
+     away with the rest of the page. */
+  .wb-grid{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:12px;align-items:start}
+  .wb-main{min-width:0}
+  .wb-side{position:sticky;top:8px;display:flex;flex-direction:column;gap:12px;
+    height:calc(100vh - 76px);overflow:hidden;padding-right:2px}
+  .wb-side .card{margin-bottom:0}
+  .wb-side #lookCard{flex:0 0 auto}
+  .wb-side #work-chapters{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  .wb-side #work-chapters > *{flex:0 0 auto}
+  .wb-side .chap-body{flex:1 1 auto;min-height:0;max-height:none;overflow:auto}
+  .looknote{margin-top:7px;font-size:12px;color:var(--fg2);line-height:1.5}
+  .segrow{display:flex;gap:6px;margin-bottom:8px}
+  .seg{flex:1;min-height:32px;padding:4px 6px;border:1px solid var(--line);border-radius:7px;
+    background:var(--bg3);color:var(--fg2);cursor:pointer;font-family:inherit;font-size:12.5px}
+  .seg:hover{border-color:var(--line2);color:var(--fg)}
+  .seg.on{background:var(--pcard-on);border-color:var(--proj-on-line);color:var(--fg);font-weight:650}
+
+  /* ---------- the skills, one column per step ---------- */
+  .skgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:8px}
+  .skcol{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;min-width:0}
+  .skcol .skt{font-weight:650;font-size:12.5px;margin-bottom:6px}
+  .skdim{color:var(--fg3);font-size:11.5px}
+  .skgrp{margin-bottom:8px}
+  .skgrp:last-child{margin-bottom:0}
+  .skgrp .sks{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--fg2);
+    margin-bottom:4px;white-space:nowrap}
+  .skgrp .sks .muted{font-size:11.5px;margin-left:auto}
+  .skopts{max-height:190px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding-right:2px}
+  .skck{display:flex;align-items:flex-start;gap:5px;font-size:11.5px;color:var(--fg2);
+    cursor:pointer;line-height:1.35}
+  .skck:hover{color:var(--fg)}
+  .skck input{margin:2px 0 0;flex:0 0 auto}
+
+  @media(max-width:1180px){.wb-grid{grid-template-columns:1fr}
+    .wb-side{position:static;height:auto;max-height:none;overflow:visible}
+    .wb-side #work-chapters{display:block}
+    .wb-side .chap-body{max-height:calc(100vh - 210px)}
+    .skgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
   @media(max-width:980px){.stepstrip{grid-template-columns:repeat(3,minmax(0,1fr))}
     .two-col{grid-template-columns:1fr}}
   @media(max-width:640px){.stepstrip{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .skgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .wb-tabs{width:100%}}
 </style>
 <link rel="stylesheet" href="/modern.css">
@@ -1032,6 +1075,7 @@ async function renderTags(){
 
 async function selectProject(slug, quiet){
   S.current=slug;
+  SK=null;                 // the skills belong to a project: read them again
   renderProjects(); renderCmdProj();
   const d=await getJSON("/api/projects/"+encodeURIComponent(slug));
   if(!d.ok){ toast("加载项目失败："+esc(d.error||""),"err"); return; }
@@ -1106,6 +1150,176 @@ function bindNewProject(){
   const gc=$("#gCreate"); if(gc) gc.onclick=createProjectFromGuide;
   const fb=$("#gFileButton");
   if(fb) fb.onclick=()=>{ const picker=$("#gFilePicker"); if(picker) picker.click(); };
+}
+
+// ---------- the frame and the look ----------
+// The two things a short drama is decided by before a word is written: the
+// shape of the picture and the look of it.  They are chosen here, they are
+// written on the project, and from there they travel into every character
+// picture, every shot prompt and every clip.
+let LOOKS=null;
+async function loadLooks(){
+  if(LOOKS) return;
+  const r=await getJSON("/api/looks");
+  if(!r||!r.ok) return;
+  LOOKS=r;
+  if(S.activePage==="workbench"&&S.wbTab==="flow") renderFlow();
+}
+function lookAspect(ratio){
+  const list=(LOOKS&&LOOKS.aspects)||[];
+  return list.find(a=>a.id===ratio)||list[0]||null;
+}
+function lookStyleOf(ad){
+  const list=(LOOKS&&LOOKS.styles)||[];
+  return list.find(s=>(ad&&ad.style_prompt_prefix&&ad.style_prompt_prefix===s.prompt)
+                     ||(ad&&ad.style===s.style)||(ad&&ad.style===s.name))||null;
+}
+function lookPanelHtml(d){
+  const ad=(d&&d.art_direction)||{};
+  const ratio=ad.aspect_ratio||"9:16";
+  const A=lookAspect(ratio);
+  const sizes=(A&&A.sizes)||[];
+  const w=ad.frame_width||0, h=ad.frame_height||0;
+  const cur=sizes.find(s=>s.w===w&&s.h===h);
+  const sizeHtml=sizes.map(s=>`<option value="${s.w}x${s.h}" ${cur&&cur.id===s.id?"selected":""}>${esc(s.label)}</option>`).join("");
+  const groups={};
+  ((LOOKS&&LOOKS.styles)||[]).forEach(s=>{const g=s.group||"其他";(groups[g]=groups[g]||[]).push(s);});
+  const styleHtml=Object.keys(groups).map(g=>`<optgroup label="${esc(g)}">`+
+    groups[g].map(s=>`<option value="${esc(s.id)}" ${lookStyleOf(ad)&&lookStyleOf(ad).id===s.id?"selected":""}>${esc(s.name)}</option>`).join("")
+    +`</optgroup>`).join("");
+  const cs=lookStyleOf(ad);
+  const note=cs?`${esc(cs.era)} · ${esc(cs.palette||"")}`:"";
+  const en=cs?cs.prompt:"";
+  const aspects=(LOOKS&&LOOKS.aspects)||[{id:"9:16",label:"9:16 竖屏"},{id:"16:9",label:"16:9 横屏"}];
+  return `<div class="card" id="lookCard">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <b>创作设置</b>
+      <span style="flex:1"></span>
+      <button class="btn xs go" id="lookSave">保存</button>
+    </div>
+    <label class="fl">画幅</label>
+    <div class="segrow" id="arRow">
+      ${aspects.map(a=>`<button type="button" class="seg ${a.id===ratio?"on":""}" data-ar="${esc(a.id)}" title="${attr(a.note||a.label)}">${esc(a.label)}</button>`).join("")}
+    </div>
+    <label class="fl">分辨率</label>
+    <select class="f" id="lookSize">${sizeHtml}</select>
+    <label class="fl">整体风格</label>
+    <select class="f" id="lookStyle">${styleHtml}</select>
+    <div class="looknote" id="lookNote">${note}${en?`<br><span class="muted">${esc(en)}</span>`:""}</div>
+  </div>`;
+}
+function fillLookSizes(ratio){
+  const sel=$("#lookSize"); if(!sel||!LOOKS) return;
+  const A=lookAspect(ratio);
+  sel.innerHTML=((A&&A.sizes)||[]).map(s=>`<option value="${s.w}x${s.h}">${esc(s.label)}</option>`).join("");
+}
+function bindLookPanel(){
+  const row=$("#arRow"); if(!row) return;
+  $$("#arRow .seg").forEach(b=>b.onclick=()=>{
+    $$("#arRow .seg").forEach(x=>x.classList.toggle("on",x===b));
+    fillLookSizes(b.dataset.ar);
+  });
+  const sv=$("#lookSave"); if(sv) sv.onclick=saveLook;
+}
+async function saveLook(){
+  if(!S.current) return toast("先选一个项目","err");
+  const on=$("#arRow .seg.on");
+  const ratio=on?on.dataset.ar:"9:16";
+  const sz=$("#lookSize");
+  const wh=(sz&&sz.value?sz.value.split("x"):["0","0"]);
+  const st=$("#lookStyle");
+  const body={project:S.current,aspect_ratio:ratio,
+              width:parseInt(wh[0])||0,height:parseInt(wh[1])||0};
+  if(st&&st.value) body.style=st.value;
+  const r=await postJSON("/api/project/look",body);
+  if(!r||!r.ok) return toast("保存失败："+esc((r&&r.error)||"未知错误"),"err");
+  if(S.detail) S.detail.art_direction=r.art_direction;
+  toast("已保存 · 画幅与风格会贯穿角色制图与视频提示词","ok",3600);
+  renderFlow();
+}
+
+// ---------- the skills, listed by step ----------
+const SK_STAGE_ZH={analyze:"解析",script:"编剧",storyboard:"分镜",promptgen:"提示词"};
+// the skills that belong to each stage, and the theory that the
+// screenwriter and the director may draw on
+const SK_SUGGEST={
+  analyze:["short-drama-novel-analyze","short-drama-develop","short-drama",
+           "short-drama-assets","short-drama-produce","short-drama-review"],
+  script:["short-drama-write","short-drama","short-drama-develop",
+          "short-drama-review","short-drama-edit"],
+  storyboard:["short-drama-storyboard","short-drama","short-drama-assets"],
+  promptgen:["short-drama-image-prompts","short-drama-video-prompts","short-drama"]
+};
+function skLabel(x){ return x.title_zh||x.family_zh||x.title; }
+function skillsForStage(stage){
+  const all=(SK&&SK.skills)||[];
+  const sug=new Set(SK_SUGGEST[stage]||[]);
+  const out=[];
+  all.forEach(x=>{ if(sug.has(x.name)) out.push(x); });
+  if(stage==="script"||stage==="storyboard"){
+    all.forEach(x=>{ if(x.family==="screenwriting-theory"&&out.indexOf(x)<0) out.push(x); });
+  }
+  // whatever this stage already uses is offered too, even if it is not one
+  // of the usual ones
+  const sel=((SK&&SK.selection)||{})[stage]||[];
+  sel.forEach(n=>{ const f=all.find(x=>x.name===n); if(f&&out.indexOf(f)<0) out.push(f); });
+  return out;
+}
+function skillsPanelHtml(){
+  if(!SK) return `<div class="card"><b>技能</b><span class="muted" style="font-size:12px">读取中…</span></div>`;
+  const sel=SK.selection||{}, costs=SK.costs||{};
+  const cols=STEPS.map(sp=>{
+    const stages=sp.stages.filter(s=>SK_STAGE_ZH[s]);
+    if(!stages.length){
+      return `<div class="skcol"><div class="skt">${esc(sp.zh)}</div>
+        <div class="skdim">这一步不注入技能</div></div>`;
+    }
+    const body=stages.map(st=>{
+      const names=sel[st]||[];
+      const opts=skillsForStage(st).map(x=>`<label class="skck"
+          title="${attr(x.description||"")}"><input type="checkbox" data-skstage="${esc(st)}"
+          data-sk="${esc(x.name)}" ${names.indexOf(x.name)>=0?"checked":""}><span>${esc(skLabel(x))}</span></label>`).join("");
+      return `<div class="skgrp">
+        <div class="sks" id="skhead-${esc(st)}">${esc(SK_STAGE_ZH[st])}
+          <span class="muted">${names.length} 个 · ${fmtChars(costs[st]||0)}</span></div>
+        <div class="skopts">${opts}</div></div>`;
+    }).join("");
+    return `<div class="skcol"><div class="skt">${esc(sp.zh)}</div>${body}</div>`;
+  }).join("");
+  return `<div class="card">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <b>技能</b>
+      <span class="muted" style="font-size:12px">按步骤分列 · 勾上就存到本项目，下次跑流水线生效</span>
+    </div>
+    <div class="skgrid">${cols}</div>
+  </div>`;
+}
+function bindSkillChecks(){
+  $$("#page-flow .skck input").forEach(cb=>cb.onchange=()=>{
+    const stage=cb.dataset.skstage, name=cb.dataset.sk;
+    const list=(SK.selection[stage]=SK.selection[stage]||[]);
+    const i=list.indexOf(name);
+    if(cb.checked&&i<0) list.push(name); else if(!cb.checked&&i>=0) list.splice(i,1);
+    postJSON("/api/skills/save",{project:S.current,selection:{[stage]:list}}).then(r=>{
+      if(!r||!r.ok){ toast("技能保存失败","err"); return; }
+      SK.selection=r.selection||SK.selection;
+      SK.costs=r.costs||SK.costs;
+      const head=document.getElementById("skhead-"+stage);
+      if(head){
+        const names=SK.selection[stage]||[];
+        head.innerHTML=esc(SK_STAGE_ZH[stage])+` <span class="muted">${names.length} 个 · ${fmtChars(SK.costs[stage]||0)}</span>`;
+      }
+    });
+  });
+}
+async function loadSkillsForFlow(){
+  if(SK) return;
+  const slug=S.current;
+  const q=slug?("?project="+encodeURIComponent(slug)):"";
+  const r=await getJSON("/api/skills"+q);
+  if(!r||!r.ok) return;
+  SK=r;
+  if(S.activePage==="workbench"&&S.wbTab==="flow") renderFlow();
 }
 
 function renderFlow(){
@@ -1190,63 +1404,73 @@ function renderFlow(){
      </div>`;
 
   box.innerHTML=`<div id="progressSlot">${workProgressHtml()}</div>
-    <div class="wb-head">
-      <div class="hero" style="margin:0;flex:1;min-width:0">
-        <div class="cover">${firstCover?`<img src="${firstCover}" alt="${attr((d.meta.title||d.meta.name||"项目")+" 封面")}">`:'<div class="empty" style="padding:0;min-height:0;height:100%">无封面</div>'}</div>
-        <div class="hb">
-          <h1 class="ht">${esc(d.meta.title||d.meta.name)}</h1>
-          <div class="hm">${esc(d.art_direction.genre||"")} · ${esc(d.art_direction.style||"")} · ${esc(d.art_direction.aspect_ratio||"9:16")}</div>
-          <div class="statrow">
-            <div class="stat"><b>${eps.length}</b><span>集</span></div>
-            <div class="stat"><b>${eps.reduce((a,e)=>a+e.scenes.length,0)}</b><span>场</span></div>
-            <div class="stat"><b>${shots}</b><span>镜</span></div>
-            <div class="stat"><b>${(d.characters||[]).length}</b><span>角色</span></div>
-            <div class="stat"><b>${doneSteps}/${STEPS.length}</b><span>步骤</span></div>
+    <div class="wb-grid">
+      <div class="wb-main">
+        <div class="wb-head">
+          <div class="hero" style="margin:0;flex:1;min-width:0">
+            <div class="cover">${firstCover?`<img src="${firstCover}" alt="${attr((d.meta.title||d.meta.name||"项目")+" 封面")}">`:'<div class="empty" style="padding:0;min-height:0;height:100%">无封面</div>'}</div>
+            <div class="hb">
+              <h1 class="ht">${esc(d.meta.title||d.meta.name)}</h1>
+              <div class="hm">${esc(d.art_direction.genre||"")} · ${esc(d.art_direction.style||"")} · ${esc(d.art_direction.aspect_ratio||"9:16")}</div>
+              <div class="statrow">
+                <div class="stat"><b>${eps.length}</b><span>集</span></div>
+                <div class="stat"><b>${eps.reduce((a,e)=>a+e.scenes.length,0)}</b><span>场</span></div>
+                <div class="stat"><b>${shots}</b><span>镜</span></div>
+                <div class="stat"><b>${(d.characters||[]).length}</b><span>角色</span></div>
+                <div class="stat"><b>${doneSteps}/${STEPS.length}</b><span>步骤</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="runbar">
+            <button class="btn go" data-act="run-all">${mark("▶")} 跑完整流程</button>
+            <button class="btn ghost" data-act="go-board">分镜</button>
+            <button class="btn ghost" data-act="go-cast">角色</button>
+            <button class="btn ghost" data-act="go-assets">资产</button>
+            <button class="btn ghost" data-act="tag">AI 打标</button>
+            <button class="btn confirm" data-act="new">${mark("＋")} 新建</button>
           </div>
         </div>
+
+        <div class="card">
+          <h3>制作步骤 <span class="muted" style="font-weight:400;font-size:12px">点一下选中或取消 · 已完成 ${doneSteps}/${STEPS.length}</span></h3>
+          <div class="stepstrip">${stepHtml}</div>
+          <div class="runbar" style="margin-top:10px">
+            <select class="f" id="runProj" style="width:170px">${projs||'<option>（无项目）</option>'}</select>
+            <input class="f" id="runEps" placeholder="集数（留空=全部）" style="width:160px">
+            <button class="btn go" id="runGo">${mark("▶")} 开始运行</button>
+            <button class="btn ghost sm" id="runAll">全选</button>
+            <button class="btn ghost sm" id="runNone">清空</button>
+            <span class="muted" id="runStat" style="font-size:12px">${esc(selText)}</span>
+          </div>
+          ${envRow}
+          <div id="runOut"></div>
+        </div>
+
+        ${skillsPanelHtml()}
+
+        <h2 class="page" style="font-size:14px;margin:12px 0 6px">分集</h2>
+        <div class="epgrid">${epHtml||'<div class="empty">还没有分集，先跑「准备」这一步</div>'}</div>
+
+        ${seasonHtml}
+
+        <details class="fold" id="flowNewFold" style="margin-top:10px"><summary>新建项目 · 导入小说</summary>
+          <div class="inner">${newProjectForm()}</div>
+        </details>
       </div>
-      <div class="runbar">
-        <button class="btn go" data-act="run-all">${mark("▶")} 跑完整流程</button>
-        <button class="btn ghost" data-act="go-board">分镜</button>
-        <button class="btn ghost" data-act="go-cast">角色</button>
-        <button class="btn ghost" data-act="go-assets">资产</button>
-        <button class="btn ghost" data-act="tag">AI 打标</button>
-        <button class="btn confirm" data-act="new">${mark("＋")} 新建</button>
-      </div>
+
+      <aside class="wb-side">
+        ${lookPanelHtml(d)}
+        ${chapterHtml}
+      </aside>
     </div>
-
-    <div class="card">
-      <h3>制作步骤 <span class="muted" style="font-weight:400;font-size:12px">点一下选中或取消 · 已完成 ${doneSteps}/${STEPS.length}</span></h3>
-      <div class="stepstrip">${stepHtml}</div>
-      <div class="runbar" style="margin-top:10px">
-        <select class="f" id="runProj" style="width:170px">${projs||'<option>（无项目）</option>'}</select>
-        <input class="f" id="runEps" placeholder="集数（留空=全部）" style="width:160px">
-        <button class="btn go" id="runGo">${mark("▶")} 开始运行</button>
-        <button class="btn ghost sm" id="runAll">全选</button>
-        <button class="btn ghost sm" id="runNone">清空</button>
-        <span class="muted" id="runStat" style="font-size:12px">${esc(selText)}</span>
-      </div>
-      ${envRow}
-      <div id="runOut"></div>
-    </div>
-
-    <h2 class="page" style="font-size:14px;margin:12px 0 6px">分集</h2>
-    <div class="epgrid">${epHtml||'<div class="empty">还没有分集，先跑「准备」这一步</div>'}</div>
-
-    <div class="two-col" style="margin-top:10px">
-      <div>${seasonHtml}</div>
-      <div>${chapterHtml}</div>
-    </div>
-
-    <details class="fold" id="flowNewFold" style="margin-top:10px"><summary>新建项目 · 导入小说</summary>
-      <div class="inner">${newProjectForm()}</div>
-    </details>
     `;
 
   if(S.current){
     loadChapters(S.current).catch(function(){});
     loadSeasons(S.current).catch(function(){});
   }
+  loadLooks();
+  loadSkillsForFlow();
   bindNewProject();
 
   $$("#page-flow .step").forEach(x=>x.onclick=()=>{
@@ -1281,6 +1505,8 @@ function renderFlow(){
   const ra=$("#runAll"); if(ra) ra.onclick=()=>{runSel=new Set(STEPS.flatMap(sp=>sp.stages));renderFlow();};
   const rn=$("#runNone"); if(rn) rn.onclick=()=>{runSel=new Set();renderFlow();};
   const rp=$("#runProj"); if(rp) rp.onchange=()=>{ if(rp.value!==S.current) selectProject(rp.value,true); };
+  bindLookPanel();
+  bindSkillChecks();
 }
 
 function projectNameFromFilename(filename){
@@ -3182,7 +3408,7 @@ function closeReader(){
   const root=document.getElementById("readerRoot");
   if(root) root.innerHTML="";
   document.removeEventListener("keydown", _rdKey);
-  if(_rdLast&&_rdLast.focus) _rdLast.focus();
+  _rdLast?.focus?.();
   _rdLast=null;
 }
 </script>
@@ -3288,7 +3514,7 @@ function closeLightbox(){
   if(r) r.innerHTML="";
   document.removeEventListener("keydown",lightboxKeys);
   // the caret returns to the picture the viewer clicked
-  if(lightbox.last&&lightbox.last.focus) lightbox.last.focus();
+  lightbox.last?.focus?.();
   lightbox.last=null;
 }
 function lightboxStep(d){

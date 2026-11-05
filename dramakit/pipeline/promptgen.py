@@ -12,6 +12,7 @@ from pathlib import Path
 
 from ..models import Shot, Status, is_narration
 from ..prompts import templates as T
+from . import frame as _frame
 from .base import Context, build_timeline
 from .refs import _is_face
 
@@ -220,7 +221,7 @@ def _fallback_h3_prompt(ctx: Context, shot: Shot, sc, lines) -> str:
     loc = next((l for l in ctx.project.locations if l.name == sc.location), None)
     location = (loc.visual_prompt or loc.description) if loc else sc.location
     style = ad.style_prompt_prefix or ad.style
-    desc = (f"[Shot 1] {style}, 16:9 landscape widescreen, {anchors + ', ' if anchors else ''}"
+    desc = (f"[Shot 1] {style}, {_frame.english_frame(ctx)}, {anchors + ', ' if anchors else ''}"
             f"{who}, {shot.action}, {location}, {sc.time_of_day}, "
             f"{shot.shot_type.value} shot with {shot.camera_move} camera movement, "
             f"cinematic lighting, highly detailed")
@@ -275,7 +276,7 @@ def _fallback_prompt(ctx: Context, shot: Shot, scene) -> str:
     anchors = ", ".join(c.anchor() for c in _picked_characters(ctx, shot) if c.anchor())
     loc = next((l for l in ctx.project.locations if l.name == scene.location), None)
     location = (loc.visual_prompt or loc.description) if loc else scene.location
-    return (f"landscape composition 16:9, {anchors + ', ' if anchors else ''}"
+    return (f"{_frame.composition(ctx.project.art_direction)}, {anchors + ', ' if anchors else ''}"
             f"{shot.shot_type.value} shot, {who}, "
             f"{shot.action}, {location}, {scene.time_of_day}, "
             f"{style}, cinematic lighting, highly detailed")
@@ -311,7 +312,7 @@ def _h3_needed(ctx: Context) -> bool:
 
 
 def _aspect(ctx: Context) -> tuple[str, str]:
-    """(aspect phrase, composition phrase) for the configured output size.
+    """(aspect phrase, composition phrase) for the frame this project is made in.
 
     The delivery format is the truth: the picture is made for the frame it
     is going to be shown in. Getting this wrong is how a vertical drama ends
@@ -319,9 +320,9 @@ def _aspect(ctx: Context) -> tuple[str, str]:
     """
     w = ctx.cfg.compose.width or 1280
     h = ctx.cfg.compose.height or 720
-    if w >= h:
-        return "横屏(16:9)镜头", "横屏构图 horizontal composition, 16:9"
-    return "横屏(16:9)镜头", "横屏构图 landscape composition, 16:9"
+    if w < h:
+        return "竖屏(9:16)", "竖屏构图 vertical composition, 9:16"
+    return "横屏(16:9)", "横屏构图 horizontal composition, 16:9"
 
 
 def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
@@ -349,6 +350,7 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     style=ad.style_prompt_prefix or ad.style, era=ad.era,
                     color_palette=ad.color_palette, mood=sc.mood, end_frame=flf,
                     aspect=aspect, composition=composition,
+                    **_frame.prompt_frame(ctx),
                     continuity=continuity)
     try:
         data = llm.complete_json(system, user)
@@ -654,8 +656,10 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             references=_reference_jobs(shot, _plan_for(ctx, shot, sc)),
             timeline=_shot_timeline(shot, lines),
             segment_shots=_segment_shots_text(shot),
-            constraints=H3_CONSTRAINTS + _loader.for_stage(ctx, "promptgen"))
-        h3 = llm.complete_json(T.H3_VIDEO_SYSTEM, h3_user)
+            constraints=H3_CONSTRAINTS + _loader.for_stage(ctx, "promptgen"),
+            **_frame.prompt_frame(ctx))
+        h3 = llm.complete_json(
+            T.render(T.H3_VIDEO_SYSTEM, **_frame.prompt_frame(ctx)), h3_user)
         if isinstance(h3, list):
             h3 = h3[0] if h3 else {}
         desc = str(h3.get("integrated_multimodal_description") or "").strip()
@@ -746,7 +750,8 @@ def _gen_score_prompt(ctx: Context, llm, sc) -> None:
                     location_visual=location_visual or "（按剧情合理生成）",
                     mood=sc.mood, scene_summary=sc.summary or "",
                     scene_actions="；".join(actions) or "（无特别动作）",
-                    style=ad.style_prompt_prefix or ad.style)
+                    style=ad.style_prompt_prefix or ad.style,
+                    **_frame.prompt_frame(ctx))
     for attempt in range(3):
         try:
             data = llm.complete_json(T.H3_SCORE_SYSTEM, user)

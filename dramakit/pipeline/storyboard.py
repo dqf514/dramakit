@@ -7,6 +7,7 @@ import uuid
 from ..models import Shot, ShotType, Status, is_narration
 from ..prompts import templates as T
 from ..utils.text import estimate_reading_seconds
+from . import frame as _frame
 from .base import Context
 
 
@@ -211,9 +212,11 @@ def run(ctx: Context) -> dict:
                             max_shots=max_shots, prefer_dynamic=prefer,
                             dur_min=dmin, dur_max=dmax, narration_seconds=narration_sec,
                             character_names=char_names,
+                            **_frame.prompt_frame(ctx),
                             **_ref_rhythm_args(cfg.ref_rhythm))
             try:
-                data = llm.complete_json(T.STORYBOARD_SYSTEM, user)
+                data = llm.complete_json(
+                    T.render(T.STORYBOARD_SYSTEM, **_frame.prompt_frame(ctx)), user)
             except Exception as e:  # noqa: BLE001
                 ctx.log.error("storyboard: 第%d集 场%d 失败 %s", ep.index, sc.index, e)
                 sc.status = Status.FAILED

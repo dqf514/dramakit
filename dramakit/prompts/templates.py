@@ -75,6 +75,8 @@ CHARACTER_SHEET_SYSTEM = """你是短剧角色定妆师。把角色设定整理�
 CHARACTER_SHEET_USER = """为下面这些角色生成"角色锁定锚点"。锚点会原样拼进每个镜头的出图提示词，
 所以必须稳定、具体、只描述人本身，不要包含动作、镜头、场景或情绪。
 
+全剧设定：画风 {{style}}；画幅 {{aspect_ratio}}（{{frame_size}}）；年代 {{era}}
+
 角色：
 {{characters}}
 
@@ -84,6 +86,7 @@ CHARACTER_SHEET_USER = """为下面这些角色生成"角色锁定锚点"。锚�
   长度不超过 {{max_chars}} 字符。
 - negative_prompt: 该角色需要避免的英文负面词（如 age drift, different hairstyle, changing outfit），可为空。
 - 已被用户锁定的角色不要改写（下面标记 locked 的保持原样）。
+- 锚点里不要出现画幅、构图、镜头或画风词——那些由每个镜头的提示词自己带上。
 
 输出JSON：
 {"characters":[{"name":"","anchor_prompt":"","negative_prompt":""}]}"""
@@ -107,7 +110,7 @@ VOICE_CAST_SYSTEM = """你是短剧配音导演。根据剧情、角色定位、
 
 VOICE_CAST_USER = """为下面这些角色设计专属声音。
 
-本剧设定：题材 {{genre}}；画风 {{style}}；年代 {{era}}
+本剧设定：题材 {{genre}}；画风 {{style}}；画幅 {{aspect_ratio}}；年代 {{era}}
 本剧情绪基调：{{tone}}
 
 角色：
@@ -213,11 +216,11 @@ SCRIPT_USER = """把下面这一集原文改编成短剧剧本。题材：{{genr
 # --------------------------------------------------------------------------- #
 # STORYBOARD — shot list per scene
 # --------------------------------------------------------------------------- #
-STORYBOARD_SYSTEM = """你是短剧分镜师，为每场戏设计横屏(16:9)分镜。
+STORYBOARD_SYSTEM = """你是短剧分镜师，为每场戏设计{{aspect_ratio}}（{{aspect_orientation}}）分镜。
 你交付的是一份**剪辑覆盖方案**，不是一个镜头一个说话人的特写清单。
 只输出JSON。"""
 
-STORYBOARD_USER = """为下面这场戏设计分镜（16:9 横屏观看）。
+STORYBOARD_USER = """为下面这场戏设计分镜（{{aspect_ratio}} {{aspect_orientation}}观看）。
 
 场景：{{location}} / {{time_of_day}} / 氛围 {{mood}}
 剧情：{{summary}}
@@ -225,6 +228,7 @@ STORYBOARD_USER = """为下面这场戏设计分镜（16:9 横屏观看）。
 {{lines_text}}
 
 分镜规则：
+- **画幅是 {{aspect_ratio}}（{{frame_size}}，{{aspect_orientation}}）**：{{frame_note}}
 - 生成 {{min_shots}}~{{max_shots}} 个镜头，覆盖本场全部台词与动作
 - **这一集大约 {{episode_seconds}} 秒（参考值；一集三到六分钟都成立，跟着剧情走）**。
   **本场大概 {{scene_seconds}} 秒，请分成大约 {{scene_shots}} 个片段，
@@ -348,7 +352,7 @@ PROMPT_USER = """为下面这个{{aspect}}镜头生成AI绘画提示词。
 （**场景参考图是唯一标准**：桌子的材质和颜色、窗户在哪边、座位怎么排、
 背景里有什么，都照着参考图来，不要换、不要重新设计）
 本场剧情：{{scene_summary}}
-全剧画风：{{style}}；年代：{{era}}；色调：{{color_palette}}
+全剧画风：{{style}}；画幅：{{aspect_ratio}}（{{frame_size}}）；年代：{{era}}；色调：{{color_palette}}
 镜头情绪：{{mood}}
 
 规则：
@@ -406,7 +410,7 @@ FLUX3_IMAGE_USER = """为下面这个{{aspect}}镜头写一段 FLUX 3 完整场�
 （**场景参考图是唯一标准**：桌子的材质和颜色、窗户在哪边、座位怎么排、
 背景里有什么，都照着参考图来，不要换、不要重新设计）
 本场剧情：{{scene_summary}}
-全剧画风：{{style}}；年代：{{era}}；色调：{{color_palette}}
+全剧画风：{{style}}；画幅：{{aspect_ratio}}（{{frame_size}}）；年代：{{era}}；色调：{{color_palette}}
 镜头情绪：{{mood}}
 {% if continuity %}
 上一镜结束时的状态（**必须接得上**：人物的站位、姿势、朝向、与环境的相对位置要连贯）：{{continuity}}
@@ -470,7 +474,7 @@ integrated_multimodal_description / overall_soundscape / non_diegetic_music
   台词由后期配音轨提供，画面里的口型要对得上。
 - **一个镜头里只有台词表里的说话人开口**：其余人嘴要闭着，只是听和反应，
   不张嘴、不出声；说话人的嘴型要跟后期配音轨对上
-- 画面是 16:9 横屏"""
+- 画面是 {{aspect_ratio}} {{aspect_orientation}}"""
 
 H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模式：图片是第一帧）。
 
@@ -482,7 +486,7 @@ H3_VIDEO_USER = """为下面这个镜头生成 MiniMax H3 提示词（I2VA 模�
 场景设定（保持一致）：{{location_visual}}
 （场景参考图是唯一标准：桌子的材质和颜色、窗户位置、座位关系都不要变）
 本场剧情：{{scene_summary}}
-全剧画风：{{style}}；年代：{{era}}；色调：{{color_palette}}
+全剧画风：{{style}}；画幅：{{aspect_ratio}}（{{frame_size}}）；年代：{{era}}；色调：{{color_palette}}
 镜头情绪：{{mood}}
 本镜台词（speaker 已换成编号；没有台词就写"无"）：
 {{dialogue}}
@@ -542,7 +546,7 @@ H3_SCORE_USER = """为下面这个场景生成一段**纯配乐镜头**的 H3 �
 本场情绪：{{mood}}
 本场剧情：{{scene_summary}}
 关键动作（这些动作的声音要出现在配乐镜头里）：{{scene_actions}}
-全剧画风：{{style}}
+全剧画风：{{style}}；画幅：{{aspect_ratio}}（{{frame_size}}）
 
 这个镜头里**没有任何人、没有角色、没有对白**，只有环境声、动作声与配乐：
 - integrated_multimodal_description 以 [Shot 1] 开头：写这个空镜头的画面（环境、天气、光线、镜头缓慢移动），明确写明 no people, no characters, no voices
