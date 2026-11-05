@@ -235,25 +235,8 @@ def run(ctx: Context) -> dict:
     # different episodes do not wait on each other - so they are asked
     # together.
     def _one(job):
-        _ep, _sc, _spoken_at, _spoken_pos, user = job
-        return pool.next().complete_json(system, user)
-
-    results = run_jobs(ctx, jobs, _one, workers=write_workers(ctx),
-                       label="storyboard")
-
-    # the answers go back in
-    failed: set = set()
-    for (job, data, err) in results:
-        ep, sc, spoken_at, spoken_pos, _user = job
-        if err:
-            ctx.log.error("storyboard: 第%d集 场%d 失败 %s", ep.index, sc.index, err)
-            sc.status = Status.FAILED
-            failed.add(ep.index)
-            if ctx.cfg.pipeline.fail_fast:
-                raise RuntimeError(err)
-            # fallback: one shot per line so the pipeline still proceeds
-            sc.shots = _fallback_shots(sc, dmin, dmax)
-            continue
+        ep, sc, spoken_at, spoken_pos, user = job
+        data = pool.next().complete_json(system, user)
         if isinstance(data, list):
             data = data[0] if data else {}
         shots = []
@@ -289,6 +272,27 @@ def run(ctx: Context) -> dict:
         # the coverage rules: nobody talks to the lens, and no two
         # shots in a row are the same picture
         _enforce_coverage(sc)
+        # the scene is saved as it arrives: a run that is stopped
+        # halfway keeps the scenes that were already designed
+        ctx.save()
+        return len(shots)
+
+    results = run_jobs(ctx, jobs, _one, workers=write_workers(ctx),
+                       label="storyboard")
+
+    # the answers go back in
+    failed: set = set()
+    for (job, _n, err) in results:
+        ep, sc, _spoken_at, _spoken_pos, _user = job
+        if err:
+            ctx.log.error("storyboard: 第%d集 场%d 失败 %s", ep.index, sc.index, err)
+            sc.status = Status.FAILED
+            failed.add(ep.index)
+            if ctx.cfg.pipeline.fail_fast:
+                raise RuntimeError(err)
+            # fallback: one shot per line so the pipeline still proceeds
+            sc.shots = _fallback_shots(sc, dmin, dmax)
+            ctx.save()
 
     for ep in eps_done:
         # The lengths are the director's.  They are only kept inside the

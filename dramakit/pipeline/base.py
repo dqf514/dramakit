@@ -67,6 +67,9 @@ def run_jobs(ctx, jobs, fn, *, workers: int = 1, label: str = ""):
     flight together.  A job that fails does not stop the others: the
     error comes back with the job, and the caller decides what it means.
 
+    The tally of what is running is kept as it goes, so the console can
+    show how wide the work is and not only that something is happening.
+
     Returns (job, result, error) for every job, in the order they were
     given.
     """
@@ -74,12 +77,28 @@ def run_jobs(ctx, jobs, fn, *, workers: int = 1, label: str = ""):
     if not jobs:
         return []
     n = max(1, int(workers or 1))
+    from . import progress as _progress
+    prog = None
+    stage = label or ""
+    try:
+        prog = _progress.attach(ctx)
+        if stage:
+            prog.begin(stage, len(jobs), n)
+    except Exception:  # noqa: BLE001
+        prog = None
 
     def _one(job):
+        if prog is not None and stage:
+            prog.began(stage)
         try:
-            return (job, fn(job), "")
+            res = fn(job)
         except Exception as e:  # noqa: BLE001
+            if prog is not None and stage:
+                prog.finished(stage, ok=False)
             return (job, None, str(e)[:300])
+        if prog is not None and stage:
+            prog.finished(stage, ok=True)
+        return (job, res, "")
 
     if n == 1 or len(jobs) == 1:
         return [_one(job) for job in jobs]

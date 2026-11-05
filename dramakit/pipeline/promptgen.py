@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -850,7 +851,11 @@ def run(ctx: Context) -> dict:
 
     # Every shot of every episode is its own question, and they do not
     # wait on each other - so they are asked together.
+    made = 0
+    save_lock = threading.Lock()
+
     def _one(job):
+        nonlocal made
         shot, sc, visuals, flf, location_visual, need_img, need_h3, cont, dlg_map = job
         if need_img:
             _gen_image_prompt(ctx, pool.next(), shot, sc, visuals, flf,
@@ -858,6 +863,13 @@ def run(ctx: Context) -> dict:
         if need_h3:
             _gen_h3_prompt(ctx, pool.next(), shot, sc, visuals, location_visual,
                            dlg_map.get(shot.id, []), continuity=cont)
+        # the shot has its prompt now, and it keeps it: a run that is
+        # stopped halfway does not ask for the same prompt twice
+        with save_lock:
+            made += 1
+            every = made % 5 == 0
+        if every:
+            ctx.save()
 
     def _one_score(sc):
         _gen_score_prompt(ctx, pool.next(), sc)

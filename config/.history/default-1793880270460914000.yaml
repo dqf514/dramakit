@@ -1,0 +1,576 @@
+﻿# ===========================================================================
+#  DramaKit 主配置  (config/default.yaml)
+#  小说 → 多集竖屏短剧 的全流程参数。改完直接 `dj run <项目>` 生效。
+#  密钥建议放环境变量，别写进文件：
+#    set DRAMAKIT_LLM_API_KEY=sk-xxxx        (Windows)
+#    export DRAMAKIT_LLM_API_KEY=sk-xxxx     (Linux/Mac)
+#  也可以在 Web 控制台（dj serve）→「设置」页里图形化增删模型、调优先级、勾选任务分工。
+# ===========================================================================
+
+# --------------------------- 大模型 LLM -----------------------------------
+# provider 目前统一走 OpenAI 兼容接口，云端/本地都能接：
+#   DeepSeek   base_url: https://api.deepseek.com/v1        model: deepseek-chat
+#   通义千问    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1  model: qwen-plus
+#   Kimi       base_url: https://api.moonshot.cn/v1         model: moonshot-v1-32k
+#   OpenAI     base_url: https://api.openai.com/v1          model: gpt-4o-mini
+#   Ollama本地  base_url: http://localhost:11434/v1          model: qwen2.5:14b
+#   LMStudio   base_url: http://localhost:1234/v1           model: <你加载的模型>
+llm:
+  provider: openai_compat
+  base_url: https://api.minimax.cn/v1 # 默认指向本地 Ollama
+  api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4 # 本地随便填；云端用环境变量覆盖
+  model: MiniMax-M3.1-Flash
+  temperature: 0.7
+  max_tokens: 102400
+  top_p: 1.0
+  timeout: 300.0
+  max_retries: 3
+  concurrency: 4                           # 每次请求的并发（实测 MiniMax 端点支持 6 并发）
+  use_proxy: false # 直连(false)；仅当需经系统代理访问海外API时设 true
+  json_mode: true                          # 要求结构化输出
+  system_prompt_extra: ""
+  # 旧版单模型阶段覆盖（模型清单 models.entries 为空时才生效）
+  model_overrides:
+    # analyze: qwen2.5:32b
+    # segment: deepseek-chat
+    # promptgen: qwen2.5:7b
+
+# --------------------------- 模型清单 -----------------------------------
+# entries 顺序即优先级；roles 指定每个模型负责的任务；default 是兜底模型。
+# 在 Web 控制台「设置」页里图形化增删/排序/勾选，保存会自动写回这里。
+models:
+  default: m1
+  entries:
+  - id: m1
+    label: miniMax-M3.1
+    base_url: https://api.minimax.cn/v1
+    model: MiniMax-M3.1-Flash
+    api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4
+    temperature: 0.7
+    max_tokens: 102400
+    timeout: 300.0
+    use_proxy: false
+    roles:
+    - analyze
+    - segment
+    - script
+    - storyboard
+    - promptgen
+    - config
+    - actions
+    - search
+    - tag
+  - id: mmw3hxil9
+    label: Strata
+    base_url: http://192.168.31.8:8080/v1
+    model: qwen3.8-flash-next-iq3_xxs
+    api_key: ollama
+    temperature: 0.7
+    max_tokens: 4096
+    timeout: 300.0
+    use_proxy: false
+    roles:
+    - analyze
+    - segment
+    - script
+    - storyboard
+    - promptgen
+    - config
+    - actions
+    - search
+    - tag
+
+# --------------------- AI 原生层（大脑/一键配置/标签/检索）------------------
+# 这一层让「所有事交给 AI」：探测环境自动生成配置、给素材打标签分类、
+# 自然语言检索、自然语言→动作。全部失败即优雅降级，不影响手动跑流水线。
+
+ai:
+  enabled: true
+  language: zh                             # AI 输出/标签语言
+  main_timeout: 90.0                       # 交互式调用的超时上限；端点挂了不卡界面
+  # --- 旧版小模型配置（模型清单 models.entries 非空时不生效）---
+  # 留空则自动复用上面的主 LLM，无感降级。
+  light_base_url: ""                       # 例：http://localhost:11434/v1
+  light_api_key: ""                        # 建议走环境变量 DRAMAKIT_AI_LIGHT_API_KEY
+  light_model: ""                          # 例：qwen2.5:3b
+  light_temperature: 0.2
+  light_max_tokens: 1024
+  light_timeout: 120.0
+  light_use_proxy: false                   # 直连(false)；同 llm.use_proxy
+  # --- 行为开关 ---
+  auto_tag: true                           # 流水线产出后自动打标签入库
+  intent_confirm: true                     # 自然语言动作执行前需确认
+  catalog_db: catalog.db                   # 资产目录库（相对 projects 目录或绝对路径）
+  max_search_results: 60
+  tag_max: 8                               # 每个资产最多标签数
+  # 内置标签分类体系（AI 打标签时受此约束，保证分类清晰统一）
+  tag_taxonomies:
+    genre: [都市, 古装, 玄幻, 悬疑, 甜宠, 战神, 重生, 穿越, 复仇]
+    scene_type: [对白, 独白, 旁白, 打斗, 情感, 反转, 回忆, 空镜]
+    mood: [紧张, 温馨, 悲伤, 愤怒, 喜悦, 悬疑, 燃, 虐]
+    shot: [特写, 近景, 中景, 全景, 远景, 过肩, 主观, 空镜]
+    time: [日, 夜, 晨, 昏]
+    asset: [小说, 剧本, 分镜, 画面, 视频, 配音, 字幕, 配乐, 成片, 封面]
+
+# --------------------------- Web 控制台 -----------------------------------
+# `dj serve` 打开的本地控制台（零依赖，标准库实现）。
+web:
+  host: 127.0.0.1                          # 仅本机；要在局域网访问填 0.0.0.0
+  port: 8756
+  open_browser: true
+  projects_dir: projects
+  title: DramaKit 控制台
+
+# --------------------------- 角色定妆 -------------------------------------
+# 先给每个角色定一张"锚点脸"和三视图，之后所有镜头都复用同一组参考图，
+# 跨镜头/跨集不换脸。consistency=ref 需要画面工作流支持 LoadImage 参考图。
+characters:
+  enabled: true
+  use_llm_anchor: true                      # 用 LLM 把外貌整理成稳定英文锚点
+  anchor_max_chars: 320
+  generate_refs: true # 用 ComfyUI 生成三视图
+  generate_location_refs: true # 每个场景生成一张无人的环境参考图（注入镜头）
+  auto_cast: true # 由 AI 从可用音色里给角色分配声音（失败按性别回退）
+  ref_views: [four]  # 单张四视图：左侧头部特写 + 右侧正面/侧面/背面全身（一张替代原5张）
+  ref_width: 1344                           # 面部满屏照：跟出图同尺寸
+  ref_height: 768                           # 面部满屏照
+  ref_body_width: 768                       # 全身视图用竖幅：宽幅里人太小、灰底太多
+  ref_body_height: 1344                     # 全身视图
+  consistency: ref # prompt=只靠文字锚点 | ref=附带参考图（推荐） | lora
+
+# --------------------------- 配音 TTS -------------------------------------
+# provider:
+#   edge      免费！微软 Edge 神经音色，开箱即用，无需 Key（推荐起步）
+#   cosyvoice 本地 CosyVoice HTTP 服务（可克隆音色），base_url 指向你的服务
+#   openai    任意 OpenAI 兼容 /v1/audio/speech
+#   minimax   MiniMax 云端多情感音色
+tts:
+  provider: minimax
+  edge_default_voice: zh-CN-YunxiNeural     # 男主/男声（provider=edge 时用）
+  edge_narrator_voice: zh-CN-YunyangNeural  # 旁白/解说（provider=edge 时用）
+  edge_female_voice: zh-CN-XiaoxiaoNeural   # 女主/女声（provider=edge 时用）
+  base_url: https://api.minimax.cn          # cosyvoice / 其它本地服务地址
+  api_key: "sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4"
+  model: speech-2.8-hd
+  rate: "+0%"                               # 语速，如 +10% / -10%
+  volume: "+0%"
+  pitch: "+0Hz"
+  speed: 1.0                                # 非 edge 提供商的语速
+  concurrency: 4
+  use_proxy: false                          # 直连(false)；本地 CosyVoice 必须 false
+  silence_pad_ms: 120                       # 每句尾部留白，避免字幕/语音太挤
+  # 旁白/解说是否朗读。false = 只做屏幕文字（独有样式，不挡画面），不进配音轨
+  speak_narration: false
+  # 旁白专用音色（provider=edge 时用上面的 edge_narrator_voice）
+  narrator_voice: "Chinese (Mandarin)_Radio_Host"
+  # --- 音色池筛选（自动选角时只从这里挑，避免港台腔/方言混进短剧）---
+  voice_locales: ["zh-CN"]                  # 只用这些语言前缀（edge 专有）
+  voice_pool: []                            # 显式白名单（留空=用提供商的中文音色表）
+  voice_exclude: []                         # 额外排除
+  voice_notes: {}                           # 音色备注（喂给配音导演 LLM）
+  # 角色名 → 音色（不填则按性别回退到上面的默认音色）
+  voice_map: {}
+  # 情绪 → 提供商的情感参数（MiniMax 用 happy/sad/angry/fearful/disgusted/surprised/neutral）
+  # 剧本里的情绪标签常常带修饰（"冷笑（愤怒）"），voice 阶段会拆出括号里的本体来查这张表，
+  # 所以这里尽量把常见说法都收进来，查不到就等于没有情绪——台词会被平读。
+  emotion_map:
+    平静: neutral
+    愤怒: angry
+    悲伤: sad
+    惊讶: surprised
+    喜悦: happy
+    紧张: fearful
+    得意: happy
+    坚定: neutral
+    恐惧: fearful
+    厌恶: disgusted
+    疑惑: surprised
+    冷漠: neutral
+    警惕: fearful
+    犹豫: surprised
+    震惊: surprised
+    惊惧: fearful
+    焦急: fearful
+    心虚: fearful
+    失态: surprised
+    压抑: angry
+    咬牙: angry
+    强硬: angry
+    逼问: angry
+    质问: angry
+    冷笑: neutral
+    苦笑: sad
+    轻蔑: disgusted
+    嘲讽: disgusted
+    讽刺: disgusted
+    无奈: sad
+    自责: sad
+    委屈: sad
+    决心: neutral
+    决绝: neutral
+    冷静: neutral
+    克制: neutral
+    公事公办: neutral
+    敷衍: neutral
+    意味深长: neutral
+    暗藏得意: happy
+    诱劝: happy
+    期待: happy
+    温柔: happy
+    感激: happy
+    愧疚: sad
+  # 情绪 → 语速/音高微调。短剧要的是戏感：愤怒要顶上去，委屈要弱下来。
+  # MiniMax 有真正的 emotion 参数，这张表主要给没有情感能力的 TTS 兜底。
+  emotion_modulation:
+    愤怒: {speed: 1.12, pitch: -1}
+    悲伤: {speed: 0.90, pitch: -1}
+    惊讶: {speed: 1.08, pitch: 1}
+    喜悦: {speed: 1.06, pitch: 1}
+    紧张: {speed: 1.10, pitch: 0}
+    得意: {speed: 0.98, pitch: 0}
+    坚定: {speed: 0.95, pitch: -1}
+    恐惧: {speed: 1.05, pitch: 1}
+    厌恶: {speed: 0.95, pitch: -1}
+    警惕: {speed: 1.05, pitch: 0}
+    犹豫: {speed: 0.92, pitch: 0}
+    震惊: {speed: 1.10, pitch: 1}
+    惊惧: {speed: 1.15, pitch: 1}
+    焦急: {speed: 1.12, pitch: 1}
+    心虚: {speed: 1.08, pitch: 0}
+    失态: {speed: 1.15, pitch: 1}
+    压抑: {speed: 0.95, pitch: -1}
+    咬牙: {speed: 1.08, pitch: -1}
+    强硬: {speed: 1.00, pitch: -1}
+    逼问: {speed: 1.12, pitch: -1}
+    质问: {speed: 1.12, pitch: -1}
+    冷笑: {speed: 0.90, pitch: -1}
+    苦笑: {speed: 0.88, pitch: -1}
+    轻蔑: {speed: 0.95, pitch: 1}
+    嘲讽: {speed: 0.95, pitch: 1}
+    讽刺: {speed: 0.95, pitch: 1}
+    无奈: {speed: 0.90, pitch: -1}
+    自责: {speed: 0.90, pitch: -1}
+    委屈: {speed: 0.92, pitch: -1}
+    决心: {speed: 0.92, pitch: -1}
+    决绝: {speed: 0.90, pitch: -1}
+    冷静: {speed: 0.93, pitch: 0}
+    克制: {speed: 0.93, pitch: -1}
+    公事公办: {speed: 1.00, pitch: 0}
+    敷衍: {speed: 1.02, pitch: 0}
+    意味深长: {speed: 0.88, pitch: -1}
+    暗藏得意: {speed: 0.95, pitch: 0}
+    诱劝: {speed: 0.98, pitch: 0}
+    期待: {speed: 0.97, pitch: 0}
+    温柔: {speed: 0.94, pitch: 0}
+    感激: {speed: 0.95, pitch: 0}
+    愧疚: {speed: 0.92, pitch: -1}
+
+# --------------------- 画面生成 ComfyUI（你的视频服务器）--------------------
+# 这是短剧画面的来源。ComfyUI 用 "Save (API Format)" 导出工作流，
+# 放到 config/comfyui/ 下，然后把下面的节点ID映射对上你的图。
+# 支持对接另一台机器（远程/局域网），含鉴权与断线重试。
+comfyui:
+  enabled: true
+  base_url: http://127.0.0.1:8188 # 视频服务器地址（远程就填 http://IP:8188）
+  client_id: dramakit
+  timeout: 600.0                            # 单张图/单段视频生成上限（秒）
+  request_timeout: 60.0                     # 短HTTP调用（提交/查询/下载）超时
+  poll_interval: 1.0
+  concurrency: 1 # 出图并发（本机一张卡，一次一个）
+  video_concurrency: 1                     # 出视频并发（现在只有 3090-a 出视频）
+  max_retries: 3                            # 远程网络抖动重试次数
+  use_proxy: false                          # 直连(false)：局域网/远程 ComfyUI 必须 false，
+                                            #   否则 httpx 会读系统代理导致连不上/卡住
+  # --- 远程鉴权（对接另一台机器，尤其走 Nginx 反代时）---
+  auth: none                                # none | basic | token | header
+  auth_username: ""                         # basic 用
+  auth_password: ""                         # basic 用；建议走环境变量 DRAMAKIT_COMFYUI_PASSWORD
+  auth_token: ""                            # token(bearer) 用；建议走 DRAMAKIT_COMFYUI_TOKEN
+  extra_headers: {}                         # 任意自定义头（auth=header 或附加头）
+    # X-Api-Key: your-key
+  verify_tls: true                          # 内网自签名证书可设 false
+  # --- 进度监听：优先 WebSocket，失败自动回退轮询 /history ---
+  use_websocket: true
+  ws_fallback_to_poll: true
+  # 出图用 FLUX 3 Image Klein。带角色/场景参考图时用多参考图那版，
+  # 没有参考图的空镜用普通版（多参考版无参考时会退化成正方形空潜空间）。
+  t2i_workflow: config/comfyui/t2i_sdxl.json
+  t2i_workflow_ref: config/comfyui/t2i_krea2_ref.json
+  i2v_workflow: config/comfyui/i2v_animatediff.json
+  # 让 H3 自己说话（画面+嘴型+人声+音效一次出）。
+  # 只有 ref2va 模型走得通：fl2va 生成的人声是乱码，我们才不得不改用画外音。
+  native_audio: true
+  video_references: true                    # 每个视频都带参考图；不齐就不抽卡
+  ref_audio_node: "161"                   # 工作流里装载参考音频的节点（LoadAudio）
+  auto_workflows: true # 上面留空/文件不存在时，自动扫描 config/comfyui/*.json
+  auto_map: true # 从工作流图结构自动推断节点ID；手填的仍优先（失效时自动修复）
+  upscale_workflow: ""                      # 可选：放大工作流
+  # --- 首尾帧：用起始/结束两张关键帧驱动 i2v，镜头更可控 ---
+  # 需要一份支持双图输入的工作流（如 FLF2V / IP-Adapter 双图），
+  # 留空则自动退回单图 i2v，不影响现有流程。
+  first_last_frame: false
+  flf_workflow: "" # 例：config/comfyui/i2v_flf.json
+  # --- FLUX 3 Image Klein 的三件套（UNETLoader / CLIPLoader / VAELoader）---
+  # 注意：文本编码器必须用 bf16 版。int8_convrot 版（qwen3vl_4b_int8_convrot）
+  # 在 ComfyUI 0.42.0 上会产出垃圾条件——画面有正确的颜色语义但完全没结构。
+  clip_name: qwen3vl_4b_bf16.safetensors
+  vae_name: qwen_image_vae.safetensors
+  # 出图提示词格式：flux3 = 完整场景描述；sdxl = 关键词堆叠
+  prompt_format: flux3
+  # 语义名 → 节点ID（字符串）。全部可留空/删掉：auto_map 会按图结构自动推断；
+  # 想锁定某个节点再手填，手填优先。工作流换编号后失效项会被自动忽略并重新推断。
+  t2i_nodes:
+    positive: "104"      # CLIPTextEncode（写 text）
+    negative: "105"      # CLIPTextEncode（写 text，FLUX 3 留空）
+    seed: "107"          # KSampler（写 seed / noise_seed）
+    width: 1024 # EmptyFlux2LatentImage（写 width，普通版用）
+    height: 576 # EmptyFlux2LatentImage（写 height，普通版用）
+    steps: 25 # KSampler（写 steps）
+    cfg: 6.5 # KSampler（写 cfg）
+    sampler: "107"       # KSampler（写 sampler_name / scheduler）
+    checkpoint: "101"      # UNETLoader（写 unet_name）
+    clip: "102"          # CLIPLoader（写 clip_name）
+    vae: "103"           # VAELoader（写 vae_name）
+    sampling: ""   # Krea-2 无 ModelSamplingFlux，留空=不写
+    ref_image: "201"     # LoadImage：角色参考图（第二个槽位=场景参考图，自动推断）
+  i2v_nodes:
+    image: "137"   # LoadImage（ref_image_0），首帧落这里
+    last_image: ""       # 尾帧：本工作流不接（ref_videos 需 LoadVideo，管线未用）
+    positive: "136"   # MiniMaxH3ReferenceToVideo 节点写 prompt
+    negative: ""   # H3 无负向提示词
+    seed: "129"   # RandomNoise 节点写 noise_seed
+    frames: 32 # 节点写 length
+    fps: 16 # CreateVideo 节点写 fps
+    width: "136"   # 节点写 width
+    height: "136"   # 节点写 height
+  # ---- 节点池：额外的 ComfyUI 机器（方案B 的调度对象）----
+  # 工作流即清单：扫描 config/comfyui/*.json 的模型加载节点，自动得出要传的模型。
+  # 新增节点后 `dj nodes check` 看缺什么，`dj nodes sync <名字>` 自动补齐（带进度）。
+  # 节点池：除本机之外的 ComfyUI 机器。
+  # 3090 是双卡，一台 ComfyUI 只用一张卡，所以那边跑两个实例（8188 / 8189）。
+  # 这台机器的显存是分时复用的：跑 H3 之前要把 LLM 服务停下来。
+  local_roles: [t2i] # 本机只出图，视频交给 3090
+  nodes:
+    - name: gpu3090-a
+      base_url: http://192.168.31.8:8188
+      enabled: true
+      roles: [i2v]
+      transfer: scp
+      ssh_host: 192.168.31.8
+      ssh_user: david
+      ssh_key: C:/Users/David/.ssh/id_ed25519
+      remote_models: /data/comfyui/models
+      # 3090 是 Ampere，没有 FP4 张量核：用 int8/convrot 的那套权重
+      graph_overrides:
+        "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
+        "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
+        "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
+  #  - name: gpu3090-v0        # 3090#0，专做视频
+  #    base_url: http://<3090IP>:8188
+  #    roles: [i2v]            # t2i=出图 / i2v=出视频；留空=什么都接
+  #    transfer: scp           # shared=该节点 models 目录已挂载到本机；scp=走 ssh 传
+  #    local_models: /mnt/gpu3090/ComfyUI/models
+  #    # 或用 scp：
+  #    # transfer: scp
+  #    # ssh_host: 192.168.1.50
+  #    # ssh_user: ubuntu
+  #    # ssh_key: ~/.ssh/id_ed25519
+  #    # remote_models: /home/ubuntu/ComfyUI/models
+  #  - name: gpu3090-v1        # 3090#1，专做视频
+  #    base_url: http://<3090IP>:8189
+  #    roles: [i2v]
+  #    transfer: scp
+  #  - name: img-box          # 出图专机
+  #    base_url: http://<IMGIP>:8188
+  #    roles: [t2i]
+  #    transfer: scp
+  # 本机 ComfyUI 的 models 目录（模型文件存放处，也是同步来源）
+  models_dir: E:\\ComfyUI\\models
+  mode: image_then_video # image | video | image_then_video（出图和出视频抢同一张卡时，先把图出完再切到 image_then_video）
+  width: 1344                               # 出图分辨率（H3 原生 768p，16:9）
+  height: 768                               # 出图分辨率
+  steps: 8                                # FLUX 3 Klein 是蒸馏版：8 步和 16 步锐度一样（实测 1124 vs 1218），4 步掉 29%
+  cfg: 1.0                                # 蒸馏版无引导，cfg 必须 1
+  sampler: euler
+  scheduler: simple
+  checkpoint: krea2_turbo_nvfp4.safetensors
+  # 出视频分辨率（H3 标准 16:9 = 960x544，32 的倍数）
+  video_width: 1344                         # 视频分辨率（H3 原生 768p，16:9）
+  video_height: 768                         # 视频分辨率
+  frames: 124                               # frame_mode=fixed 时所有镜头都用这个帧数
+  # 视频时长：auto = 按每个镜头在时间线上实际占多长生成（对齐 H3 的 17k+5 网格）
+  frame_mode: auto
+  max_video_seconds: 15.0                   # 单镜头最长多少秒（H3 训练范围到 362 帧）
+  fps: 24
+  seed_mode: character # random | fixed | character（按角色固定种子保一致性）
+  fixed_seed: 12345
+  save_intermediate: true                   # 保留 tmp/ 中间文件便于排查
+
+# --------------------------- 配乐 BGM -------------------------------------
+# provider:
+#   library  本地曲库：把版权音乐丢进 assets/music，按情绪自动匹配（零成本）
+#   musicgen 本地/HTTP Meta MusicGen 生成（需 torch，见 requirements 的 musicgen extra）
+#   suno     Suno 兼容 API 生成
+#   none     不加 BGM
+music:
+  provider: library
+  # 曲库放在仓库里而不是项目里：一首曲子做好一次，所有项目都能用。
+  # 用绝对路径；相对路径会按项目目录解析（每个项目一份）。
+  # 曲子是本地 ACE-Step 1.5 生成的（rounds/tools/make_music_library.py）。
+  library_dir: E:/dramakit/assets/music
+  base_url: http://localhost:8001           # musicgen HTTP 服务地址
+  model: facebook/musicgen-small
+  duration: 30.0
+  api_key: ""
+  use_proxy: false                          # 直连(false)：走 HTTP 生成音乐时避免系统代理卡住
+  mood_map: {}                              # 情绪标签 → 文件名列表（不填则按文件名关键词匹配）
+    # 紧张: [tense1.mp3, suspense2.wav]
+    # 悲伤: [sad_piano.mp3]
+  bgm_volume: 0.22 # 相对人声音量
+  loop_to_fit: true                         # 自动循环铺满整集
+  fade_in: 1.0
+  fade_out: 2.0
+  duck_voice: true                          # 有人说话时自动压低 BGM（侧链）
+
+# --------------------------- 分集 segment -----------------------------------
+segment:
+  strategy: auto                            # auto | fixed_count | fixed_duration | by_chapter
+  episode_count: 0                          # fixed_count 时用
+  episode_duration: 300.0                    # 一集的目标时长（5 分钟）
+  min_episode_duration: 180.0
+  max_episode_duration: 360.0
+  respect_chapters: true                    # 尽量沿章节边界切
+  hook_style: 强悬念反转                     # 每集结尾钩子风格
+  max_chars_per_episode: 0                  # 0=按秒数让系统估算
+  opening_recap: true                       # 生成"前情提要"
+  cold_open: true                           # 第一集冷开场直接抛冲突
+
+# --------------------------- 分镜 storyboard --------------------------------
+storyboard:
+  shots_per_scene: auto
+  min_shots_per_scene: 2
+  max_shots_per_episode: 90
+  max_shots_per_scene: 26
+  shot_duration_range: [5.0, 15.0]            # 视频模型一次能生成的画面长度（技术上限，不是导演规定）
+  prefer_dynamic: true                      # 多用推拉摇移增强节奏
+  include_insert_shots: true                # 允许空镜/特写插入
+  language: bilingual                       # 提示词语言 zh | en | bilingual
+
+# --------------------------- 技能 skills ------------------------------------
+# 每个阶段写什么，凭哪些技能。技能是一个知识文件夹，SKILL.md 是短的那份；
+# 真正的手艺在它的 references 里，所以在这里点名要读哪几篇。
+skills:
+  analyze:
+    - short-drama-novel-analyze
+    - short-drama-develop
+  script:
+    - short-drama-write
+    - screenwriting-theory/sw-format-adaptation
+  storyboard:
+    - short-drama-storyboard
+  promptgen:
+    - short-drama-video-prompts
+    - short-drama-image-prompts
+  refs:
+    analyze:
+      short-drama-develop:
+        - adaptation-craft.md
+    script:
+      short-drama-develop:
+        - adaptation-craft.md
+    storyboard:
+      short-drama-storyboard:
+        - production-shot-grammar.md
+        - blocking-playbooks.md
+
+# --------------------------- 合成 compose -----------------------------------
+compose:
+  width: 1344                         # 16:9 横屏 768p 成片
+  height: 768                          # 16:9 横屏 768p 成片
+  fps: 30
+  video_bitrate: 6M
+  audio_bitrate: 192k
+  codec: libx264
+  pixel_format: yuv420p
+  crf: 20                                   # 越小越清晰、文件越大（18~23 常用）
+  preset: medium                            # ultrafast..veryslow
+  transition: fade # none=硬切 | fade/dissolve=场间淡入淡出
+  transition_duration: 0.35 # 淡入淡出时长；会按镜头时长自动收缩
+  motion_effect: kenburns                   # 静图镜头的运动：kenburns | zoompan | none
+  kenburns_scale: 1.12                      # 静图最大缩放幅度
+  loudness_normalize: true
+  target_loudness_lufs: -16.0
+  # H3 原生音频：bed=只当配乐/环境声垫底（人声走 TTS 轨，避免双声混叠）；discard=完全丢弃
+  h3_audio: bed
+  # H3 原生音频独占成片音轨：H3 做的人声+环境声+配乐浑然天成，
+  # 成片不再叠任何额外声音（不叠配乐垫底、不叠曲库 BGM、不加房间混响）
+  native_audio_exclusive: true
+  # H3 垫底的音量。垫底要在对白之下 10 LU 以上才听得清台词，
+  # 实测 0.45 时只差 6.4 LU，音乐会盖住人声。
+  h3_audio_gain: 0.18               # 短视频平台常用 -14~-16 LUFS
+  burn_subtitles: true # 硬字幕（红果/抖音常用，不可关闭显示）
+  also_write_srt: true                      # 同时输出软字幕 .srt
+  show_speaker_name: false                  # 台词上方不显示角色名（画面上更干净）
+  # 2026 年起 AIGC 微短剧必须在画面上标注 AI 生成，备案号一起带上
+  ai_declaration: "本片画面与声音由AI生成"
+  ai_declaration_seconds: 3                    # 声明只放在片头 3 秒（平台要求）
+  filing_number: ""                        # 备案号（上线前填）
+  film_grain: 4                            # 胶片颗粒强度（去掉 AI 塑料感，0=关）
+  # 口型对齐：画面里的嘴由模型自己动，录好的声音和嘴对不上，
+  # 观众就会觉得声音飘在画面外。MuseTalk 用录好的音频重画嘴。
+  voice_room: 0.14                         # 台词上的房间混响（0=干声）
+  lipsync: true                            # 打开后每个有台词的镜头都会过一遍 MuseTalk
+  musetalk_root: "E:/musetalk"            # MuseTalk 的代码与权重
+  musetalk_python: "E:/ComfyUI/venv/Scripts/python.exe"
+  lipsync_timeout: 900                     # 一个镜头的口型对齐最多等多久（秒）
+  line_gap: 0.5                             # 每句台词之间的留白（秒）
+  subtitle_style:
+    font: Microsoft YaHei
+    font_size: 30                           # 以 960 宽为基准，按画面宽度放大
+    primary_color: "&H00FFFFFF"             # 白字（&HAABBGGRR）
+    outline_color: "&H00000000"             # 黑边
+    outline: 2
+    shadow: 0
+    margin_v: 1                              # 距画面底部几个字高（1 = 紧贴底部上方一个文字高）
+    margin_v_pct: 2                         # 至少离底部这么高（%）：字幕贴在底边上方一个字高
+    bold: true
+    alignment: 2                            # 底部居中
+    speaker_color: "&H0000E5FF"             # 角色名高亮色
+    # 旁白专用样式：顶部居中 + 半透明底板 + 斜体暖色，不占用底部对白区
+    narration_font: Microsoft YaHei
+    narration_font_size: 26
+    narration_color: "&H00A0DCFA"           # 暖米色
+    narration_back_color: "&H66000000"      # 40% 透明黑底板
+    narration_margin_v: 40                  # 距顶部距离
+    narration_alignment: 5                  # 居中（在顶部像是没剪完的说明）
+  generate_cover: true
+  cover_from_shot: first                  # first/best/last
+  cover_title: true                       # 封面烧上标题（手机上要看得清）                    # first | best | last
+
+# --------------------------- 流水线控制 -------------------------------------
+pipeline:
+  output_dir: projects
+  stages_enabled:                           # 想跳过某步就从这里删掉
+    - ingest
+    - analyze
+    - character
+    - segment
+    - script
+    - storyboard
+    - promptgen
+    - visual
+    - voice
+    - subtitle
+    - music
+    - precheck
+    - compose
+  resume: true                              # 跳过已完成节点，可断点续跑
+  stop_after: null                          # 例: storyboard —— 只跑到分镜就停
+  only_episodes: []                       # 空=全部集都做                         # 例: [1,2,3] 只处理这几集
+  fail_fast: false                          # true=任一阶段报错即中止
+  verbose: true
+  # 文字阶段同时开多少个请求（编剧/分镜/出提示词）。0 = 用 llm.concurrency。
+  # 这些都是文字活，一集一集地做是浪费——接口能并行就并行。
+  # 加了更多大模型接口的话，把这个数调大；同一任务由多个接口分担时，
+  # 调用会轮流分给它们（见 models.entries 里同一个角色的多个条目）。
+  write_concurrency: 0

@@ -64,6 +64,20 @@ DRAWS = ("visual",)
 TAIL = ("lipsync", "subtitle", "precheck", "compose", "qc")
 
 
+
+def _lane(ctx, lane: str, stage: str) -> None:
+    """Say which stage a lane is working on, for the console."""
+    try:
+        from . import progress as _progress
+        prog = _progress.attach(ctx)
+        if stage:
+            prog.lane(lane, stage)
+        else:
+            prog.lane_done(lane)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _stage_fn(name: str) -> Optional[Callable]:
     return {
         "ingest": None,  # handled specially (needs source_file)
@@ -494,6 +508,7 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                     for name in chain:
                         if ctx.stopped:
                             break
+                        _lane(ctx, "写作", name)
                         _run_stage(ctx, name, None, season_obj, results, cfg)
                         if name == "script":
                             script_done.set()
@@ -503,6 +518,7 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                     # the side lane waits for the script, and the drawer's
                     # last pass waits for both lanes
                     script_done.set()
+                    _lane(ctx, "写作", "")
                     side_done.wait()
                     writes_done.set()
 
@@ -514,16 +530,20 @@ def run_pipeline(ctx: Context, source_file: Optional[str] = None,
                     for name in side:
                         if ctx.stopped:
                             break
+                        _lane(ctx, "旁路", name)
                         _run_stage(ctx, name, None, season_obj, results, cfg)
                         if _stop_if_wanted(name):
                             break
                 finally:
+                    _lane(ctx, "旁路", "")
                     side_done.set()
 
             def _draw_lane():
                 try:
+                    _lane(ctx, "绘制", "visual")
                     _draw_until_done(ctx, writes_done, results, cfg)
                 finally:
+                    _lane(ctx, "绘制", "")
                     # the finisher waits for this: an episode can only be
                     # made once its shots are all drawn
                     drawing_done.set()

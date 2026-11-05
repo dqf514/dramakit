@@ -64,18 +64,6 @@ def run(ctx: Context) -> dict:
         data = pool.next().complete_json(T.SCRIPT_SYSTEM, user)
         if isinstance(data, list):
             data = data[0] if data else {}
-        return data
-
-    results = run_jobs(ctx, jobs, _one, workers=write_workers(ctx),
-                       label="script")
-    for (job, data, err) in results:
-        ep, _user = job
-        if err:
-            ctx.log.error("script: 第%d集失败 %s", ep.index, err)
-            ctx.mark(ep, "script", Status.FAILED)
-            if cfg.pipeline.fail_fast:
-                raise RuntimeError(err)
-            continue
         scenes = []
         for si, s in enumerate(data.get("scenes", []) or [], 1):
             sc = Scene(id=_id("sc"), index=si, location=s.get("location", ""),
@@ -91,10 +79,26 @@ def run(ctx: Context) -> dict:
                                      text=txt, emotion=l.get("emotion", "平静")))
             if sc.lines:
                 scenes.append(sc)
+        # the episode is written and saved here, not after the whole
+        # batch: a run that is stopped halfway keeps the episodes that
+        # were already done
         ep.scenes = scenes
         ctx.mark(ep, "script", Status.DONE)
         ctx.save()
+        return len(scenes)
+
+    results = run_jobs(ctx, jobs, _one, workers=write_workers(ctx),
+                       label="script")
+    for (job, _scenes, err) in results:
+        ep, _user = job
+        if err:
+            ctx.log.error("script: 第%d集失败 %s", ep.index, err)
+            ctx.mark(ep, "script", Status.FAILED)
+            if cfg.pipeline.fail_fast:
+                raise RuntimeError(err)
+            continue
         done += 1
         ctx.log.info("script: 第%d集《%s》→ %d 场, %d 句",
-                     ep.index, ep.title, len(scenes), sum(len(s.lines) for s in scenes))
+                     ep.index, ep.title, len(ep.scenes),
+                     sum(len(s.lines) for s in ep.scenes))
     return {"episodes_scripted": done}

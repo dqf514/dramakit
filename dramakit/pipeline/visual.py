@@ -687,9 +687,32 @@ def run(ctx: Context) -> dict:
         done = 0
         ok = 0
         n = workers or c.concurrency
+        # the tally: how many shots are on the card at once, and how many
+        # are left.  The stage's total is set once, before the phases -
+        # the stills and the clips are one job, not two.
+        prog = None
+        try:
+            from . import progress as _progress
+            prog = _progress.attach(ctx)
+        except Exception:  # noqa: BLE001
+            prog = None
+
+        def _wrapped(*args):
+            if prog is not None:
+                prog.began("visual")
+            try:
+                out = fn(*args)
+            except Exception:  # noqa: BLE001
+                if prog is not None:
+                    prog.finished("visual", ok=False)
+                raise
+            if prog is not None:
+                prog.finished("visual", ok=bool(out[1]))
+            return out
+
         with ThreadPoolExecutor(max_workers=max(1, n)) as ex:
-            futs = [ex.submit(fn, ctx, sc, shot, durations.get(shot.id, 0.0), _ep)
-                    if fn is _gen_video else ex.submit(fn, ctx, sc, shot)
+            futs = [ex.submit(_wrapped, ctx, sc, shot, durations.get(shot.id, 0.0), _ep)
+                    if fn is _gen_video else ex.submit(_wrapped, ctx, sc, shot)
                     for (_ep, sc, shot) in jobs]
             for i, fut in enumerate(as_completed(futs), 1):
                 _sid, shot_ok, _msg = fut.result()
@@ -704,6 +727,13 @@ def run(ctx: Context) -> dict:
 
     total = len(jobs) * (2 if (do_image and do_video) else 1)
     offset = 0
+    try:
+        from . import progress as _progress
+        prog = _progress.attach(ctx)
+        prog.begin("visual", total,
+                   max(1, int(c.video_concurrency or 0) or c.concurrency))
+    except Exception:  # noqa: BLE001
+        prog = None
     if do_image and do_video:
         # The picture machine and the video machine run together: the
         # stills are drawn in the order the clips are generated, and a clip

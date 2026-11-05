@@ -21,7 +21,7 @@ llm:
   api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4 # 本地随便填；云端用环境变量覆盖
   model: MiniMax-M3.1-Flash
   temperature: 0.7
-  max_tokens: 102400
+  max_tokens: 200000
   top_p: 1.0
   timeout: 300.0
   max_retries: 3
@@ -47,7 +47,26 @@ models:
     model: MiniMax-M3.1-Flash
     api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4
     temperature: 0.7
-    max_tokens: 102400
+    max_tokens: 200000
+    timeout: 300.0
+    use_proxy: false
+    roles:
+    - analyze
+    - segment
+    - script
+    - storyboard
+    - promptgen
+    - config
+    - actions
+    - search
+    - tag
+  - id: mmw3hxil9
+    label: Strata
+    base_url: http://192.168.31.8:8080/v1
+    model: qwen3.8-flash-next-iq3_xxs
+    api_key: ollama
+    temperature: 0.7
+    max_tokens: 128000
     timeout: 300.0
     use_proxy: false
     roles:

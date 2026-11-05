@@ -515,14 +515,9 @@ def _make_handler(state: State):
                 slug = (query.get("project") or [""])[0]
                 if not slug:
                     return self._err("project required", 400)
-                pf = (state.projects_root / slug) / ".progress.json"
-                data: dict = {}
-                if pf.exists():
-                    try:
-                        import json as _json
-                        data = _json.loads(pf.read_text(encoding="utf-8"))
-                    except Exception:  # noqa: BLE001
-                        data = {}
+                from ..pipeline import progress as _progress
+                pf = (state.projects_root / slug) / _progress.FILE_NAME
+                data: dict = _progress.read(pf)
                 summary = None
                 store = state.open_store(slug)
                 if store:
@@ -535,7 +530,25 @@ def _make_handler(state: State):
                                       "stage_status": {k: value(v) for k, v in ep.stage_status.items()}}
                                      for ep in proj.episodes],
                     }
-                return self._json({"ok": True, "progress": data, "project": summary})
+                # the tally the console draws: what is running, how wide
+                # it is, and what is finished
+                stages = {k: v for k, v in data.items()
+                          if not k.startswith("_") and isinstance(v, dict)}
+                inflight = sum(int(v.get("running") or 0) for v in stages.values())
+                started = sum(int(v.get("started") or 0) for v in stages.values())
+                done = sum(int(v.get("done") or 0) for v in stages.values())
+                failed = sum(int(v.get("failed") or 0) for v in stages.values())
+                total = sum(int(v.get("total") or 0) for v in stages.values())
+                lanes = data.get("_lanes") or {}
+                if isinstance(lanes, str):
+                    lanes = {}
+                return self._json({
+                    "ok": True, "progress": data, "project": summary,
+                    "stages": stages, "lanes": lanes,
+                    "inflight": inflight, "started": started,
+                    "done": done, "failed": failed, "total": total,
+                    "now": int(time.time()),
+                })
             if path == "/api/nodes":
                 from ..providers.nodes import (check_node, manifest,
                                               nodes_from_config)
