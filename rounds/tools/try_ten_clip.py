@@ -53,7 +53,7 @@ def main() -> int:
 
     visuals = "夏一朵：22岁，齐下巴黑色直发，浅色丝质睡袍；陈嫂：50岁，深色管家制服"
     location_visual = "庄园主卧：床位居中，落地玻璃在左侧，超大抽象画在右墙，水晶吊灯在顶部"
-    dlg = {"sh-test": [("陈嫂", "太太，起床了吗？", 2.0), ("夏一朵", "你、你是谁？", 2.0)]}
+    dlg = [("陈嫂", "太太，起床了吗？", 2.0), ("夏一朵", "你、你是谁？", 2.0)]
     _gen_h3_prompt(ctx, llm, sh, sc, visuals, location_visual, dlg, "")
     print("=== 视频提示词 ===")
     print((sh.video_prompt or "")[:1500])
@@ -61,10 +61,16 @@ def main() -> int:
 
     vis = ctx.providers.visual
     vid = OUT / "ten_clip.mp4"
+    # H3's reference-to-video needs the voice: the words come from the
+    # recording, and the mouth has to match it
+    voice = store.abs("characters/夏一朵/voice.mp3")
+    extra = {"ref_audio_path": str(voice),
+             "ref_audio_node": cfg.comfyui.ref_audio_node}
     t0 = time.time()
     vis.generate_video(prompt=sh.video_prompt, negative="",
                        image_path=str(OUT / "ten_img.png"),
-                       frames=240, fps=24, seed=4242, out_path=str(vid))
+                       frames=240, fps=24, seed=4242, out_path=str(vid),
+                       extra=extra)
     print("  视频: %s（%d 秒）" % (vid, int(time.time() - t0)))
     return 0
 
