@@ -109,6 +109,19 @@ def flf_enabled(ctx: Context, shot: Shot) -> bool:
     return bool(c.flf_workflow and c.i2v_nodes.get("last_image"))
 
 
+def _what_is_missing(shot, do_image: bool, do_video: bool) -> tuple[bool, bool]:
+    """What this shot still wants: a picture, a clip, or both.
+
+    The stage makes two things, and a shot that has one of them is not
+    finished.  Before, a shot with a picture counted as done, so every
+    shot drawn in an earlier run was skipped the next time round and its
+    clip was never made - the film was missing it, and on a run carried
+    on after a restart that was most of the film.
+    """
+    return (bool(do_image and not shot.image_path),
+            bool(do_video and not shot.video_path))
+
+
 def _video_workers(ctx: Context) -> int:
     """How many machines can take a video job right now."""
     vis = ctx.providers.visual
@@ -647,13 +660,23 @@ def run(ctx: Context) -> dict:
         for ts in ctx.timeline(ep).shots:
             durations[ts.shot.id] = ts.duration
     jobs = []
+    img_jobs = []      # the shots that still want a picture
+    vid_jobs = []      # the shots that still want a clip
     for ep in ctx.target_episodes():
         ctx.check_stop()   # 一集一问：停止能在下一集生效
         if ctx.stage_done(ep, "visual"):
             continue
         for sc in ep.scenes:
             for shot in sc.shots:
-                if shot.status == Status.DONE and shot.has_visual:
+                # The stage makes two things, and it has to say which one
+                # is missing: a shot with a picture and no clip is not
+                # finished.  Before, a shot with a picture counted as done,
+                # so every shot drawn in an earlier run was skipped the next
+                # time round and its clip was never made - the film was
+                # missing it, and on a run carried on after a restart that
+                # was most of the film.
+                need_img, need_vid = _what_is_missing(shot, do_image, do_video)
+                if not need_img and not need_vid:
                     continue
                 # A shot is drawn when that shot is ready, not when the
                 # project is: the stage is called while the writers are
@@ -675,6 +698,10 @@ def run(ctx: Context) -> dict:
                           or (shot.video_prompt or "").strip()):
                     continue
                 jobs.append((ep, sc, shot))
+                if need_img:
+                    img_jobs.append((ep, sc, shot))
+                if need_vid:
+                    vid_jobs.append((ep, sc, shot))
 
     if not jobs:
         # The stage is called every few seconds while the writers are
@@ -696,7 +723,7 @@ def run(ctx: Context) -> dict:
     # one GPU at once, so alternating per shot makes ComfyUI swap 15GB of
     # weights in and out for every single shot. Doing all the stills first and
     # all the videos after keeps one model resident and the swap happens once.
-    def _run_phase(label: str, fn, total: int, offset: int,
+    def _run_phase(label: str, fn, phase_jobs: list, total: int, offset: int,
                    workers: int = 0, quiet: bool = False) -> tuple[int, int]:
         """Returns (how many finished, how many succeeded)."""
         done = 0
@@ -728,7 +755,7 @@ def run(ctx: Context) -> dict:
         with ThreadPoolExecutor(max_workers=max(1, n)) as ex:
             futs = [ex.submit(_wrapped, ctx, sc, shot, durations.get(shot.id, 0.0), _ep)
                     if fn is _gen_video else ex.submit(_wrapped, ctx, sc, shot)
-                    for (_ep, sc, shot) in jobs]
+                    for (_ep, sc, shot) in phase_jobs]
             for i, fut in enumerate(as_completed(futs), 1):
                 _sid, shot_ok, _msg = fut.result()
                 ok += int(shot_ok)
@@ -740,7 +767,7 @@ def run(ctx: Context) -> dict:
                         ctx.log.info("visual: %s %d/%d 完成", label, i, total)
         return done, ok
 
-    total = len(jobs) * (2 if (do_image and do_video) else 1)
+    total = len(img_jobs) + len(vid_jobs)
     offset = 0
     try:
         from . import progress as _progress
@@ -755,31 +782,32 @@ def run(ctx: Context) -> dict:
         # waits for the still it continues from.  Neither machine sits idle
         # while the other finishes its whole batch.
         ctx.log.info("visual: 出图与出视频并行（出图 %d 张 / 出视频 %d 段）",
-                     len(jobs), len(jobs))
+                     len(img_jobs), len(vid_jobs))
         workers = max(1, int(c.video_concurrency or 0) or c.concurrency)
         workers = min(workers, _video_workers(ctx))
         img_pool = ThreadPoolExecutor(max_workers=1)
-        img_fut = img_pool.submit(_run_phase, "出图", _gen_image, len(jobs), 0,
-                                  1, True)
-        _d, videos_ok = _run_phase("出视频", _gen_video, total, offset,
-                                   workers=workers)
+        img_fut = img_pool.submit(_run_phase, "出图", _gen_image, img_jobs,
+                                  len(img_jobs), 0, 1, True)
+        _d, videos_ok = _run_phase("出视频", _gen_video, vid_jobs, total,
+                                   offset, workers=workers)
         _i, images_ok = img_fut.result()
         img_pool.shutdown()
         ok_count = images_ok + videos_ok
         ctx.save()
     else:
         if do_image:
-            ctx.log.info("visual: 第一批 · 出图（%d 张）", len(jobs))
-            _d, images_ok = _run_phase("出图", _gen_image, total, offset)
+            ctx.log.info("visual: 第一批 · 出图（%d 张）", len(img_jobs))
+            _d, images_ok = _run_phase("出图", _gen_image, img_jobs,
+                                       len(img_jobs), offset)
             ctx.save()
         if do_video:
-            ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(jobs))
+            ctx.log.info("visual: 第二批 · 出视频（%d 段）", len(vid_jobs))
             # as many at once as there are workers, and no more: one worker
             # means one video at a time, two cards means two
             workers = max(1, int(c.video_concurrency or 0) or c.concurrency)
             workers = min(workers, _video_workers(ctx))
-            _d, videos_ok = _run_phase("出视频", _gen_video, total, offset,
-                                       workers=workers)
+            _d, videos_ok = _run_phase("出视频", _gen_video, vid_jobs, total,
+                                       offset, workers=workers)
             ctx.save()
         ok_count = images_ok + videos_ok
         if do_image:
