@@ -246,15 +246,26 @@ assert.strictEqual(name.value, "重新开始");
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_sidebar_toggle_stays_at_bottom_and_remains_available_when_collapsed(self):
+        # The column of projects can always be got back.  The header used
+        # to have a button that opened it on a phone, and the button did
+        # nothing: the class it turned on, the scrim it was meant to show,
+        # and the close button it was meant to add had no rules in the
+        # stylesheet anywhere.  So the column is above the work on a
+        # narrow screen instead of hidden behind a button, and the toggle
+        # at the bottom of the column stays where it is.
         root = Path(__file__).parents[1]
         text = (root / "dramakit/web/static/index.html").read_text(encoding="utf-8")
         header = text[text.index("<header>"):text.index("</header>")]
         aside = text[text.index('<aside id="side">'):text.index("</aside>")]
         self.assertNotIn('id="sideToggle"', header)
-        self.assertIn('id="mobileSideToggle"', header)
+        self.assertNotIn('id="mobileSideToggle"', text)
         self.assertLess(aside.index('class="side-content"'), aside.index('id="sideToggle"'))
         self.assertIn("#side.hide{display:flex", text)
         self.assertIn("#side.hide .side-content{display:none}", text)
+        # and on a narrow screen the column is above the work, not gone
+        narrow = text[text.index("@media(max-width:1180px)"):]
+        self.assertIn("#body{flex-direction:column}", narrow)
+        self.assertIn("#side{display:block", narrow)
         modern = (root / "dramakit/web/static/modern.js").read_text(encoding="utf-8")
         self.assertIn("updateSideToggle();", modern)
         self.assertIn('sideToggle.setAttribute("aria-expanded", String(!collapsed))', modern)
@@ -454,13 +465,16 @@ assert.strictEqual(esc(`<a"b'c&d>`), "&lt;a&quot;b&#39;c&amp;d&gt;");
         self.assertIn('skillsPanelHtml()', text)
         self.assertIn('id="page-skills"', text)
         narrow = css[css.index("@media (max-width: 700px)"):]
-        # five destinations on a phone: the node pool moves up into the header
+        # a phone's bottom bar keeps what it can: the node pool stays in
+        # the rail, so the header has nothing the rail does not have
         hidden = re.search(r"([^{}]*#rail \.brand[^{}]*)\{", narrow).group(1)
-        for selector in ("#healthBtn", '#rail [data-page="nodes"]'):
-            self.assertIn(selector, hidden)
-        self.assertIn(".header-nodes { display: inline-flex; }", narrow)
-        self.assertIn('id="nodesBtnHeader"', text)
-        self.assertIn('getElementById("nodesBtnHeader").onclick', modern)
+        self.assertIn("#healthBtn", hidden)
+        self.assertNotIn('#rail [data-page="nodes"]', hidden)
+        self.assertNotIn(".header-nodes", narrow)
+        self.assertNotIn('id="nodesBtnHeader"', text)
+        self.assertNotIn('getElementById("nodesBtnHeader").onclick', modern)
+        # and the rail still has it
+        self.assertIn('data-page="nodes"', text)
 
 
 if __name__ == "__main__":

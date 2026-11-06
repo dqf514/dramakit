@@ -25,15 +25,6 @@
   // tab inside one of them.
   const jobsPage = document.getElementById("page-jobs");
 
-  const sideScrim = document.createElement("div");
-  sideScrim.id = "sideScrim";
-  document.body.appendChild(sideScrim);
-  const sideClose = document.createElement("button");
-  sideClose.className = "btn sm ghost mobile-side-close";
-  sideClose.textContent = "← 关闭项目栏";
-  sideClose.setAttribute("aria-label", "关闭项目栏");
-  side.prepend(sideClose);
-
   const aiToggle = document.createElement("button");
   aiToggle.className = "btn sm ghost";
   aiToggle.id = "aiToggle";
@@ -51,7 +42,6 @@
   }
 
   const sideToggle = document.getElementById("sideToggle");
-  const mobileSideToggle = document.getElementById("mobileSideToggle");
 
   function updateSideToggle() {
     const collapsed = side.classList.contains("hide");
@@ -63,32 +53,12 @@
     sideToggle.setAttribute("aria-expanded", String(!collapsed));
   }
 
-  function setMobileSide(open) {
-    side.classList.toggle("mobile-open", open);
-    sideScrim.classList.toggle("show", open);
-    mobileSideToggle.setAttribute("aria-expanded", String(open));
-  }
-
-  function closeMobileSide() {
-    setMobileSide(false);
-  }
-
   sideToggle.onclick = () => {
     side.classList.toggle("hide");
     updateSideToggle();
   };
-  mobileSideToggle.onclick = () => {
-    side.classList.remove("hide");
-    updateSideToggle();
-    setMobileSide(true);
-  };
   updateSideToggle();
-  sideScrim.onclick = closeMobileSide;
-  sideClose.onclick = closeMobileSide;
   document.getElementById("brandBtn").onclick = () => switchPage("workbench");
-  // On a phone the rail gives up its node-pool slot, so the header has to
-  // offer it - otherwise the page exists but nothing reaches it.
-  document.getElementById("nodesBtnHeader").onclick = () => switchPage("nodes");
   aiToggle.onclick = () => {
     const bar = document.getElementById("cmdbar");
     bar.classList.toggle("open");
@@ -448,7 +418,6 @@
       document.getElementById("cmd").focus();
     }
     if (event.key === "Escape") {
-      closeMobileSide();
       if (document.getElementById("drawer").classList.contains("show")) closeDrawer();
     }
     if ((event.key === "Enter" || event.key === " ") && event.target.matches('[role="button"]')) {
@@ -548,13 +517,6 @@
   closeDrawer = function() {
     const result = originalCloseDrawer();
     lastDrawerFocus?.focus?.();
-    return result;
-  };
-
-  const originalSelectProject = selectProject;
-  selectProject = async function(...args) {
-    const result = await originalSelectProject(...args);
-    closeMobileSide();
     return result;
   };
 
