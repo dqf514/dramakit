@@ -39,22 +39,49 @@ def _episode_count(total_chars: float, cfg, n_chapters: int) -> int:
 
 
 def _split_blocks(text: str, chapters: list[dict], n: int, cfg) -> list[str]:
+    return [body for body, _ in _split_blocks_with_chapters(text, chapters, n, cfg)]
+
+
+def _split_blocks_with_chapters(text: str, chapters: list[dict], n: int,
+                                cfg) -> list[tuple[str, list[int]]]:
+    """The blocks of text, and the chapters each block was made of.
+
+    The chapters are the ones that were picked; each carries its index.
+    A block is either a run of whole chapters (when the chapters are
+    big enough to fill an episode) or a slice of the joined text, and
+    a slice is found by what is in it rather than by where it starts,
+    because the text is cut at paragraph boundaries and the paragraphs
+    are stripped on the way.
+    """
     if cfg.respect_chapters and chapters and len(chapters) >= n:
         per = len(chapters) / n
-        blocks = []
+        blocks: list[tuple[str, list[int]]] = []
         for i in range(n):
             lo = int(round(i * per))
             hi = int(round((i + 1) * per))
             hi = max(hi, lo + 1)
-            body = "\n\n".join(c["body"] for c in chapters[lo:hi])
+            part = chapters[lo:hi]
+            body = "\n\n".join(c["body"] for c in part)
             if body.strip():
-                blocks.append(body)
+                blocks.append((body, [c.get("index", 0) for c in part]))
         if blocks:
             return blocks
     target = max(200, int(len(text) / max(n, 1)))
     if cfg.max_chars_per_episode > 0:
         target = cfg.max_chars_per_episode
-    return chunk_by_chars(text, target)
+    out: list[tuple[str, list[int]]] = []
+    for chunk in chunk_by_chars(text, target):
+        flat = " ".join(chunk.split())
+        idxs: list[int] = []
+        for c in chapters:
+            body = (c.get("body") or "").strip()
+            if not body:
+                continue
+            key = " ".join(body[:40].split())
+            if key and key in flat:
+                idxs.append(c.get("index", 0))
+        out.append((chunk, idxs))
+    return out
 
 
 def _chapters_to_cut(ctx: Context) -> list:
@@ -116,11 +143,11 @@ def run(ctx: Context) -> dict:
 
     n = _episode_count(len(text), cfg, len(blocks_src))
     if blocks_src and len(blocks_src) >= n:
-        bodies = [b["body"] for b in blocks_src]
-        chapters_for_split = [{"body": b} for b in bodies]
-        new_blocks = _split_blocks(text, chapters_for_split, n, cfg)
+        chapters_for_split = [{"body": b["body"], "index": b.get("index", 0)}
+                              for b in blocks_src]
+        new_blocks = _split_blocks_with_chapters(text, chapters_for_split, n, cfg)
     else:
-        new_blocks = _split_blocks(text, [], n, cfg)
+        new_blocks = _split_blocks_with_chapters(text, blocks_src, n, cfg)
 
     # number after what already exists, so a second batch appends
     first_index = (max((e.index for e in ctx.project.episodes), default=0) + 1)
@@ -130,13 +157,14 @@ def run(ctx: Context) -> dict:
 
     llm = ctx.providers.llm_for("segment")
     episodes: list[Episode] = list(ctx.project.episodes)
-    for j, block in enumerate(new_blocks):
+    for j, (block, chapter_indexes) in enumerate(new_blocks):
         idx = first_index + j
         ctx.store.episode_source_path(idx).write_text(block, encoding="utf-8")
         ep = Episode(
             id=f"ep{idx:03d}", index=idx, season=season_idx,
             duration_target=cfg.episode_duration,
             source_path=ctx.store.rel(ctx.store.episode_source_path(idx)),
+            chapter_indexes=list(chapter_indexes),
         )
         try:
             dur = estimate_reading_seconds(block, CHARS_PER_SEC)

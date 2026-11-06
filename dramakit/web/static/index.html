@@ -264,13 +264,20 @@ try{
   .toast.ok{border-left-color:var(--go2)}
 
   /* ---------- workbench ---------- */
-  .hero{display:flex;gap:16px;align-items:flex-start;margin-bottom:14px}
+  /* The cover is a poster, and it is as tall as the block of text beside
+     it.  The picture inside is taken out of the flow, so the poster's
+     own size does not push the row wider than the page: before, the
+     picture's natural height made the whole header a thousand pixels
+     tall. */
+  .hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;
+    align-items:stretch;margin-bottom:14px}
+  .hero .cover{position:relative;height:100%;min-height:212px;aspect-ratio:9/16;
+    border-radius:7px;overflow:hidden;background:var(--media-bg);
+    border:1px solid var(--line)}
+  .hero .cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .hero .hsyn{margin-top:5px;font-size:12.5px;line-height:1.45;color:var(--fg2);
     max-width:52ch;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
     overflow:hidden}
-  .hero .cover{width:96px;height:170px;flex:0 0 auto;border-radius:7px;overflow:hidden;
-    background:var(--media-bg);border:1px solid var(--line)}
-  .hero .cover img{width:100%;height:100%;object-fit:cover}
   .hero .hb{flex:1;min-width:0}
   .hero .ht{font-size:19px;font-weight:750;margin:0 0 2px}
   .hero .hm{color:var(--fg2);font-size:12px}
@@ -549,7 +556,20 @@ try{
 .chap-tile.on{background:var(--pcard-on);border-color:var(--proj-on-line)}
 .chap-tile.on .cn{color:var(--confirm)}
 .chap-tile:hover{border-color:var(--confirm)}
-.chap-tile .tick{position:absolute;top:1px;right:3px;font-size:12px;color:var(--confirm);opacity:0}
+  /* A chapter says where it is: made, being made, or not made yet. */
+  .chap-tile.st-done{border-color:var(--done-line);background:var(--done-bg)}
+  .chap-tile.st-done .cn{color:var(--done-fg)}
+  .chap-tile.st-running{border-color:var(--confirm);
+    background:color-mix(in srgb,var(--confirm) 12%,var(--bg3))}
+  .chap-tile.st-running .cn{color:var(--confirm)}
+  .chap-tile.st-running::after{content:"";position:absolute;left:3px;top:3px;
+    width:5px;height:5px;border-radius:50%;background:var(--confirm);
+    animation:sbblink 1.2s ease-in-out infinite}
+  @keyframes sbblink{0%,100%{opacity:.25}50%{opacity:1}}
+  .chap-state{font-size:11.5px;color:var(--fg3);margin-left:auto;white-space:nowrap}
+  .chap-row.st-done .chap-state{color:var(--done-fg)}
+  .chap-row.st-running .chap-state{color:var(--confirm)}
+  .chap-tile .tick{position:absolute;top:1px;right:3px;font-size:12px;color:var(--confirm);opacity:0}
 .chap-tile.on .tick{opacity:1}
 /* reading a chapter is a thing you do on purpose, so it gets its own
    button rather than sharing the click with picking - and it only shows
@@ -642,11 +662,11 @@ try{
   /* ---------- compact console ----------
      The console is a work surface, not a document: the padding is small,
      the cards sit close together, and the reading copy is gone. */
-  #main{padding:14px 16px 26px}
+  #main{padding:14px 16px 52px}
   .card{padding:12px 13px;margin-bottom:10px}
   h1.page{font-size:17px}
   .hero{gap:12px;margin-bottom:10px}
-  .hero .cover{width:62px;height:110px}
+  .hero .cover{min-height:212px;width:auto}
   .hero .ht{font-size:17px}
   .statrow{gap:6px;margin:8px 0 2px}
   .stat{padding:5px 9px;min-width:76px}
@@ -676,17 +696,22 @@ try{
   .wb-tab:hover{background:var(--bg3);color:var(--fg)}
   .wb-tab.on{background:var(--bg3);color:var(--fg);font-weight:650}
   .wb-pane[hidden]{display:none}
-  .wb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  /* The book on the left, the steps on the right: the two things a
+     person reads before touching anything. */
+  .wb-head{display:grid;grid-template-columns:minmax(290px,.95fr) minmax(0,1.75fr);
+    gap:12px;align-items:start;margin-bottom:10px}
+  .wb-head > .card{margin-bottom:0}
   .wb-head h1{margin:0}
+  @media(max-width:1080px){.wb-head{grid-template-columns:1fr}}
 
   /* ---------- the five steps ---------- */
   .stepstrip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-  .step{background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 9px;
+  .step{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:5px 8px;
     cursor:pointer;text-align:left;font-family:inherit;color:var(--fg);min-width:0}
   .step:hover{border-color:var(--line2)}
   .step .sn{font:600 11px var(--mono);color:var(--fg3)}
-  .step .st{font-weight:650;font-size:13px;display:flex;align-items:center;gap:5px}
-  .step .sd{color:var(--fg3);font-size:11.5px;margin-top:1px;line-height:1.3;
+  .step .st{font-weight:650;font-size:12.5px;display:flex;align-items:center;gap:5px}
+  .step .sd{color:var(--fg3);font-size:11.5px;margin-top:0;line-height:1.25;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .step.done{border-color:var(--done-line);background:var(--done-bg)}
   .step.done .st{color:var(--done-fg)}
@@ -700,12 +725,26 @@ try{
   .step.on .st{color:var(--fg)}
   .step .tick{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--confirm);
     border:1px solid var(--confirm);border-radius:9px;padding:0 6px;line-height:1.5}
-  .step .sbar{display:block;height:3px;border-radius:2px;background:var(--bg4);margin-top:6px;overflow:hidden}
+  .step .sbar{display:block;height:3px;border-radius:2px;background:var(--bg4);margin-top:4px;overflow:hidden}
   .step .sbar i{display:block;height:100%;background:var(--go2)}
   .stepchip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--fg3);
     border:1px solid var(--line);border-radius:9px;padding:1px 7px;background:var(--bg)}
   .stepchip.done{color:var(--done-fg);border-color:var(--done-line);background:var(--done-bg)}
 
+  /* ---------- the bar along the bottom of the page ---------- */
+  .statusbar{position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;
+    align-items:center;gap:10px;padding:5px 14px;background:var(--bg2);
+    border-top:1px solid var(--line);box-shadow:0 -1px 8px rgba(0,0,0,.18);
+    font-size:12px}
+  .statusbar .sb-left{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .statusbar .sb-nodes{color:var(--fg3);font-size:11.5px;white-space:nowrap}
+  .statusbar .sb-ticker{flex:1;min-width:0;overflow:hidden;position:relative;height:19px;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent)}
+  .statusbar .sb-track{display:inline-flex;white-space:nowrap;
+    animation:sbroll 45s linear infinite;will-change:transform}
+  .statusbar .sb-track span{padding-right:48px}
+  .statusbar .sb-track:hover{animation-play-state:paused}
+  @keyframes sbroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   .envrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .runbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -721,8 +760,16 @@ try{
   .wb-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
   .wb-setup{display:grid;
     grid-template-columns:minmax(240px,.8fr) minmax(300px,1fr) minmax(560px,2.2fr);
-    gap:12px;align-items:start;margin-bottom:12px}
-  .wb-setup > .card{margin-bottom:0}
+    gap:12px;align-items:stretch;margin-bottom:12px}
+  /* The three cards are as tall as the tallest of them, so the page has
+     one row of three and not three rows of different lengths.  The
+     chapter list is the one that can be longer than the others, so it
+     is given no height of its own to contribute - it takes what the
+     row has and scrolls in it. */
+  .wb-setup > .card{margin-bottom:0;display:flex;flex-direction:column;min-height:0}
+  .wb-setup #work-chapters .chap-body{flex:1 1 0;min-height:0;max-height:none;
+    overflow:auto;overscroll-behavior:contain}
+  .wb-setup #lookCard .looknote{margin-top:auto}
   /* the skills take a column of their own, and the list of checkboxes
      is two wide only where there is room for two */
   .skcard .skgrid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
@@ -767,6 +814,8 @@ try{
   @media(max-width:1180px){.wb-grid{grid-template-columns:1fr}
     .wb-setup{grid-template-columns:1fr}
     .wb-setup > .card.skcard{grid-column:auto}
+    /* one card per row: the chapter list needs a height of its own again */
+    .wb-setup #work-chapters .chap-body{flex:0 0 auto;max-height:min(50vh,540px)}
     .wb-side{position:static;height:auto;max-height:none;overflow:visible}
     .wb-side #work-chapters{display:block}
     .wb-side .chap-body{max-height:calc(100vh - 210px)}
@@ -961,6 +1010,9 @@ function toast(msg, kind="", ms=3200){
 async function pollJob(jid, onDone){
   const tick = async ()=>{
     const r = await getJSON("/api/jobs?id="+encodeURIComponent(jid));
+    // a request that did not come back is not a lost job: the console is
+    // busy with the run, and the answer is asked again
+    if(!r){ setTimeout(tick, 1200); return; }
     const j = r.job;
     if(!j){ toast("任务丢失","err"); return; }
     if(j.status==="queued"||j.status==="running"){ setTimeout(tick, 900); return; }
@@ -997,10 +1049,12 @@ async function boot(){
   }
   switchPage(S.activePage, true);
   startProgressPoll();
+  startStatusBar();
   // The environment chips on the workbench are worth having without a
   // click. The probe is slow and it talks to other machines, so it runs in
   // the background and the page redraws when it lands.
   if(!S.health) probeHealth(()=>{
+    renderStatusBar();
     if(S.activePage==="workbench"&&S.wbTab==="flow") renderFlow();
   });
 }
@@ -1148,6 +1202,83 @@ function renderAllPages(){
 
 // ---------- the workbench: five steps, and everything that goes with them ----------
 let guideTimer=null;
+// The bar along the bottom of the page: what the machine can do on the
+// left, what it is doing on the right.  It does not move with the
+// page, so the state of the machine is always on the screen.
+function ensureStatusBar(){
+  let bar=document.getElementById("statusbar");
+  if(!bar){
+    bar=document.createElement("div");
+    bar.id="statusbar";
+    bar.className="statusbar";
+    document.body.appendChild(bar);
+  }
+  return bar;
+}
+function statusTaskText(){
+  const bits=[];
+  const proj=(S.detail&&(S.detail.meta&&S.detail.meta.title||S.detail.meta.name))||S.current||"";
+  const st=runningStageName();
+  const rs=S.runStats||{};
+  if(st){
+    bits.push((proj||"当前项目")+" · "+(STAGE_ZH[st]||st)+" 进行中");
+    if(rs.total) bits.push("已完成 "+rs.done+"/"+rs.total);
+    if(rs.inflight) bits.push("在跑 "+rs.inflight+" 项");
+    const lanes=rs.lanes||{};
+    for(const k in lanes){
+      const v=lanes[k]||{};
+      if(v.running) bits.push((STAGE_ZH[k]||k)+" "+v.running);
+    }
+  }else if(proj){
+    bits.push(proj+" · 空闲");
+  }else{
+    bits.push("没有打开的项目");
+  }
+  const last=(S.lastLog||"");
+  if(last) bits.push(last);
+  return bits.join("　·　");
+}
+function renderStatusBar(){
+  const bar=ensureStatusBar();
+  const env=gEnvState();
+  const chip=(n,ok)=>`<span class="envchip ${env.checked?(ok?"ok":"bad"):""}">${n}${env.checked?(ok?"✓":"✗"):"·"}</span>`;
+  const chips=[chip("ffmpeg",env.ff),chip("大模型",env.llm),
+              chip("ComfyUI",env.comfy),chip("TTS",env.tts)].join("");
+  const ns=((S._nodeInfo||{}).nodes)||[];
+  const online=ns.filter(n=>n.online).length;
+  const nodes=ns.length?`<span class="sb-nodes">节点 ${online}/${ns.length} 在线</span>`:"";
+  const text=statusTaskText();
+  bar.innerHTML=`<div class="sb-left">${chips}${nodes}
+      <button class="btn xs ghost" id="sbProbe">环境自检</button></div>
+    <div class="sb-ticker"><div class="sb-track"><span>${esc(text)}</span><span>${esc(text)}</span></div></div>`;
+  const pb=document.getElementById("sbProbe");
+  if(pb) pb.onclick=()=>probeGuide();
+}
+let statusTimer=null;
+function startStatusBar(){
+  if(statusTimer) clearInterval(statusTimer);
+  renderStatusBar();
+  statusTimer=setInterval(async ()=>{
+    renderStatusBar();
+    const info=S._nodeInfo||{};
+    if(!info.t || Date.now()-info.t>20000){
+      try{
+        const r=await getJSON("/api/nodes");
+        if(r&&r.ok){ S._nodeInfo={t:Date.now(),nodes:r.nodes||[]}; renderStatusBar(); }
+      }catch(e){/* 网络瞬断 */}
+    }
+    // the last thing the machine said: it is what is being worked on,
+    // said by the part that is doing the work
+    try{
+      const lg=await getJSON("/api/logs?n=3");
+      const lines=(lg&&lg.lines)||[];
+      const last=lines.length?lines[lines.length-1]:null;
+      const msg=last?String(last.msg||"").trim():"";
+      if(msg && msg!==S.lastLog){ S.lastLog=msg; renderStatusBar(); }
+    }catch(e){/* 网络瞬断 */}
+  },4000);
+}
+
 function gEnvState(){
   const h=S.health, p=(h&&h.probe)||{}, b=(h&&h.brain)||{};
   const comfy=!!(p.comfyui&&p.comfyui.reachable);
@@ -1536,13 +1667,6 @@ function renderFlow(){
     </div>`;
   }).join("");
 
-  const env=gEnvState();
-  const envChip=(n,ok)=>`<span class="envchip ${env.checked?(ok?"ok":"bad"):""}">${n}${env.checked?(ok?"✓":"✗"):"·"}</span>`;
-  const envRow=`<div class="envrow" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line)">
-    ${envChip("ffmpeg",env.ff)}${envChip("大模型",env.llm)}${envChip("ComfyUI",env.comfy)}${envChip("TTS",env.tts)}
-    <span style="flex:1"></span>
-    <button class="btn xs ghost" id="flowProbe">环境自检</button>
-  </div>`;
 
   const epHtml=eps.map(ep=>`<div class="epcard" data-ep="${ep.index}">
       <div class="eh"><b>第${ep.index}集</b>${badge(ep.status)}<span style="flex:1"></span>
@@ -1595,7 +1719,7 @@ function renderFlow(){
     <div class="wb-grid">
       <div class="wb-main">
         <div class="wb-head">
-          <div class="hero" style="margin:0;flex:1;min-width:0">
+          <div class="hero" style="margin:0;min-width:0">
             <div class="cover">${firstCover?`<img src="${firstCover}" alt="${attr((d.meta.title||d.meta.name||"项目")+" 封面")}">`:'<div class="empty" style="padding:0;min-height:0;height:100%">无封面</div>'}</div>
             <div class="hb">
               <h1 class="ht">${esc(d.meta.title||d.meta.name)}</h1>
@@ -1610,12 +1734,20 @@ function renderFlow(){
               </div>
             </div>
           </div>
-          <div class="runbar">
-            <button class="btn ghost" data-act="go-board">分镜</button>
-            <button class="btn ghost" data-act="go-cast">角色</button>
-            <button class="btn ghost" data-act="go-assets">资产</button>
-            <button class="btn ghost" data-act="tag">AI 打标</button>
-            <button class="btn confirm" data-act="new">${mark("＋")} 新建</button>
+
+          <div class="card">
+            <h3>制作步骤 <span class="muted" style="font-weight:400;font-size:12px">点一下选中或取消 · 已完成 ${doneSteps}/${STEPS.length}</span></h3>
+            <div class="stepstrip">${stepHtml}</div>
+            <div class="runbar" style="margin-top:9px">
+              <select class="f" id="runProj" style="width:160px">${projs||'<option>（无项目）</option>'}</select>
+              <input class="f" id="runEps" placeholder="集数（留空=全部）" style="width:150px">
+              <button class="btn go" id="runGo">${mark("▶")} 开始</button>
+              <button class="btn ghost sm" id="runAll">全选步骤</button>
+              <button class="btn ghost sm" id="runNone">清空</button>
+              <span class="muted" id="runStat" style="font-size:12px">${esc(selText)}</span>
+              <span class="muted" id="runScope" style="font-size:12px"></span>
+            </div>
+            <div id="runOut"></div>
           </div>
         </div>
 
@@ -1623,22 +1755,6 @@ function renderFlow(){
           ${lookPanelHtml(d)}
           ${chapterHtml}
           ${skillsPanelHtml()}
-        </div>
-
-        <div class="card">
-          <h3>制作步骤 <span class="muted" style="font-weight:400;font-size:12px">点一下选中或取消 · 已完成 ${doneSteps}/${STEPS.length}</span></h3>
-          <div class="stepstrip">${stepHtml}</div>
-          <div class="runbar" style="margin-top:10px">
-            <select class="f" id="runProj" style="width:170px">${projs||'<option>（无项目）</option>'}</select>
-            <input class="f" id="runEps" placeholder="集数（留空=全部）" style="width:160px">
-            <button class="btn go" id="runGo">${mark("▶")} 开始</button>
-            <button class="btn ghost sm" id="runAll">全选步骤</button>
-            <button class="btn ghost sm" id="runNone">清空</button>
-            <span class="muted" id="runStat" style="font-size:12px">${esc(selText)}</span>
-            <span class="muted" id="runScope" style="font-size:12px"></span>
-          </div>
-          ${envRow}
-          <div id="runOut"></div>
         </div>
 
         <h2 class="page" style="font-size:14px;margin:12px 0 6px">分集</h2>
@@ -1668,18 +1784,6 @@ function renderFlow(){
   $$("#page-flow .epcard").forEach(x=>x.onclick=()=>{
     S.boardEp=parseInt(x.dataset.ep)||0; showWbTab("board");
   });
-  $$("#page-flow [data-act]").forEach(b=>b.onclick=()=>{
-    const a=b.dataset.act;
-    if(a==="go-board") showWbTab("board");
-    else if(a==="go-cast") showWbTab("cast");
-    else if(a==="go-assets") showWbTab("assets");
-    else if(a==="tag") reindex(S.current,true);
-    else if(a==="new"){
-      const fold=$("#flowNewFold");
-      if(fold){ fold.open=true; fold.scrollIntoView({behavior:"smooth",block:"center"}); }
-      setTimeout(()=>{ const b2=$("#gFileButton"); if(b2) b2.focus(); },80);
-    }
-  });
   $$("#page-flow [data-chap]").forEach(b=>b.onclick=()=>{
     const a=b.dataset.chap;
     if(a==="all") setAllChapters(true);
@@ -1690,7 +1794,6 @@ function renderFlow(){
     window.__chapScope=cs.checked;
     renderFlow();
   };
-  const pr=$("#flowProbe"); if(pr) pr.onclick=()=>probeGuide();
   const rg=$("#runGo"); if(rg) rg.onclick=doRun;
   drawChapScope();
   const ra=$("#runAll"); if(ra) ra.onclick=()=>{runSel=new Set(STEPS.flatMap(sp=>sp.stages));renderFlow();};
@@ -1732,7 +1835,7 @@ function bindGuideSourcePicker(picker,sourceInput,nameInput,fileName){
 
 async function probeHealth(onDone){
   const r=await getJSON("/api/health");
-  if(!r.ok||!r.job){ toast("环境探测提交失败","err"); onDone&&onDone(null); return; }
+  if(!r||!r.ok||!r.job){ toast("环境探测提交失败","err"); onDone&&onDone(null); return; }
   pollJob(r.job,res=>{ if(res) S.health=res; onDone&&onDone(res); });
 }
 function probeGuide(){
@@ -2167,6 +2270,7 @@ function startProgressPoll(){
         });
       }
       updateProgressPanel();
+      renderStatusBar();
       renderHeader(); renderProjects();
     }catch(e){/* 网络瞬断 */}
   }, 4000);
@@ -2661,7 +2765,7 @@ function syncNodes(name,btn){
     if(!r.ok){ if(out) out.textContent=r.error||"失败"; btn.disabled=false; btn.textContent="同步模型"; return; }
     const t=setInterval(async ()=>{
       const j=await getJSON("/api/jobs?id="+encodeURIComponent(r.job));
-      if(!j.ok||!j.job){ clearInterval(t); return; }
+      if(!j||!j.ok||!j.job){ clearInterval(t); return; }
       const job=j.job, p=job.progress||{};
       if(p.file||p.phase){
         const pct=p.percent||0;
@@ -3001,6 +3105,19 @@ async function doRun(){
   if(window.__chapScope){
     const chosen=Array.from(_chapChosenSet());
     if(!chosen.length){ toast("勾了「只做选中的章节」，但一章都没勾","err"); return; }
+    // A chapter that has been made already has a script and pictures
+    // behind it, and a rerun writes over them.  That is a decision, so
+    // it is asked for rather than done.
+    const states=chapterStates();
+    const done=chosen.filter(c=>states[c]==="done");
+    const busy=chosen.filter(c=>states[c]==="running");
+    if(done.length||busy.length){
+      const bits=[];
+      if(done.length) bits.push("第 "+done.slice(0,12).join("、")+(done.length>12?" 等 "+done.length+" 章":"")+" 已经做过");
+      if(busy.length) bits.push("第 "+busy.slice(0,12).join("、")+(busy.length>12?" 等 "+busy.length+" 章":"")+" 正在做");
+      const msg=bits.join("；")+"。\n\n重做会覆盖这些章节已有的剧本和画面。还要重做吗？";
+      if(!confirm(msg)){ toast("没有开始","",2200); return; }
+    }
     body.chapters=chosen;
     body.season=window.__nextSeason||1;
     const r=await postJSON("/api/chapters/choose",{project:body.project,chosen:chosen});
@@ -3569,6 +3686,37 @@ function updateChapHint(){
   const k=_chapChosenSet().size;
   hint.textContent="共 "+n+" 章 · 已选 "+k;
 }
+// What has been made of each chapter: made, being made, or not made.
+// The pipeline writes down which chapters each episode was made of, so
+// this is the truth rather than a guess; a project made before that
+// was written down falls back to the chapters that were cut.
+function chapterStates(){
+  const map={};
+  const d=S.detail;
+  if(!d) return map;
+  const eps=d.episodes||[];
+  let mapped=false;
+  eps.forEach(ep=>{
+    const list=ep.chapter_indexes||[];
+    if(!list.length) return;
+    const vals=Object.values(ep.stage_status||{});
+    let s="pending";
+    if(vals.length && vals.every(v=>v==="done")) s="done";
+    else if(vals.indexOf("running")>=0||vals.indexOf("interrupted")>=0
+         ||vals.indexOf("failed")>=0) s="running";
+    list.forEach(ci=>{ map[ci]=s; mapped=true; });
+  });
+  if(!mapped){
+    const meta=d.meta||{};
+    const ps=d.stage_status||{};
+    const vals=Object.values(ps);
+    const s=vals.indexOf("running")>=0?"running"
+          :(vals.length&&vals.every(v=>v==="done"))?"done":"running";
+    (meta.segmented_chapters||[]).forEach(ci=>{ map[ci]=s; });
+  }
+  return map;
+}
+const CHAP_STATE_ZH={done:"做过",running:"正在做",pending:"没做过"};
 function _chapClick(idx, on){
   const set=_chapChosenSet();
   if(on) set.add(idx); else set.delete(idx);
@@ -3603,6 +3751,9 @@ function _renderChapters(){
 
   if(!chs.length){ box.innerHTML='<div class="muted">这本书没有切出章节</div>'; return; }
 
+  const states=chapterStates();
+  const stateOf=(c)=>states[c.index]||"pending";
+
   if(mode==="list"){
     let lastVol=null, out=[];
     chs.forEach(c=>{
@@ -3610,12 +3761,13 @@ function _renderChapters(){
         out.push('<div class="chap-vol">'+esc(c.volume)+'</div>');
         lastVol=c.volume;
       }
-      out.push('<label style="display:flex;gap:8px;align-items:center;padding:2px 0">' +
+      out.push('<label class="chap-row st-'+stateOf(c)+'" style="display:flex;gap:8px;align-items:center;padding:2px 0">' +
         '<input type="checkbox" data-idx="'+c.index+'"'+(chosen.has(c.index)?' checked':'')+
         ' onchange="_chapClick('+c.index+',this.checked)"> ' +
         '<b class="rd-open" onclick="event.stopPropagation();openReader('+c.index+')" ' +
         'style="cursor:pointer" title="点击阅读">第'+c.index+'章 '+esc(c.title||'')+'</b> ' +
-        '<span class="muted">'+Math.round(c.chars/1000)+'k 字</span></label>');
+        '<span class="muted">'+Math.round(c.chars/1000)+'k 字</span> ' +
+        '<span class="chap-state">'+CHAP_STATE_ZH[stateOf(c)]+'</span></label>');
     });
     box.innerHTML=out.join("");
   } else {
@@ -3625,9 +3777,10 @@ function _renderChapters(){
         out.push('</div><div class="chap-vol">'+esc(c.volume)+'</div><div class="chap-grid">');
         lastVol=c.volume;
       }
-      out.push('<div class="chap-tile'+(chosen.has(c.index)?' on':'')+'" '+
+      out.push('<div class="chap-tile st-'+stateOf(c)+(chosen.has(c.index)?' on':'')+'" '+
         'data-idx="'+c.index+'" title="第'+c.index+'章 '+esc(c.title||'')+' · '+
-        Math.round(c.chars/1000)+'k 字（点一下选中）" onclick="_chapTile(this)">' +
+        Math.round(c.chars/1000)+'k 字 · '+CHAP_STATE_ZH[stateOf(c)]+'（点一下选中）" '+
+        'onclick="_chapTile(this)">' +
         '<span class="tick">'+(chosen.has(c.index)?'✓':'')+'</span>' +
         '<span class="cn">'+c.index+'</span>' +
         '<span class="ck">'+Math.round(c.chars/1000)+'k</span>' +
@@ -3648,7 +3801,10 @@ async function loadChapters(slug){
   const r = await postJSON("/api/catalog",{project:slug});
   if(!r || !r.ok) return;
   window.__chapters = r.chapters || [];
-  window.__chosen = new Set(window.__chapters.map(c=>c.index));   // start all-on
+  // Nothing is picked to begin with: a page that says "all of them"
+  // before anyone has chosen anything is not saying what the person
+  // wants.  The 全选 button is there when they want all of them.
+  window.__chosen = new Set();
   const card = document.getElementById("work-chapters");
   if(card) card.style.display = "";
   _renderChapters();

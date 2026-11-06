@@ -930,6 +930,7 @@ def _make_handler(state: State):
                     "video_seconds": _duration(ep.video_path),
                     "logline": ep.logline, "hook": ep.hook,
                     "status": _sv(ep.status), "stage_status": {k: _sv(v) for k, v in ep.stage_status.items()},
+                    "chapter_indexes": list(ep.chapter_indexes or []),
                     "estimated_seconds": ep.estimated_seconds,
                     "video": _media_url(slug, ep.video_path),
                     "cover": _media_url(slug, ep.cover_path),

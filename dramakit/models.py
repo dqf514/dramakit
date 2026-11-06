@@ -240,6 +240,10 @@ class Episode(BaseModel):
     recap: str = ""                           # 前情提要
     key_beats: list[str] = Field(default_factory=list)
     source_path: str = ""                     # project-relative path to this ep's source text
+    # which chapters of the book this episode was made of.  The console
+    # colours a chapter by what has been made of it, and it cannot do
+    # that without knowing which episode a chapter ended up in.
+    chapter_indexes: list[int] = Field(default_factory=list)
     duration_target: float = 90.0             # seconds
     scenes: list[Scene] = Field(default_factory=list)
     cover_path: str = ""
