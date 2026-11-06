@@ -209,6 +209,17 @@
       toast(r.ok ? "已请求停止，当前调用结束后会保留已完成内容" : (r.error || "无法停止"), r.ok ? "ok" : "err");
       await loadJobs();
     });
+    list.querySelectorAll("[data-job-resume]").forEach(btn => btn.onclick = async () => {
+      btn.disabled = true;
+      const r = await postJSON("/api/resume", {project: btn.dataset.jobResume});
+      if (!r || !r.ok) {
+        toast((r && r.error) || "没有可续跑的记录", "err", 4200);
+        btn.disabled = false;
+        return;
+      }
+      toast("已按上次的计划继续", "ok");
+      await loadJobs();
+    });
     list.querySelectorAll("[data-job-project]").forEach(btn => btn.onclick = async () => {
       await selectProject(btn.dataset.jobProject, true);
       switchPage("workbench");
@@ -221,6 +232,10 @@
     const progress = job.progress || {};
     const known = progress.total ? Math.min(100, Math.round((progress.done || 0) * 100 / progress.total)) : (progress.percent || 0);
     const active = ["queued", "running"].includes(job.status);
+    // A run that stopped can be carried on from where it stopped: the
+    // plan is on the project, and the stages that are done are skipped.
+    const resumable = job.kind === "run_pipeline" && !active && !!job.project
+      && ["interrupted", "error", "cancelled"].includes(job.status);
     // A running job that has not reported a count gets the crawl bar,
     // not an invented percentage: the console cannot know how far along
     // it is, and a made-up number reads as a measurement.
@@ -231,7 +246,7 @@
       <div class="job-project">${project ? `<button class="btn xs ghost" data-job-project="${attr(job.project)}">${esc(project.title)}</button>` : '<span class="muted">系统任务</span>'}</div>
       <div><span class="badge ${cls}">${esc(label)}</span></div>
       <div class="job-progress-wrap"><div class="job-time">${fmtJobTime(job)}</div>${bar}</div>
-      <div class="job-actions">${active ? `<button class="btn xs danger" data-job-stop="${attr(job.id)}">停止</button>` : ""}${job.kind === "run_pipeline" && !active && job.project ? `<button class="btn xs ghost" data-job-project="${attr(job.project)}">打开项目</button>` : ""}</div>
+      <div class="job-actions">${active ? `<button class="btn xs danger" data-job-stop="${attr(job.id)}">停止</button>` : ""}${resumable ? `<button class="btn xs ghost" data-job-resume="${attr(job.project)}" title="按这个任务当时的计划继续（已完成的步骤会跳过）">↻ 续跑</button>` : ""}${job.kind === "run_pipeline" && !active && job.project ? `<button class="btn xs ghost" data-job-project="${attr(job.project)}">打开项目</button>` : ""}</div>
       ${job.error ? `<div class="job-error">${esc(job.error)}</div>` : ""}
     </article>`;
   }

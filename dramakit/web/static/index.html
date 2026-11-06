@@ -1669,6 +1669,10 @@ function renderFlow(){
   const projs=S.projects.map(p=>`<option value="${esc(p.slug)}" ${p.slug===S.current?"selected":""}>${esc(p.title)}</option>`).join("");
   const selSteps=STEPS.filter(stepSelected);
   const selText=selSteps.length?`已选 ${selSteps.length} 步：${selSteps.map(x=>x.zh).join("、")}`:"未选择步骤";
+  // A run that was interrupted leaves its plan on the project, so the
+  // button can say whether there is something to carry on from.
+  const lastRun=(d&&d.meta&&d.meta.last_run)||{};
+  const canResume=!!Object.keys(lastRun).length;
 
   const stepHtml=STEPS.map((sp,i)=>{
     const st=stepState(sp), pct=stepPct(sp);
@@ -1757,6 +1761,8 @@ function renderFlow(){
               <select class="f" id="runProj" style="width:160px">${projs||'<option>（无项目）</option>'}</select>
               <input class="f" id="runEps" placeholder="集数（留空=全部）" style="width:150px">
               <button class="btn go" id="runGo">${mark("▶")} 开始</button>
+              <button class="btn ghost sm" id="runResume"${canResume?"":" disabled"}
+                title="${attr(canResume?"接着上次中断的那一轮继续（已完成的步骤会跳过）":"这个项目没有中断中的运行")}">↻ 续跑</button>
               <button class="btn ghost sm" id="runAll">全选步骤</button>
               <button class="btn ghost sm" id="runNone">清空</button>
               <span class="muted" id="runStat" style="font-size:12px">${esc(selText)}</span>
@@ -1810,6 +1816,7 @@ function renderFlow(){
     renderFlow();
   };
   const rg=$("#runGo"); if(rg) rg.onclick=doRun;
+  const rr=$("#runResume"); if(rr) rr.onclick=doResume;
   drawChapScope();
   const ra=$("#runAll"); if(ra) ra.onclick=()=>{runSel=new Set(STEPS.flatMap(sp=>sp.stages));renderFlow();};
   const rn=$("#runNone"); if(rn) rn.onclick=()=>{runSel=new Set();renderFlow();};
@@ -3143,24 +3150,45 @@ async function doRun(){
   $("#runGo").disabled=true;
   postJSON("/api/run",body).then(r=>{
     if(!r.ok){ $("#runStat").textContent="失败："+(r.error||""); $("#runGo").disabled=false; return; }
-    pollJob(r.job,(res,job)=>{
-      $("#runGo").disabled=false;
-      if(!res||job.status!=="done"){
-        const msg=(job&&job.error)||"任务已中断，未产生完整结果";
-        $("#runStat").innerHTML=`<span style="color:var(--danger2)">${mark("✗")} ${esc(msg)}</span>`;
-        $("#runOut").innerHTML=`<div class="card run-result fail"><h3>运行未完成</h3><p>${esc(msg)}</p><button class="btn ghost" id="runToJobs">查看任务与日志</button></div>`;
-        $("#runToJobs").onclick=()=>showWbTab("jobs");
-        return;
-      }
-      const stageResults=(res&&res.results)||res||{};
-      const failed=Object.entries(stageResults).filter(([,v])=>v&&v.error);
-      const rows=Object.entries(stageResults).map(([s,v])=>`<div class="result-row"><b>${esc(STAGE_ZH[s]||s)}</b>${v&&v.error?`<span class="badge fail">${esc(v.error)}</span>`:'<span class="badge done">完成</span>'}</div>`).join("");
-      $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)"><span aria-hidden="true">✓</span> 运行完成</span>';
-      $("#runOut").innerHTML=`<div class="card run-result"><h3>${failed.length?"部分完成":"运行完成"}</h3>${rows}<details><summary>查看原始结果</summary><pre>${esc(JSON.stringify(stageResults,null,1))}</pre></details></div>`;
-      toast(failed.length?"部分阶段失败，请查看结果":"流水线完成",failed.length?"err":"ok");
-      selectProject(body.project,true).then(()=>renderWorkbench());
-    });
+    watchRun(r.job, body.project);
   });
+}
+
+// The watching of a run, whether it was started from here or carried on
+// from where it stopped.
+function watchRun(jid, project){
+  pollJob(jid,(res,job)=>{
+    $("#runGo").disabled=false;
+    const rb=$("#runResume"); if(rb) rb.disabled=false;
+    if(!res||job.status!=="done"){
+      const msg=(job&&job.error)||"任务已中断，未产生完整结果";
+      $("#runStat").innerHTML=`<span style="color:var(--danger2)">${mark("✗")} ${esc(msg)}</span>`;
+      $("#runOut").innerHTML=`<div class="card run-result fail"><h3>运行未完成</h3><p>${esc(msg)}</p><button class="btn ghost" id="runToJobs">查看任务与日志</button></div>`;
+      $("#runToJobs").onclick=()=>showWbTab("jobs");
+      return;
+    }
+    const stageResults=(res&&res.results)||res||{};
+    const failed=Object.entries(stageResults).filter(([,v])=>v&&v.error);
+    const rows=Object.entries(stageResults).map(([s,v])=>`<div class="result-row"><b>${esc(STAGE_ZH[s]||s)}</b>${v&&v.error?`<span class="badge fail">${esc(v.error)}</span>`:'<span class="badge done">完成</span>'}</div>`).join("");
+    $("#runStat").innerHTML=failed.length?`<span style="color:var(--warn)">部分阶段失败（${failed.length}）</span>`:'<span style="color:var(--go2)"><span aria-hidden="true">✓</span> 运行完成</span>';
+    $("#runOut").innerHTML=`<div class="card run-result"><h3>${failed.length?"部分完成":"运行完成"}</h3>${rows}<details><summary>查看原始结果</summary><pre>${esc(JSON.stringify(stageResults,null,1))}</pre></details></div>`;
+    toast(failed.length?"部分阶段失败，请查看结果":"流水线完成",failed.length?"err":"ok");
+    if(project) selectProject(project,true).then(()=>renderWorkbench());
+  });
+}
+
+// Carry on from where the run stopped: the same chapters, the same
+// episodes, the same stages - the ones that are finished are skipped.
+async function doResume(){
+  const slug=($("#runProj")&&$("#runProj").value)||S.current;
+  if(!slug){ toast("先选一个项目","err"); return; }
+  const r=await postJSON("/api/resume",{project:slug});
+  if(!r||!r.ok){ toast((r&&r.error)||"没有可续跑的记录","err",4200); return; }
+  $("#runStat").innerHTML='<span class="spin"></span> 续跑中…（接着上次的计划）';
+  $("#runGo").disabled=true;
+  const rb=$("#runResume"); if(rb) rb.disabled=true;
+  toast("已按上次的计划继续","ok",2600);
+  watchRun(r.job, slug);
 }
 
 // ---------- settings: one page, five tabs ----------
