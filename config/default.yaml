@@ -258,7 +258,7 @@ comfyui:
   request_timeout: 60.0                     # 短HTTP调用（提交/查询/下载）超时
   poll_interval: 1.0
   concurrency: 1 # 出图并发（本机一张卡，一次一个）
-  video_concurrency: 1                     # 出视频并发（现在只有 3090-a 出视频）
+  video_concurrency: 2                     # 出视频并发（一张卡一段视频，两张卡两段）
   max_retries: 3                            # 远程网络抖动重试次数
   use_proxy: false                          # 直连(false)：局域网/远程 ComfyUI 必须 false，
                                             #   否则 httpx 会读系统代理导致连不上/卡住
@@ -345,6 +345,21 @@ comfyui:
       ssh_key: C:/Users/David/.ssh/id_ed25519
       remote_models: /data/comfyui/models
       # 3090 是 Ampere，没有 FP4 张量核：用 int8/convrot 的那套权重
+      graph_overrides:
+        "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
+        "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
+        "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
+    # 第二张卡：同一台机器的另一个 ComfyUI 实例，各用各的卡。
+    # 模型和节点都在同一套文件里，所以和上面那条一样。
+    - name: gpu3090-b
+      base_url: http://192.168.31.8:8189
+      enabled: true
+      roles: [i2v]
+      transfer: scp
+      ssh_host: 192.168.31.8
+      ssh_user: david
+      ssh_key: C:/Users/David/.ssh/id_ed25519
+      remote_models: /data/comfyui/models
       graph_overrides:
         "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
         "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
