@@ -91,6 +91,26 @@ Write-Host "  登录触发器: $logonDelay"
 # person arrives.  Both call the same script, and the script leaves
 # alone whatever is already listening - so the second one is a safety
 # net, not a second set of servers.
+# The user's PATH, written down for the machine: at boot, SYSTEM is the
+# only one running and the user's registry hive may not be loaded yet,
+# so the PATH is read now, while the person who owns the project is
+# here, and handed to the script later.
+try {
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $upath = ""
+    try { $upath = (Get-ItemProperty "HKU:\$sid\Environment" -ErrorAction Stop).Path }
+    catch {
+        try { $upath = [Environment]::GetEnvironmentVariable("Path", "User") } catch {}
+    }
+    if (-not $upath) { $upath = [Environment]::GetEnvironmentVariable("Path", "User") }
+    $envFile = Join-Path $PSScriptRoot "autostart_env.json"
+    @{ sid = $sid; path = $upath } | ConvertTo-Json |
+        Set-Content -Path $envFile -Encoding UTF8
+    Write-Host "  记下了用户的 PATH（$envFile）"
+} catch {
+    Write-Host "  用户的 PATH 没记下：$($_.Exception.Message)"
+}
+
 $startup = [Environment]::GetFolderPath("Startup")
 $lnk = Join-Path $startup "DramaKit.lnk"
 try {

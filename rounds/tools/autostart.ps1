@@ -20,7 +20,9 @@
 #   powershell -ExecutionPolicy Bypass -File rounds\tools\autostart.ps1 -Restart
 param(
     [switch]$Status,
-    [switch]$Restart
+    [switch]$Restart,
+    [switch]$Probe,
+    [string]$Out = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -44,6 +46,35 @@ function Say($msg) {
     $line = "[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $msg
     try { Add-Content -Path $logFile -Value $line -Encoding UTF8 } catch {}
     Write-Host $line
+}
+
+# The console is started as SYSTEM, and SYSTEM's PATH is the machine's
+# PATH alone.  The user's PATH is where ffmpeg lives, and without it
+# every voice sample and every length check comes back "file not
+# found".  The installer writes the user's PATH down next to this
+# script; here it is merged in, so the console is started with the
+# tools it expects whether a person or the machine started it.
+$envFile = Join-Path $PSScriptRoot "autostart_env.json"
+if (Test-Path $envFile) {
+    try {
+        $uenv = Get-Content $envFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($uenv.path) {
+            $parts = @($env:PATH -split ';') + @($uenv.path -split ';')
+            $seen = @{}
+            $merged = @()
+            foreach ($p in $parts) {
+                if (-not $p) { continue }
+                $k = $p.TrimEnd('\').ToLower()
+                if ($seen.ContainsKey($k)) { continue }
+                $seen[$k] = $true
+                $merged += $p
+            }
+            $env:PATH = ($merged -join ';')
+            Say ("  把用户的 PATH 合进来了（{0} 条）" -f $merged.Count)
+        }
+    } catch {
+        Say ("  用户的 PATH 没合进来：{0}" -f $_.Exception.Message)
+    }
 }
 
 function PortBusy($port) {
@@ -92,6 +123,27 @@ function Stop-Listening($port) {
         }
         Start-Sleep -Seconds 3
     }
+}
+
+# -------------------------------------------------------------- the probe
+# What the machine sees, before anything is started: the PATH that was
+# merged, and whether ffmpeg - the thing the voice samples are made
+# with - is in it.  This is the same code path the boot trigger takes,
+# so what it says is what the console will get.
+if ($Probe) {
+    $lines = @()
+    $lines += "跑的人: " + [Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $lines += "PATH 条数: " + (@($env:PATH -split ';') | Where-Object { $_ }).Count
+    $ff = Get-Command ffmpeg -ErrorAction SilentlyContinue
+    $lines += "ffmpeg: " + $(if ($ff) { $ff.Source } else { "**找不到**" })
+    if ($ff) {
+        $lines += "版本: " + ((& ffmpeg -version 2>&1 | Select-Object -First 1))
+    }
+    if ($Out) {
+        Set-Content -Path $Out -Value ($lines -join "`r`n") -Encoding UTF8
+    }
+    Write-Host ($lines -join "`n")
+    exit 0
 }
 
 # ----------------------------------------------------------------- status

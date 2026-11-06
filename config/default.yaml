@@ -275,7 +275,7 @@ comfyui:
   ws_fallback_to_poll: true
   # 出图用 FLUX 3 Image Klein。带角色/场景参考图时用多参考图那版，
   # 没有参考图的空镜用普通版（多参考版无参考时会退化成正方形空潜空间）。
-  t2i_workflow: config/comfyui/t2i_sdxl.json
+  t2i_workflow: config/comfyui/t2i_krea2.json
   t2i_workflow_ref: config/comfyui/t2i_krea2_ref.json
   i2v_workflow: config/comfyui/i2v_animatediff.json
   # 让 H3 自己说话（画面+嘴型+人声+音效一次出）。

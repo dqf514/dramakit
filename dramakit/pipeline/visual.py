@@ -668,7 +668,13 @@ def run(ctx: Context) -> dict:
                 jobs.append((ep, sc, shot))
 
     if not jobs:
-        ctx.log.info("visual: 所有镜头已生成")
+        # The stage is called every few seconds while the writers are
+        # still going, so it says this once and then stays quiet: a log
+        # that repeats itself every five seconds hides the lines that
+        # matter.
+        if not getattr(ctx, "_visual_idle_said", False):
+            ctx._visual_idle_said = True
+            ctx.log.info("visual: 所有镜头已生成")
         _gen_scores(ctx)
         return {"shots": 0}
 

@@ -32,6 +32,8 @@ Thumbs.db
 .vscode/
 
 # Ad-hoc local test scripts & artifacts (environment-specific)
+# 这台机器的 PATH：开机自启脚本要合进来，安装脚本会自己写
+rounds/tools/autostart_env.json
 h3_*.py
 pw_*.py
 _pw_*
