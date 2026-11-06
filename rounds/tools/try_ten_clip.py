@@ -66,11 +66,21 @@ def main() -> int:
     voice = store.abs("characters/夏一朵/voice.mp3")
     extra = {"ref_audio_path": str(voice),
              "ref_audio_node": cfg.comfyui.ref_audio_node}
+    # and the reference pictures: the faces have to stay the same faces
+    from dramakit.pipeline.visual import _fit_refs, _ref_images
+    refs = _fit_refs(ctx, _ref_images(ctx, sh, sc), sh)
+    print("  参考图 %d 张: %s" % (len(refs), [r[-40:] for r in refs]))
     t0 = time.time()
+    # H3 only takes lengths on its 17k+5 grid: ten seconds is 243 frames
+    # (17*14+5), not 240
+    from dramakit.pipeline.visual import _shot_frames
+    frames = _shot_frames(ctx, sh, 10.0)
+    print("  帧数: %d" % frames)
+    extra["ref_pictures"] = refs
     vis.generate_video(prompt=sh.video_prompt, negative="",
                        image_path=str(OUT / "ten_img.png"),
-                       frames=240, fps=24, seed=4242, out_path=str(vid),
-                       extra=extra)
+                       frames=frames, fps=cfg.comfyui.fps, seed=4242,
+                       out_path=str(vid), extra=extra)
     print("  视频: %s（%d 秒）" % (vid, int(time.time() - t0)))
     return 0
 

@@ -867,43 +867,47 @@ class ComfyUIClient(BaseImageVideo):
         # shot continues from. The workflow says which load node is which
         # slot, so the order is the one both sides agreed on.
         pictures = list(extra.get("ref_pictures") or [])
-        if pictures:
-            slots: list[tuple[str, str]] = []
-            ref_node = None
-            ref_shape = "flat"
-            for nid, node in graph.items():
-                if not isinstance(node, dict):
-                    continue
-                if "ReferenceToVideo" in str(node.get("class_type", "")):
-                    ref_node = node
-                    imgs, ref_shape = _ref_slots(node, "ref_images")
-                    for slot, link in sorted(imgs.items()):
-                        if isinstance(link, list) and link:
-                            slots.append((str(link[0]), slot))
-                    break
-            used: set[str] = set()
-            for (load_id, slot), path in zip(slots, pictures):
-                if load_id not in graph or not Path(path).exists():
-                    continue
-                graph[load_id].setdefault("inputs", {})["image"] = self.upload_image(path)
-                used.add(slot)
-            # The slots that got no picture are taken out of the job: the
-            # node behind them would go on loading the placeholder, and the
-            # model would be handed a picture that is not there. The node
-            # goes too - a loader still in the graph is still validated,
-            # and one with no picture of its own fails validation, which
-            # refuses the whole job rather than just the extra slot.
-            if ref_node is not None:
-                imgs, _shape = _ref_slots(ref_node, "ref_images")
-                dropped: list[str] = []
-                for slot in list(imgs):
-                    if slot not in used:
-                        link = imgs.pop(slot)
-                        if isinstance(link, list) and link:
-                            dropped.append(str(link[0]))
-                _put_ref_slots(ref_node, "ref_images", imgs, ref_shape)
-                for nid in dropped:
-                    graph.pop(nid, None)
+        slots: list[tuple[str, str]] = []
+        ref_node = None
+        ref_shape = "flat"
+        for nid, node in graph.items():
+            if not isinstance(node, dict):
+                continue
+            if "ReferenceToVideo" in str(node.get("class_type", "")):
+                ref_node = node
+                imgs, ref_shape = _ref_slots(node, "ref_images")
+                for slot, link in sorted(imgs.items()):
+                    if isinstance(link, list) and link:
+                        slots.append((str(link[0]), slot))
+                break
+        used: set[str] = set()
+        for (load_id, slot), path in zip(slots, pictures):
+            if load_id not in graph or not Path(path).exists():
+                continue
+            graph[load_id].setdefault("inputs", {})["image"] = self.upload_image(path)
+            used.add(slot)
+        # The slots that got no picture are taken out of the job: the
+        # node behind them would go on loading the placeholder, and the
+        # model would be handed a picture that is not there. The node
+        # goes too - a loader still in the graph is still validated,
+        # and one with no picture of its own fails validation, which
+        # refuses the whole job rather than just the extra slot.
+        #
+        # This happens whether there were pictures or not: a shot with no
+        # reference at all - an empty room, a street with nobody in it -
+        # used to keep its empty loaders, and the whole job came back as
+        # a 400 with the card's time wasted.
+        if ref_node is not None:
+            imgs, _shape = _ref_slots(ref_node, "ref_images")
+            dropped: list[str] = []
+            for slot in list(imgs):
+                if slot not in used:
+                    link = imgs.pop(slot)
+                    if isinstance(link, list) and link:
+                        dropped.append(str(link[0]))
+            _put_ref_slots(ref_node, "ref_images", imgs, ref_shape)
+            for nid in dropped:
+                graph.pop(nid, None)
         # the voice reference: the recording of the line goes in as the
         # timbre the character speaks with
         ref_audio = extra.get("ref_audio_path")
