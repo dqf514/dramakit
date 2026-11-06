@@ -717,9 +717,23 @@ class ComfyUIClient(BaseImageVideo):
         raise TimeoutError(f"ComfyUI prompt {prompt_id} 超时（{limit}s）")
 
     def _history(self, prompt_id: str) -> dict:
-        r = self._get(f"/history/{prompt_id}", timeout=self.cfg.request_timeout)
-        r.raise_for_status()
-        return r.json().get(prompt_id, {})
+        # The card that has just made a video is busy writing it: the file
+        # is being encoded and the card's event loop is inside ffmpeg, so
+        # it does not answer at once.  The render is not thrown away over
+        # a slow answer - the question is asked again, with patience, and
+        # the wait is bounded so a card that has really died does not
+        # hold the run up for ever.
+        last: Optional[Exception] = None
+        for i in range(8):
+            try:
+                r = self._get(f"/history/{prompt_id}", retry=False, timeout=45)
+                if r.status_code == 200:
+                    return r.json().get(prompt_id, {})
+                last = ComfyUIError(f"HTTP {r.status_code}")
+            except Exception as e:  # noqa: BLE001
+                last = e
+            time.sleep(5)
+        raise ComfyUIError(f"ComfyUI 问不出结果(prompt={prompt_id}): {last}")
 
     def _download(self, item: dict, out_path: str) -> str:
         params = {
