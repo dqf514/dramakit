@@ -536,10 +536,11 @@ try{
 .chap-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0}
 .chap-tools .btn{padding:3px 9px;font-size:12.5px}
 .chap-tools .grow{flex:1}
-.chap-body{max-height:calc(100vh - 210px);overflow:auto;margin-top:6px}
+.chap-body{max-height:min(50vh,540px);overflow:auto;margin-top:6px;
+    overscroll-behavior:contain}
 
 /* icon mode: a tile per chapter, scannable at a glance */
-.chap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px}
+.chap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:5px}
 .chap-tile{position:relative;border:1px solid var(--line);background:var(--bg3);
   border-radius:var(--r);padding:6px 3px;text-align:center;cursor:pointer;
   font-size:12px;line-height:1.25;user-select:none;transition:.12s}
@@ -550,6 +551,14 @@ try{
 .chap-tile:hover{border-color:var(--confirm)}
 .chap-tile .tick{position:absolute;top:1px;right:3px;font-size:12px;color:var(--confirm);opacity:0}
 .chap-tile.on .tick{opacity:1}
+/* reading a chapter is a thing you do on purpose, so it gets its own
+   button rather than sharing the click with picking - and it only shows
+   when the pointer is on the tile, so the grid stays a grid */
+.chap-tile .cr{position:absolute;bottom:1px;right:3px;font-size:11.5px;color:var(--fg3);
+  border:1px solid var(--line);border-radius:4px;padding:0 4px;cursor:pointer;
+  background:var(--bg);line-height:1.5;opacity:0;transition:.12s}
+.chap-tile:hover .cr{opacity:1}
+.chap-tile .cr:hover{color:var(--fg);border-color:var(--confirm);opacity:1}
 .chap-vol{grid-column:1/-1;font-size:12px;color:var(--fg3);margin:6px 0 2px;
   border-bottom:1px solid var(--line);padding-bottom:2px;font-weight:600}
 
@@ -710,9 +719,13 @@ try{
      thing on it, so it gets a column of its own that does not scroll
      away with the rest of the page. */
   .wb-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
-  .wb-setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;
-    align-items:start;margin-bottom:12px}
+  .wb-setup{display:grid;
+    grid-template-columns:minmax(240px,.8fr) minmax(300px,1fr) minmax(560px,2.2fr);
+    gap:12px;align-items:start;margin-bottom:12px}
   .wb-setup > .card{margin-bottom:0}
+  /* the skills take a column of their own, and the list of checkboxes
+     is two wide only where there is room for two */
+  .skcard .skgrid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
   .wb-main{min-width:0}
   .wb-side{position:sticky;top:8px;display:flex;flex-direction:column;gap:12px;
     height:calc(100vh - 76px);overflow:hidden;padding-right:2px}
@@ -730,7 +743,8 @@ try{
 
   /* ---------- the skills, one column per step ---------- */
   .skgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px;margin-top:8px}
-  .skcol{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;min-width:0}
+  .skcol{background:var(--bg);border:1px solid var(--line);border-radius:8px;
+    padding:7px 8px;min-width:0;container-type:inline-size}
   .skcol .skt{font-weight:650;font-size:12.5px;margin-bottom:6px}  .skcol .skt{display:flex;align-items:center;gap:6px}
   .skcol .skstep{font-weight:400;font-size:11.5px;color:var(--fg3);
     border:1px solid var(--line);border-radius:4px;padding:0 4px}
@@ -740,15 +754,19 @@ try{
   .skgrp .sks{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--fg2);
     margin-bottom:4px;white-space:nowrap}
   .skgrp .sks .muted{font-size:11.5px;margin-left:auto}
-  .skopts{columns:2;column-gap:10px;padding-right:2px}
+  .skopts{columns:1;column-gap:10px;padding-right:2px}
+  @container (min-width:235px){.skopts{columns:2}}
   .skopts .skck{break-inside:avoid}
   .skck{display:flex;align-items:flex-start;gap:5px;font-size:11.5px;color:var(--fg2);
     cursor:pointer;line-height:1.35}
   .skck:hover{color:var(--fg)}
   .skck input{margin:2px 0 0;flex:0 0 auto}
 
+  @media(max-width:1440px){.wb-setup{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    .wb-setup > .card.skcard{grid-column:1/-1}}
   @media(max-width:1180px){.wb-grid{grid-template-columns:1fr}
     .wb-setup{grid-template-columns:1fr}
+    .wb-setup > .card.skcard{grid-column:auto}
     .wb-side{position:static;height:auto;max-height:none;overflow:visible}
     .wb-side #work-chapters{display:block}
     .wb-side .chap-body{max-height:calc(100vh - 210px)}
@@ -1410,7 +1428,7 @@ function skillsPanelHtml(){
       <div class="skopts">${opts}</div></div>`;
   }).join("");
   const rec=SK.recommended?" · 按这本书推荐的":"";
-  return `<div class="card">
+  return `<div class="card skcard">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <b>技能</b>
       <span class="muted" style="font-size:12px">勾上就存到本项目，下次跑流水线生效${esc(rec)}</span>
@@ -1604,6 +1622,7 @@ function renderFlow(){
         <div class="wb-setup">
           ${lookPanelHtml(d)}
           ${chapterHtml}
+          ${skillsPanelHtml()}
         </div>
 
         <div class="card">
@@ -1621,8 +1640,6 @@ function renderFlow(){
           ${envRow}
           <div id="runOut"></div>
         </div>
-
-        ${skillsPanelHtml()}
 
         <h2 class="page" style="font-size:14px;margin:12px 0 6px">分集</h2>
         <div class="epgrid">${epHtml||'<div class="empty">还没有分集，先跑「准备」这一步</div>'}</div>
@@ -3517,7 +3534,7 @@ boot();
 window.__chapters = [];
 // which chapters are picked: keep it here so switching modes keeps your picks
 window.__chosen = window.__chosen || null;
-window.__chapMode = window.__chapMode || "list";
+window.__chapMode = window.__chapMode || "icon";
 
 function _chapChosenSet(){
   // The picked chapters, read from whichever mode is on screen.  List mode
@@ -3610,11 +3627,12 @@ function _renderChapters(){
       }
       out.push('<div class="chap-tile'+(chosen.has(c.index)?' on':'')+'" '+
         'data-idx="'+c.index+'" title="第'+c.index+'章 '+esc(c.title||'')+' · '+
-        Math.round(c.chars/1000)+'k 字" onclick="openReader('+c.index+')">' +
-        '<span class="tick" onclick="event.stopPropagation();_chapTile(this.parentNode)" ' +
-        'title="选中 / 取消">'+(chosen.has(c.index)?'✓':'')+'</span>' +
+        Math.round(c.chars/1000)+'k 字（点一下选中）" onclick="_chapTile(this)">' +
+        '<span class="tick">'+(chosen.has(c.index)?'✓':'')+'</span>' +
         '<span class="cn">'+c.index+'</span>' +
-        '<span class="ck">'+Math.round(c.chars/1000)+'k</span></div>');
+        '<span class="ck">'+Math.round(c.chars/1000)+'k</span>' +
+        '<span class="cr" onclick="event.stopPropagation();openReader('+c.index+')" '+
+        'title="读这一章">读</span></div>');
     });
     out.push('</div>');
     box.innerHTML=out.join("");

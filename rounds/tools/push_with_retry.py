@@ -64,21 +64,22 @@ def run(cmd, timeout=90):
 # resolved by a DNS that hands out an address this network drops, so the
 # real addresses of GitHub are tried as well - a request that names one
 # of them goes there whatever the name resolves to.
-GITHUB_IPS = ("140.82.112.3", "140.82.113.3", "140.82.114.3", "20.205.243.166")
+GITHUB_IPS = ("140.82.114.3", "20.205.243.166", "140.82.112.3", "140.82.113.3",
+              "140.82.116.3", "20.27.177.113")
 
-ATTEMPTS = [("直连", ["git", "-c", "http.sslBackend=schannel",
-                      "push", "origin", "main"])]
+# The schannel backend is not what this build of git uses, and the one it
+# ships with - openssl - reaches GitHub.  Forcing schannel was making the
+# push fail for a reason that had nothing to do with the network.
+BASE = ["git", "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=45",
+        "-c", "http.connectTimeout=20"]
+
+ATTEMPTS = [("直连", BASE + ["push", "origin", "main"])]
 for _ip in GITHUB_IPS:
     ATTEMPTS.append(("指定地址 " + _ip,
-                     ["git", "-c", "http.sslBackend=schannel",
-                      "-c", "http.curloptResolve=github.com:443:" + _ip,
-                      "push", "origin", "main"]))
-ATTEMPTS.append(("HTTP/2", ["git", "-c", "http.sslBackend=schannel",
-                            "-c", "http.version=HTTP/2",
-                            "push", "origin", "main"]))
-ATTEMPTS.append(("走代理", ["git", "-c", "http.sslBackend=schannel",
-                            "-c", "http.proxy=http://127.0.0.1:7897",
-                            "push", "origin", "main"]))
+                     BASE + ["-c", "http.curloptResolve=github.com:443:" + _ip,
+                             "push", "origin", "main"]))
+ATTEMPTS.append(("HTTP/2", BASE + ["-c", "http.version=HTTP/2",
+                                   "push", "origin", "main"]))
 
 
 def pushed(out: str) -> bool:
