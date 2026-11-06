@@ -23,6 +23,7 @@ assets/music/*
 tmp/
 *.tmp
 *.log
+logs/
 
 # OS / editor
 .DS_Store
@@ -149,7 +150,7 @@ dbg_syncq.py
 patch_promptgen.py
 probe_h3_novoice.py
 test_nle_real.py
-rounds/�ִ�*_*.qa.json
+rounds/�ִ�*_*.qa.json
 
 # 下载来的大文件（torch 轮子等）不入库
 rounds/tools/wheelhouse/
