@@ -441,7 +441,10 @@ segment:
   respect_chapters: true                    # 尽量沿章节边界切
   hook_style: 强悬念反转                     # 每集结尾钩子风格
   max_chars_per_episode: 0                  # 0=按秒数让系统估算
-  opening_recap: true                       # 生成"前情提要"
+  opening_recap: true
+  # 初稿之后再磨一遍台词：同样的戏、同样的信息，但每一句都带态度。
+  # 关掉就只写初稿（快，但容易写成一问一答）。
+  polish_dialogue: true                       # 生成"前情提要"
   cold_open: true                           # 第一集冷开场直接抛冲突
 
 # --------------------------- 分镜 storyboard --------------------------------

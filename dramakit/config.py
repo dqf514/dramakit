@@ -483,6 +483,9 @@ class SegmentConfig(BaseModel):
     max_chars_per_episode: int = 0                    # 0 = let LLM decide by duration
     opening_recap: bool = True                        # 前情提要
     cold_open: bool = True                            # 开场即冲突
+    # 初稿之后再磨一遍台词：同样的戏、同样的信息，但每一句都带态度。
+    # 关掉就只写初稿（快，但容易写成一问一答）。
+    polish_dialogue: bool = True
 
 
 # --------------------------------------------------------------------------- #
