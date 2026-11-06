@@ -323,6 +323,21 @@ try{
   details.fold[open]>summary{border-bottom:1px solid var(--line);color:var(--fg)}
   details.fold .inner{padding:13px 14px}
 
+  /* ---------- the management panel, in the column of projects ---------- */
+  #side #projectManagement{margin:12px 0 4px}
+  #side #projectManagement>summary{padding:8px 10px;font-size:12.5px}
+  #side #projectManagement .inner{padding:10px}
+  #side #projectManagement .management-grid{display:flex;flex-direction:column;gap:11px}
+  #side #projectManagement .management-grid b{font-size:12.5px}
+  #side #projectManagement .management-grid .muted{font-size:11.5px;line-height:1.4}
+  #side #projectManagement .management-actions{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+  #side #projectManagement .management-actions .btn{font-size:11.5px;padding:3px 9px;
+    min-height:26px}
+  #side #projectManagement .trash-row{display:flex;gap:7px;align-items:center;
+    font-size:11.5px;margin-top:6px}
+  #side #projectManagement .trash-row .grow{min-width:0}
+  #side #projectManagement .trash-row .btn{flex:0 0 auto;min-height:24px;padding:2px 8px}
+
   /* ---------- storyboard ---------- */
   .boardbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .boardbar select{max-width:200px}

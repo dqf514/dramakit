@@ -659,11 +659,20 @@ def run(ctx: Context) -> dict:
                 # project is: the stage is called while the writers are
                 # still going, and a shot with no prompt yet has nothing to
                 # be drawn from. It is picked up on a later pass.
-                # Either prompt is enough: the clip falls back to the
-                # picture's prompt, and a workflow that is not the native
-                # one never writes a second one at all.
-                if not ((shot.prompt or "").strip()
-                        or (shot.video_prompt or "").strip()):
+                # Either prompt is enough for a workflow that is not the
+                # native one - it falls back to the picture's prompt, and a
+                # workflow that is not the native one never writes a second
+                # one at all.  But when H3 speaks the lines, the words have
+                # to be in the video prompt, and a shot whose video prompt
+                # has not been written yet is not ready: taking it now
+                # spends the card on a clip with no dialogue in it and marks
+                # the shot failed, and a failed shot is not looked at again.
+                has_line=bool([n for n in (shot.line_indices or []) if n > 0])
+                if c.native_audio and has_line:
+                    if not (shot.video_prompt or "").strip():
+                        continue
+                elif not ((shot.prompt or "").strip()
+                          or (shot.video_prompt or "").strip()):
                     continue
                 jobs.append((ep, sc, shot))
 

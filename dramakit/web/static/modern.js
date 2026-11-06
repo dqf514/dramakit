@@ -328,15 +328,18 @@
   function enhanceWorkbench() {
     const box = document.getElementById("page-flow");
     // with no project there is nothing to rename, copy or restore
-    if (!box || !S.current || box.querySelector("#projectManagement")) return;
+    if (!box || !S.current || document.getElementById("projectManagement")) return;
     const details = document.createElement("details");
     details.className = "fold";
     details.id = "projectManagement";
-    details.innerHTML = `<summary>项目管理 · 重命名 / 复制 / 回收站</summary><div class="inner">
+    details.innerHTML = `<summary>项目管理</summary><div class="inner">
       <div class="management-grid"><div><b>当前项目</b><div class="muted" id="projectStorage">可查看磁盘占用或创建完整副本</div><div class="management-actions"><button class="btn ghost" id="renameProject">重命名</button><button class="btn ghost" id="duplicateProject">复制项目</button><button class="btn ghost" id="projectStats">统计占用</button></div></div>
       <div><b>回收站</b><div class="muted">删除的项目可在这里恢复</div><div id="trashList"></div></div></div></div>`;
-    // the management panel belongs under the work, not beside the book
-    const host = box.querySelector(".wb-main") || box;
+    // The management panel is about a project, so it lives in the column
+    // of projects: the column is wide enough for it, and it does not push
+    // the work down the page.
+    const host = document.querySelector("#side .side-content")
+      || box.querySelector(".wb-main") || box;
     host.appendChild(details);
     document.getElementById("renameProject").onclick = async () => {
       const current = S.detail?.meta?.title || S.current;

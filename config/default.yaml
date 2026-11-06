@@ -277,7 +277,10 @@ comfyui:
   # 没有参考图的空镜用普通版（多参考版无参考时会退化成正方形空潜空间）。
   t2i_workflow: config/comfyui/t2i_krea2.json
   t2i_workflow_ref: config/comfyui/t2i_krea2_ref.json
-  i2v_workflow: config/comfyui/i2v_animatediff.json
+  # 出视频用 H3 的 ref2va（画面+嘴型+人声+音效一次出），工作流是 i2v_shortdrama.json：
+  # 它的节点号和下面 i2v_nodes / graph_overrides 对得上，而 3090 那边的 ComfyUI
+  # 装的正是这一套（AnimatedDiff 那套它没有 ADE 节点，跑不了）。
+  i2v_workflow: config/comfyui/i2v_shortdrama.json
   # 让 H3 自己说话（画面+嘴型+人声+音效一次出）。
   # 只有 ref2va 模型走得通：fl2va 生成的人声是乱码，我们才不得不改用画外音。
   native_audio: true
