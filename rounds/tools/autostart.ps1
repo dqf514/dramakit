@@ -154,8 +154,8 @@ try {
     if (PortBusy $consolePort) {
         Say "控制台已经在跑"
     } else {
-        if (-not (Wait-Path $consoleExe 120)) {
-            Say "**找不到 $consoleExe，控制台起不来**"
+        if (-not (Wait-Path $consoleExe 300)) {
+            Say "**等了五分钟还没找到 $consoleExe，控制台起不来**"
         } else {
             Say "起控制台（$consolePort）"
             Start-Process -FilePath $consoleExe `
@@ -170,8 +170,8 @@ try {
     if (PortBusy $comfyPort) {
         Say "ComfyUI 已经在跑"
     } else {
-        if (-not (Wait-Path $comfyPy 120)) {
-            Say "**找不到 $comfyPy，ComfyUI 起不来**"
+        if (-not (Wait-Path $comfyPy 300)) {
+            Say "**等了五分钟还没找到 $comfyPy，ComfyUI 起不来**"
         } else {
             if (Wait-Gpu 300) {
                 Say "显卡就绪"

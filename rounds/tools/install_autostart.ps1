@@ -58,13 +58,33 @@ Register-ScheduledTask -TaskName $taskName -Action $action `
     -Settings $settings `
     -Description "开机自动起 DramaKit 控制台和 ComfyUI" -Force | Out-Null
 
-# now the delays
+# Now the delays.  The exported XML writes the boot trigger as an empty
+# element and the logon trigger without an Enabled line, so the text
+# has to be put back the way the schema wants it:
+#   <BootTrigger><Enabled>true</Enabled><Delay>PT1M</Delay></BootTrigger>
+# and the delay goes before the user on the logon trigger.
 $xml = Export-ScheduledTask -TaskName $taskName
-$xml = $xml -replace '(<BootTrigger>\s*<Enabled>true</Enabled>)',
-                   '$1<Delay>PT1M</Delay>'
-$xml = $xml -replace '(<LogonTrigger>\s*<Enabled>true</Enabled>)',
-                   '$1<Delay>PT2M</Delay>'
+# The exported XML writes the boot trigger as an empty element
+# (<BootTrigger />), so the whole thing is rewritten rather than
+# patched into:
+#   <BootTrigger><Enabled>true</Enabled><Delay>PT1M</Delay></BootTrigger>
+$xml = [regex]::Replace(
+    $xml, '<BootTrigger\s*/>|<BootTrigger>.*?</BootTrigger>',
+    '<BootTrigger><Enabled>true</Enabled><Delay>PT1M</Delay></BootTrigger>',
+    [System.Text.RegularExpressions.RegexOptions]::Singleline)
+# and the delay goes before the user on the logon trigger
+if ($xml -notmatch "<LogonTrigger[^>]*>\s*<Delay>") {
+    $xml = $xml -replace '(<LogonTrigger>)',
+        '$1<Delay>PT2M</Delay>'
+}
 Register-ScheduledTask -TaskName $taskName -Xml $xml -Force | Out-Null
+
+# and check that it took, rather than believing it did
+$check = Export-ScheduledTask -TaskName $taskName
+$bootDelay = ([regex]::Match($check, "<BootTrigger>.*?</BootTrigger>", "Singleline")).Value
+$logonDelay = ([regex]::Match($check, "<LogonTrigger>.*?</LogonTrigger>", "Singleline")).Value
+Write-Host "  开机触发器: $bootDelay"
+Write-Host "  登录触发器: $logonDelay"
 
 # A second, independent way in: a shortcut in the folder Windows starts
 # with.  The task runs before anyone sits down; this one runs when the
