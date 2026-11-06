@@ -366,6 +366,9 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     angle=shot.angle, height=shot.height, lens=shot.lens,
                     duration=_shot_seconds(shot),
                     action=_action_without_words(shot.action),
+                    # what the focus is on: the speaker's eyes in a
+                    # dialogue, the moving pen when a hand writes
+                    subject=shot.subject or "画面主体",
                     character_anchors=visuals, location=sc.location or "场景",
                     location_visual=location_visual or "（按剧情合理生成）",
                     scene_summary=sc.summary or "", time_of_day=sc.time_of_day,
@@ -476,7 +479,8 @@ def _segment_beats(shot) -> list[tuple[float, float, str]]:
     """
     action = shot.action or ""
     marks = list(re.finditer(
-        r"镜头\s*(\d+)\s*[（(]?\s*([\d.]+)\s*[-—~]\s*([\d.]+)\s*秒([^：:]*)[:：]", action))
+        r"镜头\s*(\d+)\s*[（(]?\s*([\d.]+)\s*[-—~]\s*([\d.]+)\s*秒"
+        r"\s*[）)]?\s*([^：:）)]*)\s*[:：]", action))
     if not marks:
         return []
     out: list[tuple[float, float, str]] = []

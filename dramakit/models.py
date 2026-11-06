@@ -189,6 +189,8 @@ class Shot(BaseModel):
     # to be head-on to the speaker: the speaker is usually seen from the
     # side, over the other shoulder, or further away.
     line_indices: list[int] = Field(default_factory=list)
+    # the beats of the scene this shot films
+    beats: list[int] = Field(default_factory=list)
     # generation
     prompt: str = ""                          # 正向提示词（出图用）
     negative_prompt: str = ""
@@ -208,6 +210,22 @@ class Shot(BaseModel):
         return bool(self.image_path or self.video_path)
 
 
+class Beat(BaseModel):
+    """One visible moment of a scene.
+
+    The novel is mostly seen, not said: a door opened, a curtain
+    pulled, a face in a mirror.  This is where that goes, so that the
+    storyboard has something to film and the film is not two people
+    talking in a room.
+
+    `lines` are the numbers of the scene's lines that are spoken while
+    this happens - a beat with no lines is an empty shot, a reaction,
+    an insert, the establishing view of a place.
+    """
+    action: str = ""
+    lines: list[int] = Field(default_factory=list)
+
+
 class Scene(BaseModel):
     id: str
     index: int = 0
@@ -218,6 +236,8 @@ class Scene(BaseModel):
     bgm_mood: str = ""                        # 覆盖 scene.mood 的配乐标签
     score_prompt: str = ""                    # 这一场的纯配乐镜头提示词（H3 三字段）
     lines: list[Line] = Field(default_factory=list)
+    # what is seen, in order: the beats of this scene
+    beats: list[Beat] = Field(default_factory=list)
     shots: list[Shot] = Field(default_factory=list)
     status: Status = Status.PENDING
 

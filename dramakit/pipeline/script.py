@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 import uuid
 
-from ..models import Line, LineKind, Scene, Status
+from ..models import Beat, Line, LineKind, Scene, Status
 from ..prompts import templates as T
 from .base import Context, llm_pool, run_jobs, write_workers
 
@@ -29,6 +29,55 @@ def _to_kind(v: str) -> LineKind:
         return LineKind(str(v).lower())
     except ValueError:
         return LineKind.DIALOGUE
+
+
+def _parse_scenes(data) -> list:
+    """The model's answer, as scenes and lines and beats.
+
+    The beats are the visible moments of the scene, in order, with the
+    lines that happen in them.  A beat whose numbers do not fit the
+    scene's lines keeps its action and loses the numbers - a picture
+    filmed wrongly is better than a picture dropped.
+    """
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    scenes = []
+    for si, s in enumerate(data.get("scenes", []) or [], 1):
+        sc = Scene(id=_id("sc"), index=si, location=s.get("location", ""),
+                   time_of_day=s.get("time_of_day", "日"),
+                   summary=s.get("summary", ""), mood=s.get("mood", "中性"),
+                   bgm_mood=s.get("bgm_mood", ""))
+        for li, l in enumerate(s.get("lines", []) or [], 1):
+            txt = _strip_direction(l.get("text") or "")
+            if not txt:
+                continue
+            emotion = (l.get("emotion") or "平静").strip()
+            # a note that was in the text is not lost: it goes into the
+            # emotion field, where the performance notes belong
+            for note in _DIRECTION.findall(l.get("text") or ""):
+                note = note.strip("（）() ")
+                if note and note not in emotion:
+                    emotion = (emotion + "，" + note) if emotion != "平静" else note
+            sc.lines.append(Line(id=_id("ln"), kind=_to_kind(l.get("kind", "dialogue")),
+                                 speaker=(l.get("speaker") or "旁白").strip(),
+                                 text=txt, emotion=emotion))
+        n_lines = len(sc.lines)
+        for b in (s.get("beats") or []):
+            action = (b.get("action") or "").strip()
+            if not action:
+                continue
+            idx = []
+            for v in (b.get("lines") or []):
+                try:
+                    n = int(v)
+                except (TypeError, ValueError):
+                    continue
+                if 1 <= n <= n_lines and n not in idx:
+                    idx.append(n)
+            sc.beats.append(Beat(action=action, lines=idx))
+        if sc.lines:
+            scenes.append(sc)
+    return scenes
 
 
 def _flatness(scenes: list) -> tuple[int, int]:
@@ -96,32 +145,7 @@ def run(ctx: Context) -> dict:
     # several calls at once - so they are asked together, not one after
     # another.
     def _parse(data) -> list:
-        """The model's answer, as scenes and lines."""
-        if isinstance(data, list):
-            data = data[0] if data else {}
-        scenes = []
-        for si, s in enumerate(data.get("scenes", []) or [], 1):
-            sc = Scene(id=_id("sc"), index=si, location=s.get("location", ""),
-                       time_of_day=s.get("time_of_day", "日"),
-                       summary=s.get("summary", ""), mood=s.get("mood", "中性"),
-                       bgm_mood=s.get("bgm_mood", ""))
-            for li, l in enumerate(s.get("lines", []) or [], 1):
-                txt = _strip_direction(l.get("text") or "")
-                if not txt:
-                    continue
-                emotion = (l.get("emotion") or "平静").strip()
-                # a note that was in the text is not lost: it goes into the
-                # emotion field, where the performance notes belong
-                for note in _DIRECTION.findall(l.get("text") or ""):
-                    note = note.strip("（）() ")
-                    if note and note not in emotion:
-                        emotion = (emotion + "，" + note) if emotion != "平静" else note
-                sc.lines.append(Line(id=_id("ln"), kind=_to_kind(l.get("kind", "dialogue")),
-                                     speaker=(l.get("speaker") or "旁白").strip(),
-                                     text=txt, emotion=emotion))
-            if sc.lines:
-                scenes.append(sc)
-        return scenes
+        return _parse_scenes(data)
 
     def _draft_text(scenes: list) -> str:
         """The scenes as the editor will see them."""

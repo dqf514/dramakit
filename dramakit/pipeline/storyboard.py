@@ -126,6 +126,28 @@ def _ref_rhythm_args(profile: dict) -> dict:
     }
 
 
+# A cut inside a segment is written as a timestamp: "0.0-2.5秒：…；
+# 2.5-5秒：…".  One timestamp is one take; more than one is a cut.
+_TIME_CODE = re.compile(r"\d+(?:\.\d+)?\s*[-~至到]\s*\d+(?:\.\d+)?\s*秒")
+
+
+def _cuts(action: str) -> int:
+    """How many camera setups this segment has."""
+    return len(_TIME_CODE.findall(action or ""))
+
+
+def _beat_coverage(sc) -> tuple[int, int]:
+    """(the beats that were filmed, the beats there are)."""
+    beats = list(getattr(sc, "beats", []) or [])
+    if not beats:
+        return (0, 0)
+    filmed = set()
+    for sh in sc.shots:
+        for b in (sh.beats or []):
+            filmed.add(int(b))
+    return (len(filmed), len(beats))
+
+
 def run(ctx: Context) -> dict:
     cfg = ctx.cfg.storyboard
     pool = llm_pool(ctx, "storyboard")
@@ -192,6 +214,15 @@ def run(ctx: Context) -> dict:
             lines_text = "\n".join(
                 f"- {i}. {l.speaker}({l.emotion}): {l.text}"
                 for i, l in enumerate(sc.lines, 1)) or "（无台词，纯画面）"
+            # what this scene has to be seen doing: the beats the script
+            # found in the novel, in order.  The question already asked
+            # for "all the lines and all the action"; until now there was
+            # no action to cover.
+            beats_text = "\n".join(
+                f"- {i}. {b.action}"
+                + (f"（台词 {','.join(str(n) for n in b.lines)}）" if b.lines else "（无台词）")
+                for i, b in enumerate(getattr(sc, "beats", []) or [], 1)
+            ) or "（这一场没有拍点：只有台词）"
             spoken_at = [i for i, l in enumerate(sc.lines, 1)
                          if not is_narration(l)]
             spoken_pos = {full: k + 1 for k, full in enumerate(spoken_at)}
@@ -222,7 +253,8 @@ def run(ctx: Context) -> dict:
                             scene_avg=scene_avg,
                             scene_shots=share,
                             time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
-                            lines_text=lines_text, min_shots=cfg.min_shots_per_scene,
+                            lines_text=lines_text, beats_text=beats_text,
+                            min_shots=cfg.min_shots_per_scene,
                             max_shots=max_shots, prefer_dynamic=prefer,
                             dur_min=dmin, dur_max=dmax, narration_seconds=narration_sec,
                             character_names=char_names,
@@ -251,6 +283,16 @@ def run(ctx: Context) -> dict:
                 k = spoken_pos.get(n)
                 if k and k not in idx:
                     idx.append(k)
+            # which beats this shot films, so a beat that no shot
+            # covers can be counted
+            covered: list[int] = []
+            for v in (s.get("beats") or []):
+                try:
+                    n = int(v)
+                except (TypeError, ValueError):
+                    continue
+                if n > 0 and n not in covered:
+                    covered.append(n)
             shots.append(Shot(
                 id=_id("sh"), index=i, shot_type=_to_shot_type(s.get("shot_type", "中景")),
                 camera_move=s.get("camera_move", "固定"),
@@ -263,6 +305,7 @@ def run(ctx: Context) -> dict:
                 action=_strip_facing_camera(s.get("action", "")),
                 characters=[str(c) for c in (s.get("characters") or [])],
                 line_indices=sorted(idx),
+                beats=sorted(covered),
             ))
         sc.shots = shots or _fallback_shots(sc, dmin, dmax)
         _repair_line_casts(sc)
@@ -305,7 +348,25 @@ def run(ctx: Context) -> dict:
                  Status.FAILED if ep.index in failed else Status.DONE)
         ctx.save()
         done += 1
-        ctx.log.info("storyboard: 第%d集 → %d 镜", ep.index, ep.total_shots)
+        # a film is not one long take, and it is not a conversation
+        one_take = sum(1 for sc in ep.scenes for sh in sc.shots
+                       if _cuts(sh.action or "") <= 1)
+        total_shots = max(1, ep.total_shots)
+        filmed = 0
+        beats = 0
+        for sc in ep.scenes:
+            f, b = _beat_coverage(sc)
+            filmed += f
+            beats += b
+        ctx.log.info("storyboard: 第%d集 → %d 镜（其中 %d 段是一镜到底，%d%%）",
+                     ep.index, ep.total_shots, one_take,
+                     int(one_take * 100 / total_shots))
+        if beats:
+            ctx.log.info("storyboard: 第%d集 拍点 %d 个，拍到 %d 个（%d%%）",
+                         ep.index, beats, filmed, int(filmed * 100 / beats))
+            if filmed < beats:
+                ctx.log.warning("storyboard: 第%d集有 %d 个拍点没被拍到",
+                                ep.index, beats - filmed)
     return {"episodes_storyboarded": done}
 
 
