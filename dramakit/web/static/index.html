@@ -138,7 +138,17 @@ try{
   #body{display:flex;flex:1;min-height:0}
   #side{width:232px;flex:0 0 auto;background:var(--bg2);border-right:1px solid var(--line);
     display:flex;flex-direction:column;overflow:hidden;padding:10px}
-  .side-content{flex:1;min-height:0;overflow-y:auto}
+  /* The column of projects is a column: the list, the tags, the form
+     for a new project, and the management panel at the bottom. */
+  .side-content{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
+  .side-content > *{flex:0 0 auto}
+  .newproj{display:flex;flex-direction:column;gap:8px;align-items:stretch;
+    max-width:460px}
+  .newproj .grow{flex:0 0 auto}
+  .newproj .f{width:100%}
+  #side #flowNewFold{margin:12px 0 4px}
+  #side #flowNewFold>summary{padding:8px 10px;font-size:12.5px}
+  #side #flowNewFold .inner{padding:10px}
   #sideToggle{display:flex;align-items:center;justify-content:center;gap:6px;
     flex:0 0 auto;width:100%;margin-top:12px;color:var(--fg3)}
   #side.hide{display:flex;width:44px;padding:10px 5px}
@@ -324,7 +334,8 @@ try{
   details.fold .inner{padding:13px 14px}
 
   /* ---------- the management panel, in the column of projects ---------- */
-  #side #projectManagement{margin:12px 0 4px}
+  /* the management panel is at the bottom of the column of projects */
+  #side #projectManagement{margin-top:auto}
   #side #projectManagement>summary{padding:8px 10px;font-size:12.5px}
   #side #projectManagement .inner{padding:10px}
   #side #projectManagement .management-grid{display:flex;flex-direction:column;gap:11px}
@@ -902,6 +913,10 @@ try{
           <div id="projlist"></div>
           <div class="side-h">标签 <span class="muted" id="tagCount"></span></div>
           <div class="tagfilter" id="tagfilter"></div>
+          <details class="fold" id="flowNewFold" style="margin:12px 0 4px">
+            <summary>新建项目 · 导入小说</summary>
+            <div class="inner" id="flowNewBody"></div>
+          </details>
         </div>
         <button class="btn sm ghost" id="sideToggle" title="收起项目栏" aria-label="收起项目栏" aria-controls="side" aria-expanded="true"><span aria-hidden="true">‹</span><span>收起项目栏</span></button>
       </aside>
@@ -1325,8 +1340,10 @@ function toggleStep(sp){
 
 // the form that makes a project: a file, a name, and a button
 function newProjectForm(){
-  return `<div class="row" style="align-items:flex-end">
-    <div class="grow" style="flex:2"><label class="fl">小说 / 剧本文件</label>
+  // It stands up: three fields one above the other, for a column that
+  // is a fifth of the page wide.
+  return `<div class="row newproj">
+    <div class="grow"><label class="fl">小说 / 剧本文件</label>
       <input class="f" id="gSource" placeholder="本地文件，或服务器上的路径">
       <input type="file" id="gFilePicker" accept=".txt,.md" style="display:none">
       <button type="button" class="btn ghost" id="gFileButton">选择文件</button>
@@ -1335,6 +1352,13 @@ function newProjectForm(){
     <button class="btn go" id="gCreate">创建并导入</button>
   </div>`;
 }
+// The form is in the column of projects, which is there from the start.
+(function(){
+  const box=document.getElementById("flowNewBody");
+  if(!box) return;
+  box.innerHTML=newProjectForm();
+  bindNewProject();
+})();
 function bindNewProject(){
   bindGuideSourcePicker($("#gFilePicker"),$("#gSource"),$("#gName"),$("#gFileName"));
   const gc=$("#gCreate"); if(gc) gc.onclick=createProjectFromGuide;
@@ -1655,9 +1679,16 @@ function renderFlow(){
   const d=S.detail;
   if(!d){
     box.innerHTML=`<div class="wb-head"><h1 class="page">工作台</h1></div>
-      <div class="card">${newProjectForm()}</div>
-      <div class="empty">左侧选择一个项目，或在上面新建一个</div>`;
-    bindNewProject();
+      <div class="card">
+        <div class="empty">左边选一个项目，或者在上面新建一个</div>
+        <button class="btn confirm" id="wbNewProject">新建项目 · 导入小说</button>
+      </div>`;
+    const nb=$("#wbNewProject");
+    if(nb) nb.onclick=()=>{
+      const fold=$("#flowNewFold");
+      if(fold){ fold.open=true; fold.scrollIntoView({behavior:"smooth",block:"center"}); }
+      const button=$("#gFileButton"); if(button) button.focus();
+    };
     return;
   }
   const eps=d.episodes||[];
@@ -1783,9 +1814,6 @@ function renderFlow(){
 
         ${seasonHtml}
 
-        <details class="fold" id="flowNewFold" style="margin-top:10px"><summary>新建项目 · 导入小说</summary>
-          <div class="inner">${newProjectForm()}</div>
-        </details>
       </div>
 
     </div>
@@ -3662,10 +3690,10 @@ window.reindex=function(slug,withAI){
   });
 };
 $("#newProj").onclick=()=>{
-  switchPage("workbench");
-  S.wbTab="flow"; showWbTab("flow");
-  setTimeout(()=>{ const fold=$("#flowNewFold"); if(fold) fold.open=true;
-    const button=$("#gFileButton"); if(button){ button.scrollIntoView({behavior:"smooth",block:"center"}); button.focus(); } },60);
+  // the form is in this column, so the column opens it
+  const fold=$("#flowNewFold");
+  if(fold){ fold.open=true; fold.scrollIntoView({behavior:"smooth",block:"center"}); }
+  setTimeout(()=>{ const button=$("#gFileButton"); if(button) button.focus(); },60);
 };
 $("#refreshBtn").onclick=()=>boot();
 $("#healthBtn").onclick=()=>{ switchPage("workbench"); S.wbTab="flow"; showWbTab("flow"); probeGuide(); };
