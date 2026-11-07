@@ -368,19 +368,6 @@ comfyui:
         "128": {clip_name: qwen3vl_32b_minimax_h3_int8_convrot.safetensors}
         "127": {unet_name: minimax_h3_ref2va_pruned_int8_convrot.safetensors}
         "119": {vae_name: minimax_h3_video_vae_int8_convrot.safetensors}
-    - name: probe-1794042164
-      enabled: true
-      roles: [i2v]
-      transfer: none
-      ssh_host: ""
-      ssh_user: ""
-      ssh_key: ""
-      remote_models: ""
-      local_models: ""
-      base_url: http://127.0.0.1:8199
-      auth: none
-      auth_username: ""
-      auth_token: ""
   #  - name: gpu3090-v0        # 3090#0，专做视频
   #    base_url: http://<3090IP>:8188
   #    roles: [i2v]            # t2i=出图 / i2v=出视频；留空=什么都接

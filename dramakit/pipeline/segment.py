@@ -35,6 +35,14 @@ def _episode_count(total_chars: float, cfg, n_chapters: int) -> int:
         return max(1, n_chapters)
     total_sec = total_chars / CHARS_PER_SEC
     n = max(1, round(total_sec / max(cfg.episode_duration, 10)))
+    # When the chapters are the unit and each of them is big enough to
+    # fill an episode, an episode is a chapter.  Cutting inside a
+    # chapter breaks the story where the book did not break it, and the
+    # end of the chapter is where the book puts its hook.
+    if getattr(cfg, "respect_chapters", False) and n_chapters > 0:
+        avg = total_chars / n_chapters
+        if avg / CHARS_PER_SEC >= cfg.episode_duration:
+            n = min(n, n_chapters)
     return max(1, min(n, 500))
 
 

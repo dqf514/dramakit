@@ -13,6 +13,38 @@ _CHAPTER_RE = re.compile(
 
 _SENT_SPLIT_RE = re.compile(r"(?<=[。！？!?；;…])\s*")
 
+# The page that the book was downloaded from leaves its mark on the text:
+# a declaration, the words "all chapters", a line of dashes, and the
+# site it came from.  None of it is a chapter, and if it is left in, the
+# first episode of every book downloaded this way is a copyright notice.
+_BOILER_LINE = re.compile(
+    r"^[\s\-=—_~·•*#]{3,}$"
+    r"|用户上传之内容"
+    r"|^(?:全部章节|所有章节|章节列表|目\s*录)$"
+    r"|^声明[:：]"
+    r"|版权(?:归|所有|声明|于)"
+    r"|仅供(?:预览|交流|学习)"
+    r"|请支持正版"
+    r"|^\s*本书(?:来自|由)"
+    r"|^\s*如果您(?:喜欢|觉得)"
+    r"|^\s*本文档?由"
+    r"|txt02\.com"
+    r"|^\s*www\."
+)
+
+# A preamble shorter than this is the book's front matter, not an opening.
+_MIN_PREAMBLE = 200
+
+
+def _strip_boilerplate(body: str) -> str:
+    """Take out the lines the download site left behind."""
+    out = []
+    for line in (body or "").split("\n"):
+        if _BOILER_LINE.search(line):
+            continue
+        out.append(line)
+    return "\n".join(out).strip()
+
 
 def read_source(path: str | Path) -> str:
     """Read .txt/.md/.docx into plain text."""
@@ -44,18 +76,26 @@ def split_chapters(text: str) -> list[dict]:
     matches = list(_CHAPTER_RE.finditer(text))
     chapters: list[dict] = []
     if not matches:
-        return [{"title": "", "body": text}]
+        body = _strip_boilerplate(text)
+        return [{"title": "", "body": body or text}]
     # leading preamble before first heading
     if matches[0].start() > 40:
-        pre = text[: matches[0].start()].strip()
-        if pre:
+        pre = _strip_boilerplate(text[: matches[0].start()])
+        # a front matter is not an episode: it is a page the book was
+        # downloaded with, and the first episode of the drama is the
+        # first thing the book actually says
+        if len(pre) >= _MIN_PREAMBLE:
             chapters.append({"title": "开篇", "body": pre})
     for i, m in enumerate(matches):
         start = m.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        body = text[start:end].strip()
+        body = _strip_boilerplate(text[start:end])
+        # A chapter that was only the download site's page is not a
+        # chapter.  A short chapter is still a chapter.
         if body:
             chapters.append({"title": m.group(0).strip(), "body": body})
+    if not chapters:
+        return [{"title": "", "body": text}]
     return chapters
 
 
