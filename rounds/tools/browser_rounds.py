@@ -142,11 +142,12 @@ def main() -> int:
                   f"{ad.get('style_prompt_prefix')!r} 要的是 {style['prompt']!r}")
 
             # ---- the skills, column by column ------------------------ #
-            # the four stages that take skills, in the order they appear
+            # the four stages that take skills, and the genre card's own
+            # column, in the order they appear
             stages = page.eval_on_selector_all(
                 "#page-flow .skck input",
                 "els=>Array.from(new Set(els.map(e=>e.dataset.skstage)))")
-            check(f"第{i+1}轮 四列技能都在", len(stages) == 4, str(stages))
+            check(f"第{i+1}轮 四列技能和类型栏都在", len(stages) == 5, str(stages))
             for stage in stages:
                 boxes = page.locator(
                     f'#page-flow .skck input[data-skstage="{stage}"]')

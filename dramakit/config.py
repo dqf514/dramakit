@@ -192,7 +192,8 @@ class SkillsConfig(BaseModel):
     analyze: list[str] = ["short-drama-novel-analyze", "short-drama-develop"]
     # the screenwriter: a novel is not a screenplay, and the craft of
     # turning one into the other is its own subject
-    script: list[str] = ["short-drama-write", "short-drama-ai-film"]
+    script: list[str] = ["short-drama-write", "short-drama-storyboard",
+                          "short-drama-ai-film"]
     # the director: the coverage of a scene, the angle, the axis
     storyboard: list[str] = ["short-drama-storyboard", "short-drama-ai-film"]
     promptgen: list[str] = ["short-drama-video-prompts",
@@ -211,7 +212,9 @@ class SkillsConfig(BaseModel):
         },
         "script": {
             "short-drama-develop": ["adaptation-craft.md"],
-            "short-drama-ai-film": ["beats.md"],
+            "short-drama-ai-film": ["beats.md", "segments.md"],
+            "short-drama-storyboard": ["production-shot-grammar.md",
+                                       "blocking-playbooks.md"],
         },
         "promptgen": {
             "short-drama-ai-film": ["camera.md"],

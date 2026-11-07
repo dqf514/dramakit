@@ -59,17 +59,29 @@ class FakeLLM:
         if system == T.SEGMENT_SYSTEM:
             return {"title": "车站重逢", "logline": "林远赶回旧城车站。",
                     "hook": "熟悉的声音从身后响起。", "key_beats": ["归来", "重逢"]}
-        if system == T.SCRIPT_SYSTEM:
+        if system == T.SCRIPT_PLAN_SYSTEM:
             return {"scenes": [{
                 "location": "旧城车站", "time_of_day": "傍晚", "mood": "感动",
-                "bgm_mood": "温暖", "summary": "林远在车站听见故人的呼唤。",
+                "summary": "林远在车站听见故人的呼唤。",
+                "beats": [{"action": "林远拖着行李走出车站，停下脚步。"},
+                          {"action": "林远转身，看向车站入口。"}],
+            }]}
+        if system == T.SCRIPT_SCENE_SYSTEM:
+            return {
                 "lines": [
                     {"kind": "dialogue", "speaker": "林远", "text": "我终于回来了。",
                      "emotion": "感慨"},
                     {"kind": "dialogue", "speaker": "林远", "text": "这一次，我不会再走。",
                      "emotion": "坚定"},
                 ],
-            }]}
+                "shots": [
+                    {"shot_type": "中景", "camera_move": "推镜", "duration": 1.0,
+                     "action": "林远拖着行李走出车站，停下脚步。", "characters": ["林远"],
+                     "beats": [1], "lines": [1]},
+                    {"shot_type": "近景", "camera_move": "固定", "duration": 1.0,
+                     "action": "林远转身，眼神坚定地看向车站入口。", "characters": ["林远"],
+                     "beats": [2], "lines": [2]},
+                ]}
         if system == T.STORYBOARD_SYSTEM:
             return {"shots": [
                 {"shot_type": "中景", "camera_move": "推镜", "duration": 1.0,

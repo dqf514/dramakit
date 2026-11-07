@@ -85,6 +85,20 @@ NODE_FIELDS = ("enabled", "roles", "base_url", "transfer", "ssh_host",
                "verify_tls", "extra_headers")
 
 
+def _roles_list(value) -> list[str]:
+    """The roles of a card, as a list.
+
+    The page writes them as one line and the config wants a list, and a
+    card that cannot be written down is a card that is not in the pool.
+    """
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    text = str(value).replace("，", ",").replace("、", ",")
+    return [w.strip() for w in text.split(",") if w.strip()]
+
+
 class State:
     def __init__(self, cfg: Config, config_path: Optional[Path], projects_root: Path):
         self.lock = threading.RLock()
@@ -427,6 +441,22 @@ def _make_handler(state: State):
                 sel = {k: (list(proj_sel[k]) if k in proj_sel
                            else list(getattr(cfg_skills, k) or []))
                        for k in stages}
+                # the genre card: the one that fits this book, unless the
+                # person has already said which one
+                from ..skills import loader as _loader
+                from types import SimpleNamespace as _NS
+                if slug:
+                    st = state.open_store(slug)
+                    if st:
+                        proj = st.load()
+                        if "genre" in (proj.meta.skills or {}):
+                            # what the person chose is what the page shows
+                            sel["genre"] = list(proj.meta.skills.get("genre") or [])
+                        else:
+                            picked = _loader.genre_for(_NS(project=proj))
+                            sel["genre"] = ([picked] if picked else [])
+                else:
+                    sel["genre"] = []
                 costs = skillcat.cost(sel, getattr(cfg_skills, "refs", None))
                 recommended = False
                 if slug:
@@ -1098,7 +1128,7 @@ def _make_handler(state: State):
             # the stages that are not in the request keep what they had:
             # saving one stage's skills must not quietly empty the others
             clean: dict[str, list[str]] = dict(proj.meta.skills or {})
-            for stage in ("analyze", "script", "storyboard", "promptgen"):
+            for stage in ("analyze", "script", "storyboard", "promptgen", "genre"):
                 if stage not in sel:
                     continue
                 names = sel.get(stage) or []
@@ -1119,6 +1149,9 @@ def _make_handler(state: State):
             eff = {k: (list(clean[k]) if k in clean
                         else list(getattr(cfg_skills, k) or []))
                    for k in ("analyze", "script", "storyboard", "promptgen")}
+            # the genre card is its own thing: it is not a stage's list of
+            # skills, it is the card the book is read with
+            eff["genre"] = list(clean.get("genre") or [])
             return {"ok": True, "selection": eff, "project_selection": clean,
                     "costs": skillcat.cost(eff, getattr(cfg_skills, "refs", None))}
 
@@ -1428,6 +1461,11 @@ def _make_handler(state: State):
                     return self._err("“local” 是本机节点的名字，这台机器请换个名字", 400)
                 entry = {k: v for k, v in node.items() if k in NODE_FIELDS}
                 entry["name"] = name
+                # the page writes the roles as one line - "t2i, i2v" - and
+                # the config wants a list.  A card that cannot be written
+                # down is a card that is not in the pool.
+                if "roles" in entry:
+                    entry["roles"] = _roles_list(entry["roles"])
                 entries.append(entry)
             path = state.config_path or Path("config/default.yaml")
             try:

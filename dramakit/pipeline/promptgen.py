@@ -687,6 +687,8 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             # what the focus is on: the speaker's eyes in a dialogue,
             # the moving pen when a hand writes
             subject=shot.subject or "画面主体",
+            # one take per segment, or several cuts inside it
+            segment_cuts=bool(ctx.cfg.comfyui.segment_cuts),
             action=_action_without_words(shot.action), character_anchors=visuals,
             location=sc.location or "场景",
             location_visual=location_visual or "（按剧情合理生成）",

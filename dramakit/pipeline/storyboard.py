@@ -9,6 +9,7 @@ from ..prompts import templates as T
 from ..utils.text import estimate_reading_seconds
 from . import frame as _frame
 from .base import Context, llm_pool, run_jobs, write_workers
+from .shots import merge_duplicate_shots
 
 
 def _id(prefix: str) -> str:
@@ -320,6 +321,8 @@ def run(ctx: Context) -> dict:
         sc.shots = shots or _fallback_shots(sc, dmin, dmax)
         _repair_line_casts(sc)
         _repair_characters(ctx, sc)
+        # two shots that are the same picture are one shot
+        merge_duplicate_shots(sc)
         # a shot that carries too much dialogue gets a second shot
         _split_long_shots(sc)
         # the coverage rules: nobody talks to the lens, and no two

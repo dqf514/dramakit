@@ -18,6 +18,7 @@ written to be read by a model, which is exactly what it is being read by.
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -97,18 +98,121 @@ def load_refs(name: str, refs: list[str]) -> str:
     return "".join(parts)
 
 
+GENRE_INDEX = SKILLS / "genre" / "题材索引.md"
+
+
+def genre_cards() -> dict[str, list[str]]:
+    """The genres, and the words that mean them.
+
+    The table is in the index - one place, so the card and the words
+    that find it cannot drift apart.
+    """
+    out: dict[str, list[str]] = {}
+    try:
+        text = GENRE_INDEX.read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for line in text.split("\n"):
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        genre, words = cells[0], cells[1]
+        if not re.search(r"[\u4e00-\u9fff]", genre) or "/" not in words:
+            continue
+        out[genre] = [w.strip() for w in words.split("/") if w.strip()]
+    return out
+
+
+def _genre_choice(ctx) -> tuple[str, bool]:
+    """What the person chose, and whether they chose at all.
+
+    An empty list is an answer too: the person looked at the fifteen
+    cards and left them all unticked, and that is not the same as
+    never having been asked.
+    """
+    try:
+        chosen = ctx.project.meta.skills or {}
+    except Exception:  # noqa: BLE001
+        return "", False
+    if "genre" in chosen:
+        for n in (chosen.get("genre") or []):
+            if str(n).startswith("genre/"):
+                return str(n), True
+        return "", True
+    # a card ticked inside a stage counts too
+    for stage_sel in chosen.values():
+        for n in (stage_sel or []):
+            if str(n).startswith("genre/"):
+                return str(n), True
+    return "", False
+
+
+def genre_for(ctx) -> str:
+    """The one genre card that fits this project.
+
+    A card the person ticked by hand comes first - they looked at the
+    list and chose.  Otherwise the project's own genre and its synopsis
+    are read for the words the cards answer to.  One card: the main
+    genre.  A second one is a supplement, and a supplement that arrives
+    with the main one is how the writing stops being about anything.
+    """
+    picked, decided = _genre_choice(ctx)
+    if decided:
+        return picked if picked and (SKILLS / picked / "SKILL.md").exists() else ""
+    try:
+        proj = ctx.project
+        genre = (proj.art_direction.genre or "")
+        synopsis = (proj.meta.synopsis or "")
+    except Exception:  # noqa: BLE001
+        return ""
+    hay = "%s %s" % (genre, synopsis[:400])
+    best = ""
+    best_hits = 0
+    for name, words in genre_cards().items():
+        hits = sum(1 for w in words if w and w in hay)
+        if hits > best_hits:
+            best, best_hits = name, hits
+    if not best:
+        return ""
+    path = "genre/" + best
+    return path if (SKILLS / path / "SKILL.md").exists() else ""
+
+
+def genre_rules(ctx, stage: str | None = None) -> str:
+    """The genre card that fits this project, as text.
+
+    `stage` is the stage that is asking: if that stage already loads
+    the card by name - because the person ticked it - the card is not
+    written in twice.
+    """
+    name = genre_for(ctx)
+    if not name:
+        return ""
+    if stage:
+        try:
+            sel = ctx.project.meta.skills or {}
+        except Exception:  # noqa: BLE001
+            sel = {}
+        if name in (sel.get(stage) or []):
+            return ""
+    return load(name)
+
+
 def for_stage(ctx, stage: str, *, refs: bool | list[str] = False) -> str:
     """The skills a stage writes with, joined.
 
-    The config names them per stage; a genre can add its own:
-    `characters.genre` (or the project's art direction) picks the theory
-    skills that suit the drama.
+    The config names them per stage; a project can say its own: two
+    dramas that share a genre word need not share their rules.
 
-    `skills.refs` names the documents that come with those skills: a
-    skill is a folder of knowledge and only its SKILL.md is the short
-    version.  The heavy part - how an adaptation is actually made, how
-    the shots are covered - lives in the references, and a stage that
-    wants that has to ask for it by name.
+    `skills.refs` names the documents that go with the craft: a skill is
+    a folder of knowledge and only its SKILL.md is the short version.
+    The heavy part - how an adaptation is actually made, how the shots
+    are covered - lives in the references.  Those documents belong to
+    the stage, so they come whether or not the project ticked the skill
+    they sit in: ticking one skill must not quietly take the rest of
+    the stage's craft away.
     """
     cfg = getattr(ctx.cfg, "skills", None)
     # The project's own choice first: two dramas that share a genre word
@@ -121,9 +225,8 @@ def for_stage(ctx, stage: str, *, refs: bool | list[str] = False) -> str:
     except Exception:  # noqa: BLE001
         project_sel = {}
     # a project that chose its own skills for this stage has said what it
-    # wants, and the config's references are not added to that answer
-    chosen_by_project = stage in project_sel
-    if chosen_by_project:
+    # wants for the skill rules
+    if stage in project_sel:
         names = list(project_sel.get(stage) or [])
     else:
         names = list(getattr(cfg, stage, None) or [])
@@ -152,18 +255,17 @@ def for_stage(ctx, stage: str, *, refs: bool | list[str] = False) -> str:
         text = load(n, refs=ask if ask else refs)
         if text:
             out.append(f"\n\n=== 规矩（来自 skill：{n}）===\n{text}")
-    # a skill whose documents are wanted but whose own rules are not.
-    # The config asks for those by name; a project that chose its own
-    # skills has already answered, and a skill it did not pick brings
-    # nothing with it - not even its documents.
-    if not chosen_by_project:
-        for n, docs in wanted_refs.items():
-            if n in seen:
-                continue
-            seen.add(n)
-            text = load_refs(n, docs)
-            if text:
-                out.append(f"\n\n=== 规矩（来自 skill：{n} 的参考文档）===\n{text}")
+    # The documents that belong to this stage's craft, whether or not the
+    # project ticked the skill they live in.  A skill is the packaging;
+    # the documents are the craft - the adaptation contract, how the
+    # shots are covered, what a segment is.  Ticking one skill in the
+    # panel must not quietly take the rest of the stage's craft away.
+    for n, docs in wanted_refs.items():
+        if n in seen:
+            continue
+        text = load_refs(n, docs)
+        if text:
+            out.append(f"\n\n=== 规矩（来自 skill：{n} 的参考文档）===\n{text}")
     if not out:
         log.info("skills: %s 阶段没有可用的 skill，用内置规矩", stage)
     return "".join(out)

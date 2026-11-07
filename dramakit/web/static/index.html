@@ -1006,13 +1006,14 @@ function whenStr(ts){if(!ts)return "";const d=new Date(ts*1000);const p=n=>Strin
 // group a person thinks in. Everything after the picture - subtitles, music,
 // the check and the cut - is one step, because it is one job.
 const STEPS=[
-  {id:"prep",  zh:"准备", stages:["ingest","analyze","cover"],                     hint:"导入·分析·封面"},
-  {id:"cast",  zh:"定妆", stages:["character","voice"],                          hint:"参考图·音色样本（和文字活并排跑）"},
-  {id:"script",zh:"剧本", stages:["segment","script","storyboard","promptgen"],    hint:"分集·剧本·分镜·提示词"},
-  {id:"visual",zh:"画面", stages:["visual"],                                      hint:"ComfyUI 出图/视频"},
-  {id:"final", zh:"成片", stages:["lipsync","subtitle","music","precheck","compose","qc"], hint:"字幕·配乐·预检·合成·质检"},
+  {id:"import",zh:"小说导入", stages:["ingest"],                                    hint:"清洗·分章"},
+  {id:"read",  zh:"全文分析", stages:["analyze"],                                   hint:"角色·世界观·类型"},
+  {id:"adapt", zh:"改成剧集", stages:["segment","script","storyboard"],            hint:"切集·剧本和分镜一起写"},
+  {id:"cast",  zh:"角色出图", stages:["character","voice","cover"],                hint:"参考图·音色样本·封面"},
+  {id:"make",  zh:"分镜制作", stages:["promptgen","visual"],                       hint:"提示词·出图出视频"},
+  {id:"post",  zh:"后期",     stages:["subtitle","music","precheck","compose","qc"], hint:"字幕·配乐·预检·合成·质检"},
 ];
-const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",cover:"剧名 · 主视觉",character:"锚点 · 四视图 · 音色样本",segment:"按钩子切集",script:"台词 · 旁白",storyboard:"场次 · 镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"每个角色一段，给 H3 当音色参考（画面自带声音，不逐句配音）",subtitle:"跟着画面走",music:"情绪匹配 BGM",precheck:"成片前校验",compose:"ffmpeg 成片",qc:"成片质检"};
+const STAGE_HINT={ingest:"清洗 · 分章",analyze:"角色 · 世界观",cover:"剧名 · 主视觉",character:"锚点 · 四视图 · 音色样本",segment:"按钩子切集",script:"台词和镜头一起写",storyboard:"补上没写到的镜头",promptgen:"中英提示词",visual:"ComfyUI 出图/视频",voice:"每个角色一段，给 H3 当音色参考（画面自带声音，不逐句配音）",subtitle:"跟着画面走",music:"情绪匹配 BGM",precheck:"成片前校验",compose:"ffmpeg 成片",qc:"成片质检"};
 
 const S = {
   state:null, templates:null, projects:[], current:"", tags:{}, tagSel:new Set(),
@@ -1536,6 +1537,9 @@ async function applyStyleSkills(styleId){
       const want=(got.skills[stage]||[]).filter(n=>names.indexOf(n)>=0);
       if(want.length) clean[stage]=want;
     }
+    // the genre card is not the look's business: it is the card the book
+    // is read with, and a new look does not change the book
+    if((SK.selection||{}).genre) clean.genre=(SK.selection.genre||[]).slice();
     // on the page, not on the server: the 保存 button writes the look
     // and the skills together, so a box ticked in between is not written
     // over by the answer to an earlier write
@@ -1567,19 +1571,20 @@ const SK_SUGGEST={
   promptgen:["short-drama-image-prompts","short-drama-video-prompts","short-drama"]
 };
 function skLabel(x){ return x.title_zh||x.family_zh||x.title; }
+// The genre cards have their own column: one card, chosen by name.
+// They are not in the stage lists - a card that is ticked sits in the
+// script stage, so the column writes there.
+function genreSkills(){ return ((SK&&SK.skills)||[]).filter(x=>x.family==="genre"); }
 function skillsForStage(stage){
   const all=(SK&&SK.skills)||[];
   const sug=new Set(SK_SUGGEST[stage]||[]);
   const out=[];
   all.forEach(x=>{ if(sug.has(x.name)) out.push(x); });
-  if(stage==="script"||stage==="storyboard"){
-    all.forEach(x=>{ if(x.family==="screenwriting-theory"&&out.indexOf(x)<0) out.push(x); });
-  }
   // whatever this stage already uses is offered too, even if it is not one
   // of the usual ones
   const sel=((SK&&SK.selection)||{})[stage]||[];
   sel.forEach(n=>{ const f=all.find(x=>x.name===n); if(f&&out.indexOf(f)<0) out.push(f); });
-  return out;
+  return out.filter(x=>x.family!=="genre");
 }
 function skillsPanelHtml(){
   if(!SK) return `<div class="card"><b>技能</b><span class="muted" style="font-size:12px">读取中…</span></div>`;
@@ -1587,7 +1592,7 @@ function skillsPanelHtml(){
   // A column for every stage that takes skills, and none for the steps
   // that inject nothing: three empty columns were space taken for
   // nothing.
-  const stepOf={analyze:"准备",script:"剧本",storyboard:"剧本",promptgen:"剧本"};
+  const stepOf={analyze:"全文分析",script:"改成剧集",storyboard:"改成剧集",promptgen:"分镜制作"};
   const cols=Object.keys(SK_STAGE_ZH).map(st=>{
     const names=sel[st]||[];
     const opts=skillsForStage(st).map(x=>`<label class="skck"
@@ -1600,6 +1605,18 @@ function skillsPanelHtml(){
       </div>
       <div class="skopts">${opts}</div></div>`;
   }).join("");
+  // the genre column: the fifteen cards, one of them for this book
+  const gcards=genreSkills();
+  const gsel=sel.genre||[];
+  const gopts=gcards.map(x=>`<label class="skck"
+      title="${attr(x.description||"")}"><input type="checkbox" data-skstage="genre"
+      data-sk="${esc(x.name)}" ${gsel.indexOf(x.name)>=0?"checked":""}><span>${esc(skLabel(x))}</span></label>`).join("");
+  const gcol=`<div class="skcol">
+    <div class="skt">类型
+      <span class="skstep">改成剧集</span>
+      <span class="muted" style="margin-left:auto" id="genreCount">${gsel.length} 个</span>
+    </div>
+    <div class="skopts">${gopts}</div></div>`;
   const rec=SK.recommended?" · 按这本书推荐的":"";
   return `<div class="card skcard">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1607,7 +1624,7 @@ function skillsPanelHtml(){
       <span class="muted" style="font-size:12px">勾上就存到本项目，下次跑流水线生效${esc(rec)}</span>
       <span class="muted" id="skNote" style="font-size:12px"></span>
     </div>
-    <div class="skgrid">${cols}</div>
+    <div class="skgrid">${cols}${gcol}</div>
   </div>`;
 }
 // The skill saves, in a line.  The look brings its own skills and the
@@ -1642,6 +1659,12 @@ function bindSkillChecks(){
     const list=(SK.selection[stage]=SK.selection[stage]||[]);
     const i=list.indexOf(name);
     if(cb.checked&&i<0) list.push(name); else if(!cb.checked&&i>=0) list.splice(i,1);
+    // the genre is one thing: a book is read with one card, and two of
+    // them in the same prompt is how the writing stops being about
+    // anything.  So ticking one puts the other away.
+    if(stage==="genre"){
+      SK.selection[stage]= cb.checked ? [name] : [];
+    }
     saveSkills({[stage]:list}).then(r=>{
       if(!r||!r.ok){ toast("技能保存失败","err"); return; }
       SK.selection=r.selection||SK.selection;
@@ -1653,6 +1676,11 @@ function bindSkillChecks(){
       if(head){
         const names=SK.selection[stage]||[];
         head.innerHTML=esc(SK_STAGE_ZH[stage])+` <span class="muted">${names.length} 个 · ${fmtChars(SK.costs[stage]||0)}</span>`;
+      }
+      // the genre column counts its own cards
+      const gc=document.getElementById("genreCount");
+      if(gc){
+        gc.textContent=(SK.selection.genre||[]).length+" 个";
       }
     });
   });

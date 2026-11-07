@@ -35,6 +35,7 @@ FAMILY_ZH = {
     "short-drama-edit": "剪辑",
     "short-drama-develop": "开发",
     "screenwriting-theory": "编剧理论",
+    "genre": "类型",
 }
 
 # The theory skills carry English names in their frontmatter, which is fine
@@ -138,7 +139,8 @@ def catalog() -> list[dict]:
         out.append({
             "name": rel.as_posix(),
             "title": fm.get("name") or rel.name,
-            "title_zh": TITLE_ZH.get(rel.as_posix(), ""),
+            "title_zh": TITLE_ZH.get(rel.as_posix(), "")
+                        or (fm.get("name") or "" if fam == "genre" else ""),
             "description": fm.get("description") or "",
             "family": fam,
             "family_zh": fam_zh,
