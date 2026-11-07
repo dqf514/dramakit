@@ -391,6 +391,10 @@ class ComfyUIConfig(BaseModel):
     vae_name: str = ""                                # VAELoader 的 vae_name
     # 出图提示词格式：sdxl = 关键词堆叠；flux3 = 完整场景描述（FLUX 3 Image Klein）
     prompt_format: Literal["sdxl", "flux3"] = "sdxl"
+    # 一个片段里切几刀。默认不切：一段一个连续镜头，剪辑在片段之间做。
+    # 打开后，一段里可以切 4-8 刀（蒙太奇、连续动作），但人物的脸
+    # 会在段内漂 —— 实测十秒五刀，脸变了两次，另一个角色被模型现编出来。
+    segment_cuts: bool = False
     # 出视频分辨率（H3 原生 16:9 是 1344x768，必须是 32 的倍数）。
     # 留空则用工作流里写死的值。
     video_width: int = 0

@@ -177,6 +177,13 @@ def run(ctx: Context) -> dict:
             spoken = [l for l in sc.lines if not is_narration(l)]
             secs = sum(estimate_reading_seconds(l.text) for l in spoken) * 1.2
             want = max(cfg.min_shots_per_scene, (int(secs * 100) + 349) // 350)
+            # The beats are the novel's visible moments, and each one is a
+            # shot of its own: an empty room, a hand on a switch, the face
+            # in the mirror.  A scene that is mostly seen needs more shots
+            # than a scene that is mostly said.
+            beats = len(getattr(sc, "beats", []) or [])
+            if beats:
+                want = max(want, beats)
             needs.append(want)
         dialogue_need = sum(needs)
         # How many segments the episode wants is the director's business.
@@ -254,6 +261,7 @@ def run(ctx: Context) -> dict:
                             scene_shots=share,
                             time_of_day=sc.time_of_day, mood=sc.mood, summary=sc.summary,
                             lines_text=lines_text, beats_text=beats_text,
+                            segment_cuts=bool(ctx.cfg.comfyui.segment_cuts),
                             min_shots=cfg.min_shots_per_scene,
                             max_shots=max_shots, prefer_dynamic=prefer,
                             dur_min=dmin, dur_max=dmax, narration_seconds=narration_sec,
@@ -284,14 +292,16 @@ def run(ctx: Context) -> dict:
                 if k and k not in idx:
                     idx.append(k)
             # which beats this shot films, so a beat that no shot
-            # covers can be counted
+            # covers can be counted.  A beat number the scene does not
+            # have is not a beat: the model counts them its own way.
+            n_beats = len(getattr(sc, "beats", []) or [])
             covered: list[int] = []
             for v in (s.get("beats") or []):
                 try:
                     n = int(v)
                 except (TypeError, ValueError):
                     continue
-                if n > 0 and n not in covered:
+                if 0 < n <= n_beats and n not in covered:
                     covered.append(n)
             shots.append(Shot(
                 id=_id("sh"), index=i, shot_type=_to_shot_type(s.get("shot_type", "中景")),
@@ -348,19 +358,16 @@ def run(ctx: Context) -> dict:
                  Status.FAILED if ep.index in failed else Status.DONE)
         ctx.save()
         done += 1
-        # a film is not one long take, and it is not a conversation
-        one_take = sum(1 for sc in ep.scenes for sh in sc.shots
-                       if _cuts(sh.action or "") <= 1)
-        total_shots = max(1, ep.total_shots)
+        # What is worth saying in this shape: the beats of the novel that
+        # no shot filmed.  (How many segments are one take is the whole
+        # film now, so it says nothing.)
         filmed = 0
         beats = 0
         for sc in ep.scenes:
             f, b = _beat_coverage(sc)
             filmed += f
             beats += b
-        ctx.log.info("storyboard: 第%d集 → %d 镜（其中 %d 段是一镜到底，%d%%）",
-                     ep.index, ep.total_shots, one_take,
-                     int(one_take * 100 / total_shots))
+        ctx.log.info("storyboard: 第%d集 → %d 镜", ep.index, ep.total_shots)
         if beats:
             ctx.log.info("storyboard: 第%d集 拍点 %d 个，拍到 %d 个（%d%%）",
                          ep.index, beats, filmed, int(filmed * 100 / beats))

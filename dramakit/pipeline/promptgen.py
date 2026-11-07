@@ -369,6 +369,8 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
                     # what the focus is on: the speaker's eyes in a
                     # dialogue, the moving pen when a hand writes
                     subject=shot.subject or "画面主体",
+            # one take per segment, or several cuts inside it
+            segment_cuts=bool(ctx.cfg.comfyui.segment_cuts),
                     character_anchors=visuals, location=sc.location or "场景",
                     location_visual=location_visual or "（按剧情合理生成）",
                     scene_summary=sc.summary or "", time_of_day=sc.time_of_day,
@@ -496,14 +498,21 @@ def _segment_beats(shot) -> list[tuple[float, float, str]]:
     return out
 
 
-def _cut_marks(shot) -> list[str]:
+def _cut_marks(shot, cuts: bool = True) -> list[str]:
     """The cut markers the segment is to have.
 
     From the shots the director wrote inside it; and when the director
     left the segment with one shot, the segment is cut in the middle, on
     the same action, with a different framing - ten seconds without a cut
     is a short drama that has forgotten to cut.
+
+    But a segment is one continuous take unless the project says
+    otherwise: the editing happens between the segments, and a segment
+    that is cut in the middle is a second take the model has to hold
+    together - and its face drifts.
     """
+    if not cuts:
+        return []
     beats = _segment_beats(shot)
     dur = float(shot.duration or 0.0)
     if len(beats) >= 2:
@@ -726,7 +735,7 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             # was told to write the cuts and wrote one take in almost every
             # segment, so the cut is put in here, at the times the director
             # wrote into the action, in the form the model is told to use.
-            marks = _cut_marks(shot)
+            marks = _cut_marks(shot, bool(ctx.cfg.comfyui.segment_cuts))
             if desc and "[Shot 2]" not in desc and marks:
                 desc = desc.rstrip() + "\n" + "\n".join(marks)
             # The background: the character pictures are shot against a plain
