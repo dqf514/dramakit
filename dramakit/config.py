@@ -192,33 +192,35 @@ class SkillsConfig(BaseModel):
     analyze: list[str] = ["short-drama-novel-analyze", "short-drama-develop"]
     # the screenwriter: a novel is not a screenplay, and the craft of
     # turning one into the other is its own subject
-    script: list[str] = ["short-drama-write",
-                         "screenwriting-theory/sw-format-adaptation"]
+    script: list[str] = ["short-drama-write", "short-drama-ai-film"]
     # the director: the coverage of a scene, the angle, the axis
-    storyboard: list[str] = ["short-drama-storyboard"]
+    storyboard: list[str] = ["short-drama-storyboard", "short-drama-ai-film"]
     promptgen: list[str] = ["short-drama-video-prompts",
-                            "short-drama-image-prompts"]
+                            "short-drama-image-prompts",
+                            "short-drama-ai-film"]
     # the documents that come with those skills.  A skill named only here
     # contributes its documents and not its own rules.
     refs: dict[str, dict[str, list[str]]] = {
         "analyze": {
             "short-drama-develop": ["adaptation-craft.md"],
         },
-        "script": {
-            "short-drama-develop": ["adaptation-craft.md"],
-        },
         "storyboard": {
             "short-drama-storyboard": ["production-shot-grammar.md",
                                        "blocking-playbooks.md"],
+            "short-drama-ai-film": ["segments.md"],
+        },
+        "script": {
+            "short-drama-develop": ["adaptation-craft.md"],
+            "short-drama-ai-film": ["beats.md"],
+        },
+        "promptgen": {
+            "short-drama-ai-film": ["camera.md"],
         },
     }
-    # the screenwriting theory, by genre: the drama asks, the skills answer
-    by_genre: dict[str, list[str]] = {
-        "复仇": ["screenwriting-theory/sw-character-conflict"],
-        "甜宠": ["screenwriting-theory/ozu-screenplay-style"],
-        "悬疑": ["screenwriting-theory/sw-story-structure"],
-        "战神": ["screenwriting-theory/sw-genre-anatomy"],
-    }
+    # The film theory that used to be here, by genre, is gone: it was
+    # thirty-six documents about how people make films, in every prompt,
+    # and the model wrote like it was making one.
+    by_genre: dict[str, list[str]] = {}
 
 
 class CharacterConfig(BaseModel):

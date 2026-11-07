@@ -2,13 +2,15 @@
 
 The rules this pipeline writes with used to be in code, written by hand
 and improved one round at a time.  They are now documents - the skills
-that come with this repo (and the screenwriting theory beside it) - and
-the stages load them at run time.
+that come with this repo - and the stages load them at run time.
 
 A skill is a folder under `skills/` with a SKILL.md in it.  The stage asks
-for the ones named in the config; a genre can ask for more (a revenge
-drama wants character conflict and a Chekhovian engine, a sweet romance
-wants Ozu's staging).
+for the ones named in the config; a genre can ask for more.
+
+What is in the library is the craft of making films by people.  The
+library also holds what is different about making them by machine:
+`short-drama-ai-film` - the beats, the one-take segment, the depth of
+field, the first frame that has to hold the person in the shot.
 
 Everything a skill says goes into the prompt as it is.  A SKILL.md is
 written to be read by a model, which is exactly what it is being read by.

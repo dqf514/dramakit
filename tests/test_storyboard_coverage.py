@@ -20,7 +20,7 @@ from dramakit.config import Config
 from dramakit.models import Line, Scene, Shot, ShotType
 from dramakit.pipeline import storyboard as sb
 from dramakit.pipeline.qc import _coverage_metrics
-from dramakit.skills import loader
+from dramakit.skills import catalog, loader
 
 
 def _scene() -> Scene:
@@ -158,12 +158,36 @@ class SkillTests(unittest.TestCase):
     def test_the_screenwriter_gets_the_adaptation_rules(self):
         cfg = Config.load()
         self.assertIn("short-drama-write", cfg.skills.script)
-        self.assertIn("screenwriting-theory/sw-format-adaptation",
-                      cfg.skills.script)
+        # our own craft comes with the writer too: the beats, the
+        # dialogue, and what to do with a chapter of a novel
+        self.assertIn("short-drama-ai-film", cfg.skills.script)
         # the adaptation craft comes with the writer, even though the
         # development skill itself is not its rulebook
         refs = cfg.skills.refs.get("script", {})
         self.assertIn("adaptation-craft.md", refs.get("short-drama-develop", []))
+        self.assertIn("beats.md", refs.get("short-drama-ai-film", []))
+
+    def test_the_film_theory_is_gone(self):
+        """The library held thirty-six documents about how people make
+        films, and they were in every prompt.  They are not switched
+        off: they are not there any more."""
+        names = [s["name"] for s in catalog.catalog()]
+        self.assertFalse([n for n in names if n.startswith("screenwriting-theory/")],
+                         "传统电影理论还在技能库里")
+        self.assertIn("short-drama-ai-film", names)
+
+    def test_the_director_and_the_prompt_writer_get_our_craft(self):
+        cfg = Config.load()
+        self.assertIn("short-drama-ai-film", cfg.skills.storyboard)
+        self.assertIn("short-drama-ai-film", cfg.skills.promptgen)
+        self.assertIn("segments.md",
+                      cfg.skills.refs.get("storyboard", {}).get("short-drama-ai-film", []))
+        self.assertIn("camera.md",
+                      cfg.skills.refs.get("promptgen", {}).get("short-drama-ai-film", []))
+        # and the skill says the thing it was written for
+        text = loader.load("short-drama-ai-film")
+        self.assertIn("一镜到底", text)
+        self.assertIn("多镜容器", text)
 
     def test_the_director_gets_the_shot_grammar(self):
         cfg = Config.load()

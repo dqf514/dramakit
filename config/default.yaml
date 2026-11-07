@@ -471,12 +471,14 @@ skills:
     - short-drama-develop
   script:
     - short-drama-write
-    - screenwriting-theory/sw-format-adaptation
+    - short-drama-ai-film
   storyboard:
     - short-drama-storyboard
+    - short-drama-ai-film
   promptgen:
     - short-drama-video-prompts
     - short-drama-image-prompts
+    - short-drama-ai-film
   refs:
     analyze:
       short-drama-develop:
@@ -488,6 +490,16 @@ skills:
       short-drama-storyboard:
         - production-shot-grammar.md
         - blocking-playbooks.md
+      short-drama-ai-film:
+        - segments.md
+    script:
+      short-drama-develop:
+        - adaptation-craft.md
+      short-drama-ai-film:
+        - beats.md
+    promptgen:
+      short-drama-ai-film:
+        - camera.md
 
 # --------------------------- 合成 compose -----------------------------------
 compose:
