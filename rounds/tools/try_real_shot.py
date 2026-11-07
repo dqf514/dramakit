@@ -44,7 +44,7 @@ print("  选中: %s  %s  %ds  台词%s" % (sh.id[-6:], sh.shot_type.value, sh.du
 print("  action:", (sh.action or "")[:200])
 
 visuals = "\n".join(
-    "%s：%s" % (c.name, c.description or c.appearance or "")
+    "%s：%s" % (c.name, c.visual_prompt or c.anchor_prompt or c.appearance or "")
     for c in proj.characters if c.name in (sh.characters or []))
 loc = next((l for l in proj.locations if l.name == sc.location), None)
 location_visual = (loc.description if loc else "") or ""
