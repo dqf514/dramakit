@@ -43,6 +43,23 @@ def _key(text: str) -> str:
     return re.sub(r"[\s，,。！？!?…、；;：:—\-「」『』\"“”'‘’（）()]", "", text or "")
 
 
+def _already_said(key: str, said: set[tuple[str, str]]) -> bool:
+    """Whether this line has been said already.
+
+    The exact same words are easy.  The same words inside a longer line
+    are the other way the model repeats itself - it says a sentence in
+    one scene and says it again with a few more words around it in the
+    next.  A line that is a piece of a line already said is that
+    repeat, so it goes too.
+    """
+    if not key:
+        return False
+    for who, seen in said:
+        if who and len(seen) >= 3 * len(key) and key in seen:
+            return True
+    return False
+
+
 def _join_fragments(rows: list[dict]) -> list[dict]:
     """A sentence the model cut in half is one sentence.
 
@@ -498,6 +515,11 @@ def run(ctx: Context) -> dict:
                 who = row["speaker"]
                 key = (who, _key(row["text"]))
                 if key in said or key in said_episode:
+                    continue
+                # the same words inside a longer line are the same words
+                # said again - the model repeats a line in the next scene
+                # with a few more words around it
+                if _already_said(_key(row["text"]), said_episode):
                     continue
                 said.add(key)
                 said_episode.add(key)

@@ -25,6 +25,30 @@ def _shot(i, dur, lines=()):
                 characters=["甲"], line_indices=list(lines), beats=[])
 
 
+class LineQualityTests(unittest.TestCase):
+    """A line is a whole sentence, and it is said once."""
+
+    def test_a_note_taken_out_leaves_no_comma_behind(self):
+        self.assertEqual(S._strip_direction("上船要趁早，（压低嗓子）"), "上船要趁早")
+        self.assertEqual(S._strip_direction("老周，你这船开得"), "老周，你这船开得")
+        self.assertEqual(S._strip_direction("好。"), "好。")
+
+    def test_a_split_sentence_is_put_back_together(self):
+        rows = [{"text": "上船要趁早", "speaker": "老周"},
+                {"text": "雾一厚，连自己的手都看不清。", "speaker": "老周"}]
+        out = S._join_fragments(rows)
+        self.assertEqual(len(out), 1)
+        self.assertIn("雾一厚", out[0]["text"])
+
+    def test_a_line_that_is_a_piece_of_a_line_already_said_goes(self):
+        said = {("老周", "等等我等等我老周你这船开得比我娘子的脾气还急")}
+        self.assertTrue(S._already_said("等等我等等我", said))
+        # a short line that is only inside a longer one is not a repeat
+        self.assertFalse(S._already_said("开船", {("老周", "老周开船吧")}))
+        # and somebody else saying it is not a repeat
+        self.assertFalse(S._already_said("我要过河", {("沈知微", "我要过河")}))
+
+
 class SceneShareTests(unittest.TestCase):
     def test_the_shots_are_scaled_to_the_episode(self):
         """A shot list of 120 seconds becomes the episode's 40."""
