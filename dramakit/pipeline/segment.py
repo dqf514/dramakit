@@ -50,6 +50,33 @@ def _split_blocks(text: str, chapters: list[dict], n: int, cfg) -> list[str]:
     return [body for body, _ in _split_blocks_with_chapters(text, chapters, n, cfg)]
 
 
+def _split_chapter(body: str, parts: int) -> list[str]:
+    """A chapter cut into pieces, at the paragraphs.
+
+    A scene is never cut in half: the pieces are whole paragraphs, and
+    the piece that would be too small is given to its neighbour.
+    """
+    if parts <= 1:
+        return [body]
+    paras = [p for p in body.split("\n\n") if p.strip()]
+    if not paras:
+        return [body]
+    # the pieces are as even as the paragraphs allow
+    per = len(paras) / parts
+    out: list[str] = []
+    cur: list[str] = []
+    for i, p in enumerate(paras):
+        cur.append(p)
+        want = min(parts, int(i / per) + 1)
+        if len(cur) >= max(1, round(per)) and len(out) < parts - 1:
+            out.append("\n\n".join(cur))
+            cur = []
+    if cur:
+        out.append("\n\n".join(cur))
+    # the pieces that came out empty are folded into the one before
+    return [o for o in out if o.strip()] or [body]
+
+
 def _split_blocks_with_chapters(text: str, chapters: list[dict], n: int,
                                 cfg) -> list[tuple[str, list[int]]]:
     """The blocks of text, and the chapters each block was made of.
@@ -72,6 +99,28 @@ def _split_blocks_with_chapters(text: str, chapters: list[dict], n: int,
             body = "\n\n".join(c["body"] for c in part)
             if body.strip():
                 blocks.append((body, [c.get("index", 0) for c in part]))
+        if blocks:
+            return blocks
+    if cfg.respect_chapters and chapters:
+        # fewer chapters than episodes: every chapter is divided into as
+        # many episodes as it needs, and the pieces are whole
+        # paragraphs - so a scene is never cut in half
+        total = sum(len(c.get("body", "")) for c in chapters) or 1
+        blocks = []
+        left = n
+        for i, c in enumerate(chapters):
+            body = c.get("body", "")
+            share = len(body) / total
+            parts = int(round(share * n))
+            if i == len(chapters) - 1:
+                parts = left
+            parts = max(1, min(parts, left))
+            for piece in _split_chapter(body, parts):
+                if piece.strip():
+                    blocks.append((piece, [c.get("index", 0)]))
+            left -= parts
+            if left <= 0:
+                break
         if blocks:
             return blocks
     target = max(200, int(len(text) / max(n, 1)))

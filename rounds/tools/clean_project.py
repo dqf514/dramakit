@@ -5,57 +5,64 @@ cover, the scenes, the shots, the pictures, the clips, the subtitles -
 and only the novel is left.  Then the pipeline starts again from the
 beginning, which is the only way to see what the new stages really do.
 """
-import json
 import pathlib
 import shutil
 import sys
 
-ROOT = pathlib.Path(r"E:\dramakit\projects\穿成亿万总裁他前妻")
 sys.path.insert(0, r"E:\dramakit")
 from dramakit.project import ProjectStore  # noqa: E402
 
+ROOT = pathlib.Path(r"E:\dramakit\projects")
+projs = [d for d in sorted(ROOT.iterdir())
+         if d.is_dir() and (d / "project.json").exists()]
+projs.sort(key=lambda d: (d / "project.json").stat().st_mtime, reverse=True)
+p = projs[0]
+if len(sys.argv) > 1:
+    p = next(d for d in projs if sys.argv[1] in d.name)
+
 # what is made, and what is the book
 MADE = ("characters", "covers", "episodes", "images", "locations",
-        "video", "audio", "bgm", "subs", "tmp", "logs")
+        "video", "audio", "bgm", "subs", "tmp", "logs", "qc", "nle")
 KEEP = "source"
 
-store = ProjectStore.open(str(ROOT))
+store = ProjectStore.open(str(p))
 proj = store.load()
 
-print("  之前：%d 集，%d 镜，%d 个角色" % (
-    len(proj.episodes),
-    sum(len(s.shots) for e in proj.episodes for s in e.scenes),
-    len(proj.characters)))
+print("  项目：%s" % p.name)
+print("  之前：%d 集，%d 镜，%d 个角色"
+      % (len(proj.episodes),
+         sum(len(s.shots) for e in proj.episodes for s in e.scenes),
+         len(proj.characters)))
 
-# the made things go
 for name in MADE:
-    d = ROOT / name
+    d = p / name
     if d.exists():
         n = sum(1 for f in d.rglob("*") if f.is_file())
         shutil.rmtree(str(d), ignore_errors=True)
         d.mkdir(parents=True, exist_ok=True)
         print("  清空 %-12s %d 个文件" % (name, n))
 
-# the project itself: the book, and nothing else
-src = ROOT / "source"
-books = sorted(src.glob("*"))
-keep = {}
-for f in books:
-    if f.is_file():
-        keep[f.name] = f.stat().st_size
-print("  小说原文留着：%s" % ", ".join(
-    "%s(%d KB)" % (k, v // 1024) for k, v in keep.items()))
+# the loose files that are not the book either
+for f in list(p.iterdir()):
+    if f.is_file() and f.name not in ("project.json", ".progress.json"):
+        print("  删掉 %s" % f.name)
+        f.unlink()
+
+src = p / "source"
+books = sorted(f.name for f in src.iterdir() if f.is_file())
+print("  小说原文留着：%s" % "、".join(books))
 
 proj.episodes = []
 proj.characters = []
 proj.locations = []
 proj.props = []
-proj.stage_status = {}
 proj.seasons = []
+proj.stage_status = {}
 proj.meta.skills = {}
 proj.meta.skills_recommended = False
 proj.meta.last_run = {}
 proj.meta.chosen_chapters = []
+proj.meta.segmented_chapters = []
 proj.art_direction.genre = ""
 proj.art_direction.style = ""
 proj.art_direction.style_prompt_prefix = ""

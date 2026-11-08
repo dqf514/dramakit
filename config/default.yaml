@@ -441,9 +441,11 @@ music:
 
 # --------------------------- 分集 segment -----------------------------------
 segment:
-  strategy: auto                            # auto | fixed_count | fixed_duration | by_chapter
-  episode_count: 0                          # fixed_count 时用
-  episode_duration: 300.0                    # 一集的目标时长（5 分钟）
+  strategy: fixed_count
+  episode_count: 30
+  episode_duration: 150
+  # 一集的天花板：剧本按这个时长写，原文再长也要压进去
+  max_episode_seconds: 165.0
   min_episode_duration: 180.0
   max_episode_duration: 360.0
   respect_chapters: true                    # 尽量沿章节边界切
