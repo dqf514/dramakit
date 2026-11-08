@@ -541,6 +541,13 @@ class Context:
             disk = self.store.load()
         except Exception:  # noqa: BLE001
             return
+        # The frame and the look belong to the person, not to the run:
+        # they can be changed while a run is going, and the run's copy is
+        # a snapshot from when it started.  The disk has the newer one.
+        try:
+            self.project.art_direction = disk.art_direction
+        except Exception:  # noqa: BLE001
+            pass
         disk_eps = {e.index: e for e in disk.episodes}
         for ep in self.project.episodes:
             other = disk_eps.get(ep.index)

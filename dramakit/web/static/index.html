@@ -998,8 +998,12 @@ const nodeLink = (url, label)=>{
        + `${esc(label||u)}</a>`;
 };
 
-const STAGES=["ingest","analyze","cover","character","segment","script","storyboard","promptgen","voice","visual","subtitle","music","precheck","compose","qc"];
-const STAGE_ZH={ingest:"导入",analyze:"分析",cover:"封面",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",voice:"音色",visual:"画面",subtitle:"字幕",music:"配乐",precheck:"预检",compose:"合成",qc:"质检"};
+const STAGES=["ingest","analyze","cover","character","segment","script","storyboard","promptgen","voice","visual","lipsync","subtitle","music","precheck","compose","qc"];
+const STAGE_ZH={ingest:"导入",analyze:"分析",cover:"封面",character:"定妆",segment:"分集",script:"剧本",storyboard:"分镜",promptgen:"提示词",voice:"音色",visual:"画面",lipsync:"对口型",subtitle:"字幕",music:"配乐",precheck:"预检",compose:"合成",qc:"质检"};
+// The pipeline's own order, when the server has said it.  The list that
+// is written down here is a copy, and a copy is what disagrees with
+// the thing it was copied from.
+function pipeStages(){ const s=(S.state&&S.state.stages)||[]; return (s.length?s:STAGES); }
 function ago(ts){if(!ts)return "";const s=(Date.now()/1000-ts);if(s<60)return "刚刚";if(s<3600)return Math.floor(s/60)+" 分钟前";if(s<86400)return Math.floor(s/3600)+" 小时前";if(s<86400*7)return Math.floor(s/86400)+" 天前";return new Date(ts*1000).toLocaleDateString();}
 function whenStr(ts){if(!ts)return "";const d=new Date(ts*1000);const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
 // Five big steps. The pipeline still knows every stage; a step is just the
@@ -1167,7 +1171,7 @@ function stageSummary(slug){
   // looking half finished.
   const p=S.projects.find(x=>x.slug===slug);
   const nEp=(p&&p.episodes)?p.episodes:1;
-  const total=STAGES.length*nEp;
+  const total=pipeStages().length*nEp;
   const det=(S.detail&&S.detail.slug===slug)?S.detail:null;
   const projStatus=(det&&det.stage_status)||{};
   const eps=(det&&det.episodes)||[];
@@ -1175,9 +1179,9 @@ function stageSummary(slug){
                  ||String((ep&&(ep.stage_status||{})[s])||"").endsWith("done");
   let n=0;
   if(eps.length){
-    eps.forEach(ep=>{ STAGES.forEach(s=>{ if(done(s,ep)) n++; }); });
+    eps.forEach(ep=>{ pipeStages().forEach(s=>{ if(done(s,ep)) n++; }); });
   }else{
-    STAGES.forEach(s=>{ if(done(s,null)) n+=nEp; });
+    pipeStages().forEach(s=>{ if(done(s,null)) n+=nEp; });
   }
   return {total,done:n};
 }
@@ -2178,9 +2182,9 @@ function stageState(stage){
 function epProgress(ep){
   const proj=(S.detail&&S.detail.stage_status)||{};
   const shared=["ingest","analyze","character","segment"];
-  const vals=STAGES.map(s=>(ep.stage_status||{})[s]||
+  const vals=pipeStages().map(s=>(ep.stage_status||{})[s]||
     (shared.includes(s)?proj[s]:undefined));
-  return Math.round(vals.filter(v=>v==="done").length/STAGES.length*100);
+  return Math.round(vals.filter(v=>v==="done").length/pipeStages().length*100);
 }
 function runningStageName(){
   // The project's own stages come first: ingest, analyze and character
@@ -2283,7 +2287,7 @@ function workProgressHtml(){
   const hint=STAGE_HINT[st]||"";
   const p=(S.progress||{})[st];
   const ms=stageElapsed();
-  const strip=STAGES.map((x,i)=>{
+  const strip=pipeStages().map((x,i)=>{
     const v=stageState(x);
     const mark=v==="done"?"●":v==="running"?"◐":v==="interrupted"?"◑":"○";
     const col=v==="done"?"var(--go2)":v==="running"?"var(--confirm)"

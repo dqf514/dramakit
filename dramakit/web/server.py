@@ -761,11 +761,16 @@ def _make_handler(state: State):
         def _api_state(self) -> dict:
             with state.lock:
                 projs = self._api_projects()
+                from ..pipeline.runner import ORDER
                 return {
                     "ok": True,
                     "title": state.cfg.web.title,
                     "projects": projs,
                     "current_project": projs[0]["slug"] if projs else "",
+                    # the pipeline's own order: the page shows where a run
+                    # is, and a list written down twice is a list that will
+                    # disagree with the pipeline
+                    "stages": list(ORDER),
                     "config_summary": {
                         "default_model": state.cfg.resolve_llm("").model,
                         "default_base_url": state.cfg.resolve_llm("").base_url,
