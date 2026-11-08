@@ -564,7 +564,8 @@ dramakit/
 │  ├── setup_comfyui.sh          # 一键部署脚本
 │  └── setup_gpu_node.sh
 ├── skills/                       # 技能库：各阶段的手艺（脚本写什么、镜头怎么排）
-│  ├── short-drama-*/            #   各个阶段的技能与参考文档
+│  ├── novel-*/                  #   上游 shuohao-skills 改编的七个阶段手艺
+│  ├── genre/                    #   按题材挑的那一张卡
 │  └── genre/<题材>/             #   按题材分的类型卡（豪门婚恋、仙侠修真……）
 ├── assets/music/                 # 本地 BGM 曲库（放版权音乐，按情绪命名）
 ├── projects/                     # 每个项目一个目录（输出）

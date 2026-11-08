@@ -29,9 +29,55 @@ def _id(prefix: str) -> str:
 _DIRECTION = re.compile(r"[（(][^）)]{0,40}[）)]")
 
 
+# The marks that end a sentence.  A line with none of them is a piece
+# of one - the model split the sentence and gave the pieces separately.
+_SENT_END = "。！？!?…"
+
+
+def _key(text: str) -> str:
+    """The line as it sounds, without the punctuation.
+
+    Two lines that say the same thing say it the same way whether one
+    of them has a comma in it or not.
+    """
+    return re.sub(r"[\s，,。！？!?…、；;：:—\-「」『』\"“”'‘’（）()]", "", text or "")
+
+
+def _join_fragments(rows: list[dict]) -> list[dict]:
+    """A sentence the model cut in half is one sentence.
+
+    A line that ends with nothing at all - no full stop, no question
+    mark, not even a comma - is the first half of a sentence, and the
+    next line is the rest of it.
+    """
+    out: list[dict] = []
+    for row in rows:
+        txt = (row.get("text") or "").strip()
+        if out and txt:
+            prev_text = (out[-1].get("text") or "").strip()
+            # the previous line is a piece of a sentence - it does not end
+            # one - and this line is where it ends
+            if prev_text and not any(m in prev_text for m in _SENT_END):
+                out[-1]["text"] = prev_text + txt
+                continue
+        out.append(row)
+    return out
+
+
+# The punctuation a note was attached with.  When the note is taken out,
+# the punctuation that held it goes with it - otherwise the line is left
+# ending in a comma, and a line that ends in a comma is not a line.
+_TRAILING = "，,、；;：:—-"
+
+
 def _strip_direction(text: str) -> str:
-    out = _DIRECTION.sub("", text or "")
-    return out.strip()
+    out = _DIRECTION.sub("", text or "").strip()
+    # the note may have been in the middle: "上船（快）要趁早" - the words
+    # on either side are still one sentence, so only the punctuation that
+    # only existed to hold the note is taken away
+    out = re.sub(r"\s*[，,、；;：:]\s*(?=[，,。！？!?；;：:])", "", out)
+    out = out.strip().strip(_TRAILING).strip()
+    return out
 
 
 def _to_kind(v: str) -> LineKind:
@@ -176,6 +222,53 @@ def _clip(text: str, limit: int) -> str:
     return t if len(t) <= limit else t[:limit].rstrip() + "…"
 
 
+def _fit_episode_shots(ep, seconds: float, dmin: float, dmax: float,
+                       cap: int) -> None:
+    """Make the episode's picture the length the episode is.
+
+    Every shot comes back with a length of its own, and the sum of them
+    is whatever the model felt like.  The episode has a length, and the
+    shots are scaled to fill it - the way a shot list is scaled to fill
+    a scene.
+
+    When there are more shots than the episode has room for, the extra
+    ones go: a shot of nothing is a hole in the film, and the episode's
+    length is the thing that was promised.  The lines the dropped shots
+    carried move to the shot before them, so no line is left without a
+    picture.
+    """
+    scenes = [sc for sc in (ep.scenes or []) if sc.shots]
+    total = sum(len(sc.shots) for sc in scenes)
+    if not total:
+        return
+    # Too many shots for the time there is.  The shots go from the
+    # scenes that have the most of them, so no scene is emptied while
+    # another has ten left.
+    if total > cap:
+        while total > cap:
+            # the scene with the most shots gives one up
+            worst = max(scenes, key=lambda sc: len(sc.shots))
+            if len(worst.shots) <= 1:
+                break
+            # and the shot it gives up is the last one: the line it
+            # carried goes to the shot before it
+            extra = worst.shots.pop()
+            if worst.shots:
+                last = worst.shots[-1]
+                last.line_indices = sorted(set(last.line_indices or [])
+                                           | set(extra.line_indices or []))
+                last.beats = sorted(set(last.beats or []) | set(extra.beats or []))
+            total -= 1
+    shots = [sh for sc in scenes for sh in (sc.shots or [])]
+    if not shots:
+        return
+    from .storyboard import _fit_durations
+    _fit_durations(shots, seconds, dmin, dmax)
+    for sc in scenes:
+        for n, sh in enumerate(sc.shots or []):
+            sh.index = n
+
+
 def _parse_shots(raw_shots, scene, dmin: float, dmax: float) -> list:
     """The model's shots, as shots."""
     out = []
@@ -238,9 +331,12 @@ def run(ctx: Context) -> dict:
     # the card for this project's genre: the craft of this kind of story,
     # and it is one card - the main genre
     rules += loader.genre_rules(ctx, "script")
-    # the director's rules ride along: the coverage, the axis, the frame
+    # The director's rules ride along: the coverage, the axis, the frame.
+    # This stage writes the shots as well as the lines - the two crafts
+    # were merged into one call - so it needs both.
     from ..skills.film import DIRECTOR_RULES
     rules += DIRECTOR_RULES
+    rules += loader.load("novel-storyboard", refs=["shot-writing.md"])
     dmin, dmax = (float(cfg.storyboard.shot_duration_range[0]),
                   float(cfg.storyboard.shot_duration_range[-1]))
     done = 0
@@ -255,11 +351,17 @@ def run(ctx: Context) -> dict:
             ctx.log.warning("script: 第%d集无原文，跳过", ep.index)
             ctx.mark(ep, "script", Status.SKIPPED)
             continue
-        # how much the episode may say: Chinese speech runs about 4.5 chars a
-        # second, and a short drama loses people if it lingers. A short drama
-        # episode is a minute, so the source length does not get to decide.
-        seconds = float(ep.duration_target or cfg.segment.episode_duration)
-        seconds = min(seconds, cfg.segment.max_episode_seconds or seconds)
+        # How long the episode is.  The source text is as long as the
+        # chapter it came from - reading it aloud takes ten minutes - and
+        # a short drama episode is a couple of minutes of screen, so the
+        # source length does not get to decide.  The episode is what the
+        # config says an episode is.
+        seconds = float(cfg.segment.episode_duration)
+        if cfg.segment.max_episode_seconds:
+            seconds = min(seconds, float(cfg.segment.max_episode_seconds))
+        seconds = max(10.0, seconds)
+        # Chinese speech runs about 4.5 characters a second.  The episode
+        # says this much, and no more.
         budget_chars = int(seconds * 4.5)
         budget_lines = max(4, int(seconds / 4.5))
         jobs.append((ep, block, seconds, budget_chars, budget_lines))
@@ -282,6 +384,9 @@ def run(ctx: Context) -> dict:
 
     def _write_episode(job):
         ep, block, seconds, budget_chars, budget_lines = job
+        # what has been said in this episode, so the same line is not said
+        # again in the next scene
+        said_episode: set[tuple[str, str]] = set()
         # 1. the shape of the episode: the scenes, and the beats in them
         plan = pool.next().complete_json(
             T.SCRIPT_PLAN_SYSTEM,
@@ -308,6 +413,21 @@ def run(ctx: Context) -> dict:
                 scenes.append(sc)
 
         # 2. each scene whole: the lines and the shots that cover them
+        #
+        # The episode's words and seconds are shared out among its
+        # scenes.  A scene that is handed the whole episode's budget
+        # spends the whole episode's budget on itself - which is how a
+        # 165-second episode came out with 74 lines and 402 seconds of
+        # picture.
+        n_scenes = max(1, len(scenes))
+        share_seconds = max(1.0, seconds / n_scenes)
+        share_chars = max(12, int(budget_chars / n_scenes))
+        share_lines = max(2, int(budget_lines / n_scenes))
+        # How many shots the episode can hold at all.  A shot is at
+        # least dmin long, so this is the ceiling.
+        episode_shots_cap = max(
+            cfg.storyboard.min_shots_per_scene * n_scenes,
+            int(seconds / max(1.0, dmin)))
         for sc in scenes:
             beats_text = "\n".join("- %d. %s" % (i, b.action)
                                    for i, b in enumerate(sc.beats, 1))
@@ -316,46 +436,94 @@ def run(ctx: Context) -> dict:
             # its own - and the seconds are the other end: a scene that
             # has a hundred seconds of screen time needs more than the
             # three or four things that happen in it.
-            scene_seconds = int(round(seconds / max(1, len(scenes))))
+            scene_seconds = int(round(share_seconds))
             want = max(cfg.storyboard.min_shots_per_scene, len(sc.beats),
+                       share_lines,
                        int(round(scene_seconds / 10.0)))
             want = min(want, cfg.storyboard.max_shots_per_scene)
             scene_avg = round(scene_seconds / max(1, want), 1)
-            data = pool.next().complete_json(
-                T.SCRIPT_SCENE_SYSTEM,
-                T.render(T.SCRIPT_SCENE_USER,
-                         ep_index=ep.index, ep_total=len(ctx.target_episodes()),
-                         genre=genre,
-                         location=sc.location or "场景", time_of_day=sc.time_of_day,
-                         mood=sc.mood, summary=sc.summary or "",
-                         action=sc.summary or "",
-                         beats_text=beats_text or "（这一场没有拍点）",
-                         text=block[:12000],
-                         character_anchors=_char_anchors(ctx, sc),
-                         screenwriter_rules=rules,
-                         scene_seconds=scene_seconds,
-                         scene_shots=want,
-                         scene_avg=scene_avg,
-                         dur_min=dmin, dur_max=dmax,
-                         budget_seconds=int(seconds), budget_chars=budget_chars,
-                         budget_lines=budget_lines))
+            user = T.render(T.SCRIPT_SCENE_USER,
+                            ep_index=ep.index, ep_total=len(ctx.target_episodes()),
+                            genre=genre,
+                            location=sc.location or "场景", time_of_day=sc.time_of_day,
+                            mood=sc.mood, summary=sc.summary or "",
+                            action=sc.summary or "",
+                            beats_text=beats_text or "（这一场没有拍点）",
+                            text=block[:12000],
+                            character_anchors=_char_anchors(ctx, sc),
+                            screenwriter_rules=rules,
+                            scene_seconds=scene_seconds,
+                            scene_shots=want,
+                            scene_avg=scene_avg,
+                            dur_min=dmin, dur_max=dmax,
+                            budget_seconds=int(scene_seconds),
+                            budget_chars=share_chars, budget_lines=share_lines,
+                            episode_seconds=int(seconds),
+                            episode_chars=budget_chars,
+                            episode_lines=budget_lines,
+                            episode_scenes=n_scenes)
+            try:
+                data = pool.next().complete_json(T.SCRIPT_SCENE_SYSTEM, user)
+            except Exception as e:  # noqa: BLE001
+                # One scene the endpoint could not answer is not the whole
+                # episode.  The scene is left empty and the episode carries
+                # on - the next run fills the hole.
+                ctx.log.warning("script: 第%d集《%s》%s 这一场没写成（%s），跳过",
+                                ep.index, sc.location, sc.time_of_day,
+                                str(e)[:120])
+                sc.shots = []
+                continue
             if isinstance(data, list):
                 data = data[0] if data else {}
-            for li, l in enumerate(data.get("lines", []) or [], 1):
+            # the sentences the model wrote, with the fragments joined
+            rows: list[dict] = []
+            for l in (data.get("lines") or []):
+                if not isinstance(l, dict):
+                    continue
                 txt = _clip(_strip_direction(l.get("text") or ""), _MAX_LINE)
                 if not txt:
                     continue
-                emotion = (l.get("emotion") or "平静").strip()
-                for note in _DIRECTION.findall(l.get("text") or ""):
+                rows.append({
+                    "kind": l.get("kind", "dialogue"),
+                    "speaker": (l.get("speaker") or "旁白").strip(),
+                    "text": txt.strip(),
+                    "emotion": (l.get("emotion") or "平静").strip(),
+                    "raw": l.get("text") or "",
+                })
+            rows = _join_fragments(rows)
+            # the same words from the same mouth, twice: the audience
+            # hears it twice and the scene gets longer for nothing
+            said: set[tuple[str, str]] = set()
+            for row in rows:
+                who = row["speaker"]
+                key = (who, _key(row["text"]))
+                if key in said or key in said_episode:
+                    continue
+                said.add(key)
+                said_episode.add(key)
+                emotion = row["emotion"]
+                for note in _DIRECTION.findall(row["raw"] or ""):
                     note = note.strip("（）() ")
                     if note and note not in emotion:
                         emotion = (emotion + "，" + note) if emotion != "平静" else note
-                sc.lines.append(Line(id=_id("ln"), kind=_to_kind(l.get("kind", "dialogue")),
-                                     speaker=(l.get("speaker") or "旁白").strip(),
-                                     text=txt, emotion=emotion))
+                sc.lines.append(Line(id=_id("ln"), kind=_to_kind(row["kind"]),
+                                     speaker=who, text=row["text"], emotion=emotion))
             sc.shots = _parse_shots(data.get("shots", []), sc, dmin, dmax)
             if not sc.shots:
                 sc.shots = _fallback_shots(sc, dmin, dmax)
+            # The model was asked for a number of shots and gave what it
+            # gave.  When it gave more, the extra ones are cut - the lines
+            # are the budget, and a shot that carries no line of its own
+            # is a hole in the film.
+            if len(sc.shots) > want:
+                for extra in sc.shots[want:]:
+                    if want:
+                        last = sc.shots[want - 1]
+                        last.line_indices = sorted(
+                            set(last.line_indices or []) | set(extra.line_indices or []))
+                sc.shots = sc.shots[:want]
+                for n, sh in enumerate(sc.shots):
+                    sh.index = n
             _repair_line_casts(sc)
             _repair_characters(ctx, sc)
             # two shots that are the same picture are one shot: the model
@@ -385,6 +553,10 @@ def run(ctx: Context) -> dict:
         # batch: a run that is stopped halfway keeps the episodes that
         # were already done
         ep.scenes = scenes
+        # The picture is scaled to the episode.  Without this the shots
+        # are as long as the model felt like, and the episode is two and
+        # a half times the length it says it is.
+        _fit_episode_shots(ep, seconds, dmin, dmax, episode_shots_cap)
         ctx.mark(ep, "script", Status.DONE)
         ctx.save()
         return len(scenes)

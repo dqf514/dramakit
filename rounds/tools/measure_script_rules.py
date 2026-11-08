@@ -10,10 +10,9 @@ sys.path.insert(0, r"E:\dramakit")
 from dramakit.skills import loader  # noqa: E402
 
 sets = {
-    "只写手（写手+分镜+机器拍法）": ["short-drama-write", "short-drama-storyboard",
-                                    "short-drama-ai-film"],
-    "再加改编手艺": ["short-drama-write", "short-drama-storyboard",
-                      "short-drama-ai-film", "short-drama-develop"],
+    "写剧本": ["novel-script"],
+    "写剧本+分镜（这一阶段一次写完两样）": ["novel-script", "novel-storyboard"],
+    "再加改编手艺": ["novel-script", "novel-storyboard", "novel-outline"],
 }
 
 for name, names in sets.items():
@@ -24,11 +23,10 @@ for name, names in sets.items():
         total += len(t)
         print("    %-24s %6d 字" % (n, len(t)))
     # the documents that ride along with them
-    docs = [("short-drama-develop", "adaptation-craft.md"),
-            ("short-drama-storyboard", "production-shot-grammar.md"),
-            ("short-drama-storyboard", "blocking-playbooks.md"),
-            ("short-drama-ai-film", "beats.md"),
-            ("short-drama-ai-film", "segments.md")]
+    docs = [("novel-script", "script-pass.md"),
+            ("novel-storyboard", "storyboard-pass.md"),
+            ("novel-storyboard", "shot-writing.md"),
+            ("novel-outline", "outline-pass.md")]
     for skill, doc in docs:
         if skill not in names:
             continue

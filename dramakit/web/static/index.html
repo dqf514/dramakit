@@ -1576,12 +1576,10 @@ const SK_STAGE_ZH={analyze:"解析",script:"编剧",storyboard:"分镜",promptge
 // the skills that belong to each stage, and the theory that the
 // screenwriter and the director may draw on
 const SK_SUGGEST={
-  analyze:["short-drama-novel-analyze","short-drama-develop","short-drama",
-           "short-drama-assets","short-drama-produce","short-drama-review"],
-  script:["short-drama-write","short-drama","short-drama-develop",
-          "short-drama-review","short-drama-edit"],
-  storyboard:["short-drama-storyboard","short-drama","short-drama-assets"],
-  promptgen:["short-drama-image-prompts","short-drama-video-prompts","short-drama"]
+  analyze:["novel-outline","novel-characters","novel-art","character-refs"],
+  script:["novel-script"],
+  storyboard:["novel-storyboard","novel-staging"],
+  promptgen:["novel-storyboard"]
 };
 function skLabel(x){ return x.title_zh||x.family_zh||x.title; }
 // The genre cards have their own column: one card, chosen by name.

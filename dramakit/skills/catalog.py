@@ -20,53 +20,37 @@ ROOT = Path(__file__).resolve().parents[2] / "skills"
 # the stages that load skills, and the config key each one reads
 STAGES = ("analyze", "script", "storyboard", "promptgen")
 
-# a skill folder is named for its family: short-drama-write, and the
-# theory skills are nested one deeper under screenwriting-theory
+# a skill folder is named for its family: novel-script, and the
+# genre cards are nested one deeper under genre/
 FAMILY_ZH = {
-    "short-drama": "短剧通用",
-    "short-drama-novel-analyze": "小说解析",
-    "short-drama-write": "编剧",
-    "short-drama-storyboard": "分镜",
-    "short-drama-image-prompts": "出图提示词",
-    "short-drama-video-prompts": "视频提示词",
-    "short-drama-assets": "资产",
-    "short-drama-produce": "制片",
-    "short-drama-review": "审片",
-    "short-drama-edit": "剪辑",
-    "short-drama-develop": "开发",
-    "screenwriting-theory": "编剧理论",
+    "novel-outline": "改编大纲",
+    "novel-characters": "角色设定",
+    "novel-art": "美术设定",
+    "novel-script": "写剧本",
+    "novel-staging": "开场站位",
+    "novel-storyboard": "分镜",
+    "character-refs": "角色参考图",
     "genre": "类型",
 }
 
-# The theory skills carry English names in their frontmatter, which is fine
+# The genre cards carry Chinese names in their frontmatter, which is fine
 # for a model and unreadable for a person choosing between them.
 TITLE_ZH = {
-    "screenwriting-theory/chekhov-dramaturgy": "契诃夫式剧作",
-    "screenwriting-theory/ozu-screenplay-style": "小津式调度",
-    "screenwriting-theory/succession-series-writing": "权谋剧集写作",
-    "screenwriting-theory/sw-american-case-studies": "美剧案例",
-    "screenwriting-theory/sw-character-conflict": "人物冲突",
-    "screenwriting-theory/sw-chinese-opera-banqiang": "板腔剧作",
-    "screenwriting-theory/sw-chinese-opera-banqiang-cases": "板腔剧作案例",
-    "screenwriting-theory/sw-chinese-opera-qupai": "曲牌剧作",
-    "screenwriting-theory/sw-chinese-opera-qupai-cases": "曲牌剧作案例",
-    "screenwriting-theory/sw-chinese-series-practice": "华语剧集实践",
-    "screenwriting-theory/sw-dialogue": "台词写作",
-    "screenwriting-theory/sw-format-adaptation": "形式改编",
-    "screenwriting-theory/sw-genre-anatomy": "类型解剖",
-    "screenwriting-theory/sw-industry-business": "行业与商业",
-    "screenwriting-theory/sw-japanese-screenwriting": "日式编剧",
-    "screenwriting-theory/sw-korean-french-screenwriting": "韩法编剧",
-    "screenwriting-theory/sw-premise-theme": "前提与主题",
-    "screenwriting-theory/sw-scene-craft": "场景写作",
-    "screenwriting-theory/sw-series-case-studies": "剧集案例",
-    "screenwriting-theory/sw-series-engine-bible": "剧集引擎圣经",
-    "screenwriting-theory/sw-series-structure": "剧集结构",
-    "screenwriting-theory/sw-sitcom-comedy": "情景喜剧",
-    "screenwriting-theory/sw-story-structure": "故事结构",
-    "screenwriting-theory/sw-truby-anatomy": "特里比结构",
-    "screenwriting-theory/sw-workflow": "编剧流程",
-    "screenwriting-theory/sw-writers-room": "编剧室协作",
+    "genre/亲子隐秘": "亲子隐秘",
+    "genre/仙侠修真": "仙侠修真",
+    "genre/动作任务": "动作任务",
+    "genre/古装权谋": "古装权谋",
+    "genre/复仇打脸": "复仇打脸",
+    "genre/家庭关系": "家庭关系",
+    "genre/悬疑规则": "悬疑规则",
+    "genre/生活流": "生活流",
+    "genre/破镜重圆": "破镜重圆",
+    "genre/系统流": "系统流",
+    "genre/职场喜剧": "职场喜剧",
+    "genre/豪门婚恋": "豪门婚恋",
+    "genre/身份错位": "身份错位",
+    "genre/逆袭": "逆袭",
+    "genre/重生穿越": "重生穿越",
 }
 
 

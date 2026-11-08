@@ -51,6 +51,12 @@ class LLMConfig(BaseModel):
     use_proxy: bool = False                           # 直连(False)；需经系统代理访问海外API时设 True
     # Per-stage model overrides (use a bigger model for segmentation, etc.)
     model_overrides: dict[str, str] = Field(default_factory=dict)
+    # How long the model thinks before it answers.  A reasoning model
+    # spends most of its answer thinking, and that thinking is what makes
+    # a call slow enough to time out.  Empty means: don't send it.
+    reasoning_effort: str = ""
+    # Some stages deserve more thinking than others.
+    reasoning_effort_overrides: dict[str, str] = Field(default_factory=dict)
     json_mode: bool = True                            # request structured output
     system_prompt_extra: str = ""
 
@@ -189,35 +195,27 @@ class SkillsConfig(BaseModel):
     how a scene is covered by shots - lives in the references, so a
     stage names the documents it wants in `refs`.
     """
-    analyze: list[str] = ["short-drama-novel-analyze", "short-drama-develop"]
+    analyze: list[str] = ["novel-outline", "novel-characters", "novel-art"]
     # the screenwriter: a novel is not a screenplay, and the craft of
     # turning one into the other is its own subject
-    script: list[str] = ["short-drama-write", "short-drama-storyboard",
-                          "short-drama-ai-film"]
+    script: list[str] = ["novel-script"]
     # the director: the coverage of a scene, the angle, the axis
-    storyboard: list[str] = ["short-drama-storyboard", "short-drama-ai-film"]
-    promptgen: list[str] = ["short-drama-video-prompts",
-                            "short-drama-image-prompts",
-                            "short-drama-ai-film"]
+    storyboard: list[str] = ["novel-storyboard", "novel-staging"]
+    promptgen: list[str] = ["novel-storyboard"]
     # the documents that come with those skills.  A skill named only here
     # contributes its documents and not its own rules.
     refs: dict[str, dict[str, list[str]]] = {
         "analyze": {
-            "short-drama-develop": ["adaptation-craft.md"],
+            "novel-outline": ["outline-pass.md"],
         },
         "storyboard": {
-            "short-drama-storyboard": ["production-shot-grammar.md",
-                                       "blocking-playbooks.md"],
-            "short-drama-ai-film": ["segments.md"],
+            "novel-storyboard": ["storyboard-pass.md", "shot-writing.md"],
         },
         "script": {
-            "short-drama-develop": ["adaptation-craft.md"],
-            "short-drama-ai-film": ["beats.md", "segments.md"],
-            "short-drama-storyboard": ["production-shot-grammar.md",
-                                       "blocking-playbooks.md"],
+            "novel-script": ["script-pass.md"],
         },
         "promptgen": {
-            "short-drama-ai-film": ["camera.md"],
+            "novel-storyboard": ["h3-prompt.md", "shot-writing.md"],
         },
     }
     # The film theory that used to be here, by genre, is gone: it was

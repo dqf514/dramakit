@@ -9,8 +9,8 @@ of stage direction, a lot of dialogue, and no pictures.
 
 What the styles differ in is what they look like - the frame, the
 palette, the era - and that is what the look itself says.  The writing
-is the same craft for all of them, and the craft is ours:
-`short-drama-ai-film`.
+is the same craft for all of them, and the craft is the same for
+everybody: the outline, the script, the storyboard.
 
 So every look carries the same set, and the person can still take
 anything off it and add anything back.
@@ -19,11 +19,10 @@ from __future__ import annotations
 
 # what every drama writes with, whatever it looks like
 _CORE = {
-    "analyze": ["short-drama-novel-analyze", "short-drama-develop"],
-    "script": ["short-drama-write", "short-drama-ai-film"],
-    "storyboard": ["short-drama-storyboard", "short-drama-ai-film"],
-    "promptgen": ["short-drama-image-prompts", "short-drama-video-prompts",
-                  "short-drama-ai-film"],
+    "analyze": ["novel-outline", "novel-characters", "novel-art"],
+    "script": ["novel-script"],
+    "storyboard": ["novel-storyboard", "novel-staging"],
+    "promptgen": ["novel-storyboard"],
 }
 
 # the looks differ in how they look, not in how they are written, so

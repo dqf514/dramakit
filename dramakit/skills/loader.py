@@ -1,19 +1,22 @@
 """The skills: what the screenwriter and the director know.
 
-The rules this pipeline writes with used to be in code, written by hand
-and improved one round at a time.  They are now documents - the skills
-that come with this repo - and the stages load them at run time.
+The rules this pipeline writes with are documents - the skills that come
+with this repo - and the stages load them at run time.
 
 A skill is a folder under `skills/` with a SKILL.md in it.  The stage asks
 for the ones named in the config; a genre can ask for more.
 
-What is in the library is the craft of making films by people.  The
-library also holds what is different about making them by machine:
-`short-drama-ai-film` - the beats, the one-take segment, the depth of
-field, the first frame that has to hold the person in the shot.
+The library is the craft of making films by people, written for making
+them by machine.  It comes from shuohao-skills (Apache-2.0), adapted to
+this pipeline: the upstream skills are agent workflows with JSON
+contracts and Node validators, and this one is a Python pipeline that
+calls a model with a prompt.  So what was kept is the craft - the rules
+that go into the prompt and the documents that go with them - and what
+was left behind is the workflow: the shell commands, the JSON files, the
+sub-agents, the reports.
 
-Everything a skill says goes into the prompt as it is.  A SKILL.md is
-written to be read by a model, which is exactly what it is being read by.
+`genre/` holds the one thing the upstream library does not have: the
+per-genre cards.  Everything else is theirs.
 """
 from __future__ import annotations
 
@@ -80,8 +83,8 @@ def load_refs(name: str, refs: list[str]) -> str:
     """Just the named documents of a skill, without its SKILL.md.
 
     A stage sometimes wants one document out of a skill without the
-    skill's own rules - the adaptation craft, say, without the whole
-    development process that goes with it.
+    skill's own rules - the shot-writing spec, say, without the whole
+    storyboard workflow that goes with it.
     """
     folder = SKILLS / name
     if not folder.is_dir():
@@ -128,9 +131,9 @@ def genre_cards() -> dict[str, list[str]]:
 def _genre_choice(ctx) -> tuple[str, bool]:
     """What the person chose, and whether they chose at all.
 
-    An empty list is an answer too: the person looked at the fifteen
-    cards and left them all unticked, and that is not the same as
-    never having been asked.
+    An empty list is an answer too: the person looked at the cards and
+    left them all unticked, and that is not the same as never having
+    been asked.
     """
     try:
         chosen = ctx.project.meta.skills or {}

@@ -148,6 +148,9 @@ def run(ctx: Context) -> dict:
     from ..skills import loader
     user = T.render(T.ANALYZE_USER, text=sample, max_characters=12,
                     max_locations=10, max_props=8) + loader.for_stage(ctx, "analyze")
+    # the craft of describing a place: what an anchor is, and what the
+    # picture must not contain
+    user += loader.load("novel-art", refs=["scene-pass.md"])
     # the card for this project's genre: what this kind of story is
     # usually about, so the reading looks for those things
     user += loader.genre_rules(ctx, "analyze")

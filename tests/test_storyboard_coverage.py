@@ -143,59 +143,72 @@ class CoverageReportTests(unittest.TestCase):
 
 
 class SkillTests(unittest.TestCase):
+    """The library is the upstream one: shuohao-skills, adapted.
+
+    What was kept is the craft - the rules that go into the prompt and
+    the documents that go with them.  What was left behind is the
+    workflow: the shell commands, the JSON contracts, the reports.
+    """
+
     def test_the_stage_skills_come_with_their_references(self):
-        cfg = Config.load()
-        text = loader.load("short-drama-develop", refs=["adaptation-craft.md"])
-        self.assertIn("改编", text)
-        self.assertIn("adaptation-craft.md", text)
+        text = loader.load("novel-outline", refs=["outline-pass.md"])
+        self.assertIn("\u780d\u7ebf", text)
+        self.assertIn("outline-pass.md", text)
 
     def test_a_reference_that_was_not_asked_for_is_not_sent(self):
-        text = loader.load("short-drama-develop", refs=[])
-        self.assertNotIn("<!-- adaptation-craft.md -->", text)
-        text = loader.load("short-drama-develop", refs=["adaptation-craft.md"])
-        self.assertIn("<!-- adaptation-craft.md -->", text)
+        text = loader.load("novel-outline", refs=[])
+        self.assertNotIn("<!-- outline-pass.md -->", text)
+        text = loader.load("novel-outline", refs=["outline-pass.md"])
+        self.assertIn("<!-- outline-pass.md -->", text)
 
-    def test_the_screenwriter_gets_the_adaptation_rules(self):
+    def test_the_screenwriter_gets_the_writing_craft(self):
         cfg = Config.load()
-        self.assertIn("short-drama-write", cfg.skills.script)
-        # our own craft comes with the writer too: the beats, the
-        # dialogue, and what to do with a chapter of a novel
-        self.assertIn("short-drama-ai-film", cfg.skills.script)
-        # the adaptation craft comes with the writer, even though the
-        # development skill itself is not its rulebook
+        self.assertIn("novel-script", cfg.skills.script)
         refs = cfg.skills.refs.get("script", {})
-        self.assertIn("adaptation-craft.md", refs.get("short-drama-develop", []))
-        self.assertIn("beats.md", refs.get("short-drama-ai-film", []))
+        self.assertIn("script-pass.md", refs.get("novel-script", []))
 
-    def test_the_film_theory_is_gone(self):
+    def test_the_old_library_is_gone(self):
         """The library held thirty-six documents about how people make
         films, and they were in every prompt.  They are not switched
         off: they are not there any more."""
         names = [s["name"] for s in catalog.catalog()]
         self.assertFalse([n for n in names if n.startswith("screenwriting-theory/")],
-                         "传统电影理论还在技能库里")
-        self.assertIn("short-drama-ai-film", names)
+                         "\u4f20\u7edf\u7535\u5f71\u7406\u8bba\u8fd8\u5728\u6280\u80fd\u5e93\u91cc")
+        self.assertFalse([n for n in names if n.startswith("short-drama")],
+                         "\u65e7\u7684\u77ed\u5267\u6280\u80fd\u5e93\u8fd8\u5728")
+        self.assertIn("novel-script", names)
 
-    def test_the_director_and_the_prompt_writer_get_our_craft(self):
+    def test_the_upstream_skills_are_the_ones_we_use(self):
         cfg = Config.load()
-        self.assertIn("short-drama-ai-film", cfg.skills.storyboard)
-        self.assertIn("short-drama-ai-film", cfg.skills.promptgen)
-        self.assertIn("segments.md",
-                      cfg.skills.refs.get("storyboard", {}).get("short-drama-ai-film", []))
-        self.assertIn("camera.md",
-                      cfg.skills.refs.get("promptgen", {}).get("short-drama-ai-film", []))
-        # and the skill says the thing it was written for
-        text = loader.load("short-drama-ai-film")
-        self.assertIn("一镜到底", text)
-        self.assertIn("多镜容器", text)
-
-    def test_the_director_gets_the_shot_grammar(self):
-        cfg = Config.load()
-        self.assertIn("short-drama-storyboard", cfg.skills.storyboard)
+        self.assertIn("novel-storyboard", cfg.skills.storyboard)
+        self.assertIn("novel-staging", cfg.skills.storyboard)
+        self.assertIn("novel-storyboard", cfg.skills.promptgen)
         refs = cfg.skills.refs.get("storyboard", {})
-        self.assertIn("production-shot-grammar.md",
-                      refs.get("short-drama-storyboard", []))
+        self.assertIn("storyboard-pass.md",
+                      refs.get("novel-storyboard", []))
+        self.assertIn("shot-writing.md",
+                      refs.get("novel-storyboard", []))
+        # and the skill says the thing it was written for
+        text = loader.load("novel-storyboard")
+        self.assertIn("\u8ba4\u9886", text)
+        self.assertIn("2\u20135 \u79d2", text)
 
+    def test_the_genre_cards_are_still_ours(self):
+        """The one thing the upstream library does not have."""
+        names = [s["name"] for s in catalog.catalog()]
+        self.assertTrue([n for n in names if n.startswith("genre/")],
+                        "\u9898\u6750\u5361\u6ca1\u4e86")
+
+    def test_the_craft_documents_came_with_the_skills(self):
+        """Each skill carries the documents its craft lives in."""
+        for name, doc in (("novel-script", "script-pass.md"),
+                          ("novel-storyboard", "storyboard-pass.md"),
+                          ("novel-outline", "outline-pass.md"),
+                          ("novel-characters", "profile-pass.md"),
+                          ("novel-art", "scene-pass.md"),
+                          ("novel-staging", "staging-pass.md")):
+            text = loader.load(name, refs=[doc])
+            self.assertIn(doc, text, "%s \u5c11\u4e86 %s" % (name, doc))
 
 class SoundTests(unittest.TestCase):
     def test_the_native_sound_is_the_whole_soundtrack(self):

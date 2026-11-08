@@ -23,12 +23,18 @@ llm:
   temperature: 0.7
   max_tokens: 64000
   top_p: 1.0
-  timeout: 300.0
+  timeout: 480.0
   max_retries: 3
   concurrency: 4                           # 每次请求的并发（实测 MiniMax 端点支持 6 并发）
   use_proxy: false # 直连(false)；仅当需经系统代理访问海外API时设 true
   json_mode: true                          # 要求结构化输出
   system_prompt_extra: ""
+  # 思考量。MiniMax M3 想的时间是回答时间的好几倍，也是最容易超时的地方。
+  # medium 回答得一样好，快四倍。留空 = 不发这个参数。
+  reasoning_effort: medium
+  # 某些阶段值得多想一点（留空表示跟全局一样）
+  reasoning_effort_overrides:
+    # analyze: high
   # 旧版单模型阶段覆盖（模型清单 models.entries 为空时才生效）
   model_overrides:
     # analyze: qwen2.5:32b
@@ -473,41 +479,31 @@ storyboard:
 # 真正的手艺在它的 references 里，所以在这里点名要读哪几篇。
 skills:
   analyze:
-    - short-drama-novel-analyze
-    - short-drama-develop
+    - novel-outline
+    - novel-characters
+    - novel-art
   script:
-    - short-drama-write
-    - short-drama-storyboard
-    - short-drama-ai-film
+    - novel-script
   storyboard:
-    - short-drama-storyboard
-    - short-drama-ai-film
+    - novel-storyboard
+    - novel-staging
   promptgen:
-    - short-drama-video-prompts
-    - short-drama-image-prompts
-    - short-drama-ai-film
+    - novel-storyboard
   refs:
     analyze:
-      short-drama-develop:
-        - adaptation-craft.md
+      novel-outline:
+        - outline-pass.md
     storyboard:
-      short-drama-storyboard:
-        - production-shot-grammar.md
-        - blocking-playbooks.md
-      short-drama-ai-film:
-        - segments.md
+      novel-storyboard:
+        - storyboard-pass.md
+        - shot-writing.md
     script:
-      short-drama-develop:
-        - adaptation-craft.md
-      short-drama-ai-film:
-        - beats.md
-        - segments.md
-      short-drama-storyboard:
-        - production-shot-grammar.md
-        - blocking-playbooks.md
+      novel-script:
+        - script-pass.md
     promptgen:
-      short-drama-ai-film:
-        - camera.md
+      novel-storyboard:
+        - h3-prompt.md
+        - shot-writing.md
 
 # --------------------------- 合成 compose -----------------------------------
 compose:

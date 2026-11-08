@@ -101,12 +101,18 @@ def build_anchors(ctx: Context, chars: list[Character]) -> int:
             for c in pending)
         try:
             llm = ctx.providers.llm_for("promptgen")
+            # the craft of writing a character: what the anchor says, and
+            # what it must not say
+            from ..skills import loader as _loader
+            craft = _loader.load("novel-characters",
+                                 refs=["profile-pass.md"])
             data = llm.complete_json(
                 T.CHARACTER_SHEET_SYSTEM,
                 T.render(T.CHARACTER_SHEET_USER, characters=lines,
                          max_chars=cfg.anchor_max_chars,
                          style=ad.style_prompt_prefix or ad.style or "",
-                         era=ad.era or "", **_frame.prompt_frame(ctx)))
+                         era=ad.era or "", **_frame.prompt_frame(ctx))
+                + "\n\n" + craft)
             if isinstance(data, list):
                 data = {"characters": data}
             by_name = {str(x.get("name", "")).strip(): x

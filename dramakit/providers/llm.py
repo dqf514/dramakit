@@ -62,6 +62,7 @@ class OpenAICompatLLM(BaseLLM):
         # consulted between attempts and around the request itself, so a
         # call that would hold a stage for a minute lets go at once.
         self.stop_event = None
+        self.reasoning_effort = (cfg.reasoning_effort or "").strip()
         self.base_url = cfg.base_url.rstrip("/")
         if not self.base_url.endswith("/v1"):
             # tolerate both ".../v1" and ".../v1/" and bare host
@@ -156,6 +157,8 @@ class OpenAICompatLLM(BaseLLM):
             "max_tokens": max_tokens or self.cfg.max_tokens,
             "stream": False,
         }
+        if self.reasoning_effort:
+            payload["reasoning_effort"] = self.reasoning_effort
         if json_mode and self.cfg.json_mode:
             payload["response_format"] = {"type": "json_object"}
         data = self._post(payload)
@@ -222,6 +225,8 @@ class OpenAICompatLLM(BaseLLM):
             "max_tokens": max_tokens or self.cfg.max_tokens,
             "stream": False,
         }
+        if self.reasoning_effort:
+            payload["reasoning_effort"] = self.reasoning_effort
         if json_mode and self.cfg.json_mode:
             payload["response_format"] = {"type": "json_object"}
         data = self._post(payload)
@@ -240,9 +245,14 @@ class OpenAICompatLLM(BaseLLM):
     def for_stage(self, stage: str) -> "OpenAICompatLLM":
         """Return a shallow clone with the stage-specific model override applied."""
         override = self.cfg.model_overrides.get(stage)
-        if not override:
+        effort = self.cfg.reasoning_effort_overrides.get(stage)
+        if not override and not effort:
             return self
         clone = OpenAICompatLLM(self.cfg)
+        if effort:
+            clone.reasoning_effort = effort.strip()
+        if not override:
+            return clone
         clone._stage_model = override  # type: ignore[attr-defined]
         orig_model = self.cfg.model
 
