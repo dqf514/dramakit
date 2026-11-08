@@ -673,6 +673,19 @@ def _split_action(action: str, texts: list[str]) -> tuple[str, str]:
     return head, tail
 
 
+_PREFIX_RE = re.compile(r"^(?:接上[：:]\s*)+")
+
+
+def _strip_prefix(action: str) -> str:
+    """Take off the "接上：" that a previous split put on.
+
+    The second half of a split continues the first, so it says so.  But
+    a shot that is split again would say it twice, and again, and the
+    description would be nothing but "接上：".
+    """
+    return _PREFIX_RE.sub("", action or "").strip()
+
+
 def _split_long_shots(sc, max_dialogue: float = SHOT_DIALOGUE_MAX) -> int:
     """Give a shot that carries too much dialogue a second shot.
 
@@ -686,7 +699,10 @@ def _split_long_shots(sc, max_dialogue: float = SHOT_DIALOGUE_MAX) -> int:
         return 0
     added = 0
     i = 0
-    while i < len(sc.shots):
+    # a split that does not stop is a loop that eats the machine
+    guard = 4 * (len(sc.shots) + len(spoken)) + 20
+    while i < len(sc.shots) and guard > 0:
+        guard -= 1
         shot = sc.shots[i]
         idxs = [n for n in shot.line_indices if 1 <= n <= len(spoken)]
         if len(idxs) < 2:
@@ -702,6 +718,12 @@ def _split_long_shots(sc, max_dialogue: float = SHOT_DIALOGUE_MAX) -> int:
                 break
             total += d
             keep = k + 1
+        # A line can be longer than the limit on its own.  It still has
+        # to live somewhere, so the shot keeps it - and the split stops
+        # here.  Without that, the second half is given all of the lines
+        # and the loop comes straight back to it, over and over.
+        if keep == 0:
+            keep = 1
         if keep >= len(idxs):
             i += 1
             continue
@@ -725,7 +747,8 @@ def _split_long_shots(sc, max_dialogue: float = SHOT_DIALOGUE_MAX) -> int:
             purpose=shot.purpose,
             subject=shot.subject,
             duration=shot.duration,
-            action=(f"接上：{tail}" if tail else f"接上：{shot.action or ''}"),
+            action=(f"接上：{tail}" if tail
+                    else f"接上：{_strip_prefix(shot.action or '')}"),
             characters=list(shot.characters),
             line_indices=sorted(moved),
         )

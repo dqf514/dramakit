@@ -38,7 +38,8 @@ class Status(str, enum.Enum):
 class LineKind(str, enum.Enum):
     DIALOGUE = "dialogue"      # 角色对白
     NARRATION = "narration"    # 旁白 / 解说
-    MONOLOGUE = "monologue"    # 内心独白
+    MONOLOGUE = "monologue"    # 内心独白 [VO]：心里讲的话，人没开口
+    OFF_SCREEN = "off_screen"  # 画外对白 [OS]：人在画面外说话
     CAPTION = "caption"        # 屏幕字幕卡（时间/地点提示）
 
 

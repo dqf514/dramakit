@@ -501,32 +501,65 @@ def _segment_beats(shot) -> list[tuple[float, float, str]]:
 def _cut_marks(shot, cuts: bool = True) -> list[str]:
     """The cut markers the segment is to have.
 
-    From the shots the director wrote inside it; and when the director
-    left the segment with one shot, the segment is cut in the middle, on
-    the same action, with a different framing - ten seconds without a cut
-    is a short drama that has forgotten to cut.
+    H3 reads a segment as a short sequence: a few shots with single
+    time points, each with its own framing.  That is the way the model
+    was built to be directed, and a segment that is one framing for ten
+    seconds is a slideshow.
 
-    But a segment is one continuous take unless the project says
-    otherwise: the editing happens between the segments, and a segment
-    that is cut in the middle is a second take the model has to hold
-    together - and its face drifts.
+    So the cuts are proposed here - the times are the machine's to
+    follow - and the model is asked to write what each of them shows.
+    The cuts come from the beats the shot was written from; a shot with
+    one beat and room to breathe gets one cut in the middle.
     """
     if not cuts:
         return []
     beats = _segment_beats(shot)
     dur = float(shot.duration or 0.0)
     if len(beats) >= 2:
-        return [f"At {at:06.3f}, the camera cuts to [Shot {i}]: a different "
-                f"framing of the same moment - a different size of shot and a "
-                f"different angle on the people - the action carrying on and "
-                f"the light unchanged."
+        return [f"At {at:06.3f}, the camera cuts to [Shot {i}]."
                 for i, (at, _end, _what) in enumerate(beats[1:], 2)]
-    if len(beats) == 1 and dur > 6.5:
-        at = dur * 0.55
-        return [f"At {at:06.3f}, the camera cuts to [Shot 2]: a closer framing "
-                f"of the same moment, a different angle on the people, the "
-                f"action carrying on and the light unchanged."]
+    if dur > 6.5:
+        # two cuts: into the moment, and then into the reaction
+        marks = []
+        for n, at in enumerate((dur * 0.42, dur * 0.76), 2):
+            marks.append(f"At {at:06.3f}, the camera cuts to [Shot {n}].")
+        return marks
     return []
+
+
+def _segment_plan(shot, cuts: bool = True) -> str:
+    """The shots inside the segment, and what each one is for.
+
+    The times are given; the model writes the pictures.  The framing of
+    each one is named here so the sequence has a shape instead of three
+    versions of the same shot.
+    """
+    if not cuts:
+        return ""
+    dur = float(shot.duration or 0.0)
+    marks = _cut_marks(shot, cuts)
+    if not marks:
+        return ""
+    beats = _segment_beats(shot)
+    lines = []
+    if beats:
+        at, end, what = beats[0]
+        lines.append(f"[Shot 1] {at:.1f}-{end:.1f}秒：{what}")
+        prev = end
+        for i, (at, end, what) in enumerate(beats[1:], 2):
+            lines.append(f"[Shot {i}] {at:.1f}-{end:.1f}秒：{what}")
+            prev = end
+    else:
+        lines.append(f"[Shot 1] 0.0-{dur * 0.42:.1f}秒：{shot.action}")
+        prev = dur * 0.42
+        lines.append(
+            f"[Shot 2] {prev:.1f}-{dur * 0.76:.1f}秒：同一时刻的另一个景别——"
+            "更近一点，焦点落在说话人的眼睛上，背景化成光斑")
+        prev = dur * 0.76
+        lines.append(
+            f"[Shot 3] {prev:.1f}-{dur:.1f}秒：对方的反应或那个物件——"
+            "画面给的是听的人，不是说话的人")
+    return "\n".join(lines)
 
 
 def _internal_cuts(shot) -> list[tuple[float, float]]:
@@ -699,7 +732,8 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             duration=_shot_seconds(shot),
             references=_reference_jobs(shot, _plan_for(ctx, shot, sc)),
             timeline=_shot_timeline(shot, lines),
-            segment_shots=_segment_shots_text(shot),
+            segment_shots=_segment_plan(
+                shot, bool(ctx.cfg.comfyui.segment_cuts)),
             constraints=H3_CONSTRAINTS + _loader.for_stage(ctx, "promptgen"),
             **_frame.prompt_frame(ctx))
         h3 = llm.complete_json(

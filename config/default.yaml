@@ -21,7 +21,7 @@ llm:
   api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4 # 本地随便填；云端用环境变量覆盖
   model: MiniMax-M3.1-Flash
   temperature: 0.7
-  max_tokens: 200000
+  max_tokens: 64000
   top_p: 1.0
   timeout: 300.0
   max_retries: 3
@@ -47,7 +47,7 @@ models:
     model: MiniMax-M3.1-Flash
     api_key: sk-cp-21ybJjlHsJm41qZL8jJxySDGJy91RZit0okb2KhYlcsyTMEnUh3cIR_h3vPM9Nbsni7wk_L0iZp4nTu8ahGn8xo0RQCd_za4B2YRuet4KkUxBU5SA27Ann4
     temperature: 0.7
-    max_tokens: 200000
+    max_tokens: 64000
     timeout: 300.0
     use_proxy: false
     roles:
@@ -303,8 +303,12 @@ comfyui:
   prompt_format: flux3
   # 一个片段里切几刀。默认不切：一段一个连续镜头，剪辑在片段之间做。
   # 打开后一段里可以切 4-8 刀，但人物的脸会在段内漂（实测十秒五刀，
-  # 脸变了两次，另一个角色被模型现编出来）。
-  segment_cuts: false
+    # 一段是几个镜头的短序列：切点由代码给出（单点时间，At 00:0X.XXX），
+  # 每个镜头有自己的景别和角度。
+  # 以前这里是 false：那时候切点让模型自己写、提示词里又没写清一段到
+  # 底是什么，脸会在段内漂（实测十秒五刀，脸变了两次）。现在切点由代码
+  # 定、参考图的分工写明，一段两到三刀。
+  segment_cuts: true
   # 语义名 → 节点ID（字符串）。全部可留空/删掉：auto_map 会按图结构自动推断；
   # 想锁定某个节点再手填，手填优先。工作流换编号后失效项会被自动忽略并重新推断。
   t2i_nodes:

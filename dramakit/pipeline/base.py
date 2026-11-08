@@ -95,7 +95,10 @@ def run_jobs(ctx, jobs, fn, *, workers: int = 1, label: str = ""):
         except Exception as e:  # noqa: BLE001
             if prog is not None and stage:
                 prog.finished(stage, ok=False)
-            return (job, None, str(e)[:300])
+            # the type is in the message: an exception with no text of
+            # its own (a stop, a bare TimeoutError) says nothing, and a
+            # failure that says nothing is a failure nobody can find
+            return (job, None, f"{type(e).__name__}: {e}"[:300])
         if prog is not None and stage:
             prog.finished(stage, ok=True)
         return (job, res, "")

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import traceback
 import uuid
 
 from ..models import (Beat, Line, LineKind, Scene, Shot, ShotType, Status,
@@ -15,7 +16,7 @@ from .storyboard import (_enforce_coverage, _fallback_shots,
                          _repair_characters, _repair_line_casts,
                          _split_long_shots, _strip_facing_camera, _to_angle,
                          _to_height, _to_lens, _to_shot_type)
-from .shots import merge_duplicate_shots, strip_connector
+from .shots import enforce_variety, merge_duplicate_shots, strip_connector
 
 
 def _id(prefix: str) -> str:
@@ -34,8 +35,19 @@ def _strip_direction(text: str) -> str:
 
 
 def _to_kind(v: str) -> LineKind:
+    """The kind of a line, from the several names the model may use."""
+    s = str(v or "").strip().lower()
+    if s in ("voice_over", "vo", "inner", "monologue", "inner_voice",
+             "thought", "voiceover"):
+        return LineKind.MONOLOGUE
+    if s in ("off_screen", "os", "offscreen", "off_screen_voice"):
+        return LineKind.OFF_SCREEN
+    if s in ("narration", "narrator"):
+        return LineKind.NARRATION
+    if s in ("caption", "subtitle"):
+        return LineKind.CAPTION
     try:
-        return LineKind(str(v).lower())
+        return LineKind(s)
     except ValueError:
         return LineKind.DIALOGUE
 
@@ -118,6 +130,52 @@ def _flatness(scenes: list) -> tuple[int, int]:
 # and means nothing to the model that has to draw it.
 
 
+def _parse_slug(slug: str) -> tuple[str, str]:
+    """The scene heading: 内/外 · 地点 · 时间.
+
+    The place may carry a sub-area with a dot in it ("藤萝峰青萝居·内室"),
+    so the heading is split on the spaced dot and the place is whatever
+    is in between.
+    """
+    text = (slug or "").strip()
+    if not text:
+        return "", "日"
+    parts = [p.strip() for p in text.split(" · ")]
+    if len(parts) >= 3:
+        place = " · ".join(parts[1:-1])
+        tod = parts[-1]
+    elif len(parts) == 2:
+        place, tod = parts[0], parts[1]
+    else:
+        place, tod = parts[0], "日"
+    return place, _time_of_day(tod)
+
+
+def _time_of_day(text: str) -> str:
+    """The four times a scene can be at."""
+    t = (text or "").strip()
+    if any(w in t for w in ("夜", "晚")):
+        return "夜"
+    if any(w in t for w in ("晨", "早")):
+        return "晨"
+    if any(w in t for w in ("昏", "暮", "黄昏")):
+        return "昏"
+    return "日"
+
+
+# A shot's action is a paragraph about one picture, and a line is one
+# sentence.  A model that writes a page into either of them is not
+# writing a shot, and the text goes into every prompt downstream - so
+# there is a limit, and going over it is said out loud.
+_MAX_ACTION = 2000
+_MAX_LINE = 200
+
+
+def _clip(text: str, limit: int) -> str:
+    t = (text or "").strip()
+    return t if len(t) <= limit else t[:limit].rstrip() + "…"
+
+
 def _parse_shots(raw_shots, scene, dmin: float, dmax: float) -> list:
     """The model's shots, as shots."""
     out = []
@@ -150,7 +208,8 @@ def _parse_shots(raw_shots, scene, dmin: float, dmax: float) -> list:
             purpose=(s.get("purpose") or "").strip(),
             subject=(s.get("subject") or "").strip(),
             duration=_clamp(s.get("duration"), dmin, dmax, 3.0),
-            action=strip_connector(_strip_facing_camera(s.get("action", ""))),
+            action=strip_connector(_strip_facing_camera(
+                _clip(s.get("action", ""), _MAX_ACTION))),
             characters=[str(c) for c in (s.get("characters") or [])],
             line_indices=sorted(idx),
             beats=sorted(covered),
@@ -209,6 +268,16 @@ def run(ctx: Context) -> dict:
     # several calls at once - so they are asked together.
     def _one(job):
         ep, block, seconds, budget_chars, budget_lines = job
+        try:
+            return _write_episode(job)
+        except Exception:  # noqa: BLE001
+            # a failure with no traceback is a failure nobody can find
+            ctx.log.error("script: 第%d集写的时候出了事：\n%s",
+                          ep.index, traceback.format_exc())
+            raise
+
+    def _write_episode(job):
+        ep, block, seconds, budget_chars, budget_lines = job
         # 1. the shape of the episode: the scenes, and the beats in them
         plan = pool.next().complete_json(
             T.SCRIPT_PLAN_SYSTEM,
@@ -221,12 +290,14 @@ def run(ctx: Context) -> dict:
             plan = plan[0] if plan else {}
         scenes: list = []
         for si, s in enumerate(plan.get("scenes", []) or [], 1):
-            sc = Scene(id=_id("sc"), index=si, location=s.get("location", ""),
-                       time_of_day=s.get("time_of_day", "日"),
-                       summary=s.get("summary", ""), mood=s.get("mood", "中性"),
+            place, tod = _parse_slug(s.get("slug", ""))
+            sc = Scene(id=_id("sc"), index=si, location=place,
+                       time_of_day=tod,
+                       summary=_clip(s.get("action") or "", _MAX_ACTION),
+                       mood=s.get("mood", "中性"),
                        bgm_mood=s.get("bgm_mood", ""))
             for b in (s.get("beats") or []):
-                action = (b.get("action") or "").strip()
+                action = _clip(b.get("action") or "", _MAX_ACTION)
                 if action:
                     sc.beats.append(Beat(action=action))
             if sc.beats:
@@ -250,8 +321,10 @@ def run(ctx: Context) -> dict:
                 T.SCRIPT_SCENE_SYSTEM,
                 T.render(T.SCRIPT_SCENE_USER,
                          ep_index=ep.index, ep_total=len(ctx.target_episodes()),
+                         genre=genre,
                          location=sc.location or "场景", time_of_day=sc.time_of_day,
                          mood=sc.mood, summary=sc.summary or "",
+                         action=sc.summary or "",
                          beats_text=beats_text or "（这一场没有拍点）",
                          text=block[:12000],
                          character_anchors=_char_anchors(ctx, sc),
@@ -265,7 +338,7 @@ def run(ctx: Context) -> dict:
             if isinstance(data, list):
                 data = data[0] if data else {}
             for li, l in enumerate(data.get("lines", []) or [], 1):
-                txt = _strip_direction(l.get("text") or "")
+                txt = _clip(_strip_direction(l.get("text") or ""), _MAX_LINE)
                 if not txt:
                     continue
                 emotion = (l.get("emotion") or "平静").strip()
@@ -288,8 +361,22 @@ def run(ctx: Context) -> dict:
             if merged:
                 ctx.log.info("script: 第%d集《%s》%s 合并了 %d 个重复镜头",
                              ep.index, sc.location, sc.time_of_day, merged)
+            longest = max((len(sh.action or "") for sh in sc.shots),
+                          default=0)
+            ctx.log.info("script: 第%d集《%s》%s %s：%d 镜，最长的画面描述 %d 字，"
+                         "台词 %d 句",
+                         ep.index, sc.location, sc.time_of_day, sc.id[:6],
+                         len(sc.shots), longest, len(sc.lines))
             _split_long_shots(sc)
             _enforce_coverage(sc)
+            # the framings have to differ: a scene that is one angle in
+            # one size, over and over, is the most amateur-looking
+            # picture there is.  Last in the chain, so that the shots
+            # the other repairs added are counted too.
+            varied = enforce_variety(sc)
+            if varied:
+                ctx.log.info("script: 第%d集《%s》%s 改了 %d 处的景别/角度",
+                             ep.index, sc.location, sc.time_of_day, varied)
         # the episode is written and saved here, not after the whole
         # batch: a run that is stopped halfway keeps the episodes that
         # were already done

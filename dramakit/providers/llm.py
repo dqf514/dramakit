@@ -20,6 +20,7 @@ from tenacity import (Retrying, retry_if_exception_type, stop_after_attempt,
                       wait_exponential)
 
 from ..config import LLMConfig
+from ..utils import mem as _mem
 from .base import BaseLLM, LLMResponse
 
 log = logging.getLogger("dramakit.llm")
@@ -129,6 +130,16 @@ class OpenAICompatLLM(BaseLLM):
             raise RetryableLLMError(f"HTTP {r.status_code}: {r.text[:200]}")
         if r.status_code >= 400:
             raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:400]}")
+        # The size is looked at before the answer is parsed: a model that
+        # starts repeating itself can send tens of megabytes, and parsing
+        # that is what takes the machine's memory with it.
+        size = len(r.content or b"")
+        log.info("LLM 收到 %d 字节（上限 %s token）", size,
+                 payload.get("max_tokens"))
+        if size > 8_000_000:
+            raise RuntimeError(
+                f"模型的回答有 {size} 字节，太大了（这一轮的上限是 "
+                f"{payload.get('max_tokens')} 个 token）。多半是在复读。")
         return r.json()
 
     def complete(self, system: str, user: str, *, temperature: Optional[float] = None,
@@ -161,6 +172,15 @@ class OpenAICompatLLM(BaseLLM):
             # and reporting that as a malformed response sends the reader
             # looking for a parser bug that does not exist.
             raise RuntimeError(_shape_error(data, budget, None))
+        # an answer that is too big is a model that started repeating
+        # itself; it is said here, in words, instead of being allowed to
+        # take the machine's memory with it
+        if len(text or "") > 4_000_000:
+            raise RuntimeError(
+                f"模型的回答有 {len(text or '')} 字，太大了（这一轮的上限是 "
+                f"{budget} 个 token）。多半是在复读。")
+        log.info("LLM 回答 %d 字（%d token 的上限），进程用了 %.0f MB，机器还剩 %.0f MB",
+                 len(text or ""), budget, _mem.rss_mb(), _mem.free_mb())
         usage = data.get("usage", {}) or {}
         return LLMResponse(
             text=text or "",
