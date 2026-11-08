@@ -985,11 +985,31 @@ def _make_handler(state: State):
                 # the key art of the drama itself, with the title on it
                 "cover": _media_url(slug, proj.meta.cover_path),
                 "art_direction": proj.art_direction.model_dump(),
+                # The frame this project is actually made in.  A project
+                # that has not chosen a size gets one from the list, and
+                # the page has to show that one - not the first entry of
+                # the list, and not the one the config happens to use.
+                "frame": self._project_frame(proj),
                 "characters": [_char(c) for c in proj.characters],
                 "locations": locations,
                 "stage_status": {k: _sv(v) for k, v in proj.stage_status.items()},
                 "episodes": episodes,
             }
+
+        def _project_frame(self, proj) -> dict:
+            """The frame this project is made in, as it will be made.
+
+            A project that has not chosen a size for itself gets one
+            from the list - and the page has to show that one, because
+            the first entry of the list is not it.
+            """
+            from ..pipeline import frame as _frame
+            try:
+                w, h = _frame.project_frame(proj.art_direction, state.cfg)
+            except Exception:  # noqa: BLE001
+                w = h = 0
+            return {"width": w, "height": h,
+                    "aspect_ratio": proj.art_direction.aspect_ratio}
 
         def _api_health(self) -> dict:
             # Probe does network I/O (ComfyUI ping, edge-tts voice list) that can

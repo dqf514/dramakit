@@ -236,9 +236,27 @@
       const episodes = body.episodes?.length ? body.episodes.join("、") : "全部集数";
       const chapters = body.chapters?.length ? body.chapters.join("、") : "按项目当前选择";
       const config = S.state?.config_summary || {};
+      // The frame and the look decide every picture and every clip, so
+      // they are in the dialog: the run has to be the one that was
+      // confirmed, and it has to be visible.
+      const ad = (S.detail && S.detail.art_direction) || {};
+      const draft = (S.lookDraft && S.lookDraft.project === (body.project || S.current))
+        ? S.lookDraft : null;
+      const ratio = (draft && draft.aspect_ratio) || ad.aspect_ratio || "";
+      const fw = (draft && draft.width) || ad.frame_width
+        || (S.detail && S.detail.frame && S.detail.frame.width) || 0;
+      const fh = (draft && draft.height) || ad.frame_height
+        || (S.detail && S.detail.frame && S.detail.frame.height) || 0;
+      const sid = (draft && draft.style) || "";
+      const srow = ((LOOKS && LOOKS.styles) || []).find(s => s.id === sid);
+      const frameTxt = [ratio, (fw && fh) ? (fw + "\u00d7" + fh) : ""]
+        .filter(Boolean).join(" \u00b7 ") || "未设置";
+      const styleTxt = srow ? srow.name : (ad.style || sid || "未设置");
       dialog.innerHTML = `<div class="dialog-head"><h2 id="preflightTitle">确认执行${esc(label || "制作任务")}</h2><div class="muted">检查范围与外部服务后再开始，避免重复生成和意外覆盖。</div></div>
         <div class="dialog-body"><dl class="preflight-grid">
           <dt>项目</dt><dd>${esc(project?.title || body.project || S.current)}</dd>
+          <dt>画幅 / 分辨率</dt><dd>${esc(frameTxt)}</dd>
+          <dt>风格</dt><dd>${esc(styleTxt)}</dd>
           <dt>处理范围</dt><dd>${esc(episodes)} · ${esc(chapters)}</dd>
           <dt>执行阶段</dt><dd>${stages.map(s => esc(STAGE_ZH[s] || s)).join(" → ")}</dd>
           <dt>文本模型</dt><dd>${esc(config.default_model || "未配置")}</dd>

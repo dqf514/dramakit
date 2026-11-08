@@ -1418,8 +1418,8 @@ function lookPanelHtml(d){
   const ratio=(draft&&draft.aspect_ratio)||ad.aspect_ratio||"9:16";
   const A=lookAspect(ratio);
   const sizes=(A&&A.sizes)||[];
-  const w=(draft&&draft.width)||ad.frame_width||0;
-  const h=(draft&&draft.height)||ad.frame_height||0;
+  const w=(draft&&draft.width)||ad.frame_width||((d&&d.frame&&d.frame.width)||0);
+  const h=(draft&&draft.height)||ad.frame_height||((d&&d.frame&&d.frame.height)||0);
   const cur=sizes.find(s=>s.w===w&&s.h===h);
   const sizeHtml=sizes.map(s=>`<option value="${s.w}x${s.h}" ${cur&&cur.id===s.id?"selected":""}>${esc(s.label)}</option>`).join("");
   const groups={};
@@ -1492,8 +1492,8 @@ function bindLookPanel(){
   };
   const sv=$("#lookSave"); if(sv) sv.onclick=saveLook;
 }
-async function saveLook(){
-  if(!S.current) return toast("先选一个项目","err");
+async function saveLook(quiet){
+  if(!S.current){ if(!quiet) toast("先选一个项目","err"); return false; }
   const on=$("#arRow .seg.on");
   const ratio=on?on.dataset.ar:"9:16";
   const sz=$("#lookSize");
@@ -1501,7 +1501,12 @@ async function saveLook(){
   const st=$("#lookStyle");
   const body={project:S.current,aspect_ratio:ratio,
               width:parseInt(wh[0])||0,height:parseInt(wh[1])||0};
-  if(st&&st.value) body.style=st.value;
+  // The style is only sent when the person picked one.  A project whose
+  // style came from the analysis of the book is not in the list, so the
+  // dropdown shows the first entry - and saving that would quietly
+  // replace the style the analysis chose.
+  const draft=(S.lookDraft&&S.lookDraft.project===S.current)?S.lookDraft:null;
+  if(draft&&draft.style) body.style=draft.style;
   // the skills that came with the look are written first, so that the
   // answer to the look's save is the last thing on the wire - a box
   // ticked a moment later must not be written over by an earlier write
@@ -1513,12 +1518,16 @@ async function saveLook(){
     }
   }
   const r=await postJSON("/api/project/look",body);
-  if(!r||!r.ok) return toast("保存失败："+esc((r&&r.error)||"未知错误"),"err");
+  if(!r||!r.ok){
+    if(!quiet) toast("保存失败："+esc((r&&r.error)||"未知错误"),"err");
+    return false;
+  }
   if(S.detail) S.detail.art_direction=r.art_direction;
   // it is on the project now; the card shows the project, not a draft
   S.lookDraft=null;
-  toast("已保存 · 画幅与风格会贯穿角色制图与视频提示词","ok",3600);
+  if(!quiet) toast("已保存 · 画幅与风格会贯穿角色制图与视频提示词","ok",3600);
   renderFlow();
+  return true;
 }
 
 // The look decides what the writing has to be good at: a story set in
@@ -3203,6 +3212,13 @@ async function doRun(){
     body.season=window.__nextSeason||1;
     const r=await postJSON("/api/chapters/choose",{project:body.project,chosen:chosen});
     if(!r||!r.ok){ toast("保存选章失败："+esc((r&&r.error)||"未知错误"),"err"); return; }
+  }
+  // The frame and the style in the panel are what this run will make.
+  // They are written to the project first - so the dialog can show
+  // them, and so the run cannot disagree with what was confirmed.
+  if(S.lookDraft && S.lookDraft.project===body.project){
+    const ok=await saveLook(true);
+    if(!ok){ toast("画幅/风格没存上，这次先不开始","err"); return; }
   }
   if(window.runPreflight && !(await runPreflight(body.stages,"流水线",body))) return;
   $("#runStat").innerHTML='<span class="spin"></span> 运行中…（可切到别处，稍后刷新）';
