@@ -115,6 +115,23 @@ class Catalog:
         with _lock, self._conn() as c:
             c.execute("DELETE FROM assets WHERE project=?", (project,))
 
+    def prune_missing(self, keep: set[str]) -> list[str]:
+        """Drop the rows of projects that are not there any more.
+
+        A row for a project that has been deleted is a picture that
+        cannot be loaded and a search result that leads nowhere, so the
+        rows go when the project does.
+        """
+        gone: list[str] = []
+        with _lock, self._conn() as c:
+            for (project,) in c.execute(
+                    "SELECT DISTINCT project FROM assets").fetchall():
+                if project not in keep:
+                    gone.append(project)
+            for project in gone:
+                c.execute("DELETE FROM assets WHERE project=?", (project,))
+        return gone
+
     def set_tags(self, asset_id: int, tags: list[str], category: str = "",
                  summary: str = "") -> None:
         tags_s = ",".join(dict.fromkeys([t for t in tags if t]))

@@ -113,6 +113,7 @@ class State:
         self.project_locks: dict[str, threading.RLock] = {}
         self.duration_cache: dict[str, tuple[float, float]] = {}
         self._brain = None
+        self._prune_catalog()
         # what the run is saying, for the panel to show
         self.log_tail = LogTail()
 
@@ -128,6 +129,21 @@ class State:
             self.cfg = Config.load(self.config_path)
             self.catalog = open_catalog(self.cfg, self.projects_root)
             self._brain = None
+            self._prune_catalog()
+
+    def _prune_catalog(self) -> None:
+        """The rows of projects that are not there any more go.
+
+        A project can be deleted from the disk without the console
+        knowing - by hand, or by a tool.  Its rows would stay, and every
+        one of them is a picture that cannot be loaded.
+        """
+        try:
+            keep = set(self.project_slugs())
+            keep |= {"_trash"}
+            self.catalog.prune_missing(keep)
+        except Exception:  # noqa: BLE001
+            pass
 
     def project_slugs(self) -> list[str]:
         if not self.projects_root.exists():
@@ -1640,8 +1656,11 @@ def _make_handler(state: State):
             if dest.exists():
                 dest = trash / f"{root.name}_{int(time.time())}"
             shutil.move(str(root), str(dest))
+            # The catalog is what the asset browser reads, and a row for a
+            # project that is not there any more is a picture that cannot
+            # be loaded.  So the rows go with the project.
             try:
-                state.catalog.reindex_project(ProjectStore(base), with_ai=False)
+                state.catalog.clear_project(slug)
             except Exception:  # noqa: BLE001
                 pass
             return {"ok": True, "project": slug, "moved_to": str(dest)}
