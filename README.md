@@ -549,40 +549,43 @@ TTS / 音乐同理实现 `BaseTTS` / `BaseMusic`，在 `providers/__init__.py` �
 ```
 dramakit/
 ├── config/
-│   ├── default.yaml              # 全套参数（主配置）
-│   ├── voices.yaml               # 音色速查表
-│   └── comfyui/                  # ComfyUI 工作流模板（换成你自己的）
-│       ├── t2i_sdxl.json
-│       └── i2v_animatediff.json
+│  ├── default.yaml              # 全套参数（主配置）
+│  ├── voices.yaml               # 音色速查
+│  └── comfyui/                  # ComfyUI 工作流模板（换成你自己的）
+│      ├── t2i_krea2.json        # 出图（配置里用的就是这个）
+│      ├── t2i_krea2_ref.json
+│      ├── t2i_flux3_klein.json  # 备选：FLUX 3
+│      ├── t2i_sdxl.json         # 备选：SDXL
+│      ├── i2v_shortdrama.json   # 出视频（H3 ref2va，画面+人声+音效一次出）
+│      ├── i2v_minimax_h3*.json  # 备选：H3 的别的接法
+│      └── music_acestep.json    # 配乐
 ├── deploy/
-│   ├── comfyui-server.md         # 视频服务器部署完整指南
-│   └── setup_comfyui.sh          # 一键部署脚本
+│  ├── comfyui-server.md         # 视频服务器部署完整指南
+│  ├── setup_comfyui.sh          # 一键部署脚本
+│  └── setup_gpu_node.sh
+├── skills/                       # 技能库：各阶段的手艺（脚本写什么、镜头怎么排）
+│  ├── short-drama-*/            #   各个阶段的技能与参考文档
+│  └── genre/<题材>/             #   按题材分的类型卡（豪门婚恋、仙侠修真……）
 ├── assets/music/                 # 本地 BGM 曲库（放版权音乐，按情绪命名）
 ├── projects/                     # 每个项目一个目录（输出）
-│   ├── catalog.db                # AI 资产目录（SQLite，全项目素材的标签/分类索引）
-│   └── <项目>/
-│       ├── project.json          # manifest（断点续跑的状态）
-│       ├── source/  audio/  images/  video/
-│       ├── subs/  bgm/  covers/
-│       └── episodes/ep_001.mp4   # 成片
-└── dramakit/                     # 源码包
-    ├── config.py  models.py  project.py  cli.py
-    ├── config_history.py         # 配置快照、版本列表与安全回滚
-    ├── catalog.py                # SQLite 资产目录：索引/打标签/检索
-    ├── ai/                       # AI 原生层
-    │   ├── brain.py              #   按任务角色解析模型（优先级/默认/优雅降级）
-    │   ├── autoconfig.py         #   环境探测 → 生成 → 回写整套配置
-    │   ├── actions.py            #   自然语言 → 白名单动作（需确认）
-    │   └── templates.py          #   题材预设 / 勾选项 / 意图模板
-    ├── web/                      # dj serve 控制台（无需前端构建）
-    │   ├── server.py             #   stdlib HTTP + JSON API + 项目级任务队列
-    │   ├── jobs.py               #   SQLite 任务持久化与中断恢复
-    │   └── static/               #   页面、现代设计系统与交互增强层
-    ├── providers/                # llm / tts / comfyui / music 适配器
-    ├── pipeline/                 # 制作与质检阶段 + runner + timeline
-    ├── prompts/                  # 各阶段 LLM 提示词模板
-    ├── media/                    # ffmpeg / 字幕
-    └── utils/
+│  ├── catalog.db                # AI 资产目录（SQLite，全项目素材的标签/分类索引）
+│  └── <项目>/
+│      ├── project.json          # manifest（断点续跑的状态）
+│      ├── source/  audio/  images/  video/
+│      ├── subs/  bgm/  covers/
+│      └── episodes/ep_001.mp4   # 成片
+├── rounds/                       # 十轮全链路试验台，和平时用的工具
+│  ├── scripts/                  #   每一轮的小剧本
+│  ├── reports/  logs/           #   质检报告与日志（跑出来的，不进版本库）
+│  ├── teacher_h3/               #   老师那台机器上的 H3 工作流（参考）
+│  ├── tools/                    #   平时用的工具（见 rounds/tools/README.md）
+│  ├── remote/                   #   3090 那台机器的工具
+│  └── qa.py  round.py  loop.py  summary.py   # 质检与跑一轮
+├── tests/                        # 单元测试与全链路模拟
+├── docs/                         # 参考材料
+│  ├── pipeline.md                #   管线是怎么走的
+│  └── H3教程要点.md              #   从 ComfyUI 教程里提炼的要点
+└── dramakit/                     # 源码
 ```
 
 ---

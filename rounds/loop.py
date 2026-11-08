@@ -17,7 +17,7 @@ end = int(sys.argv[2]) if len(sys.argv) > 2 else 10
 for n in range(start, end + 1):
     print(f"\n########## 第 {n} 轮 开始 ({time.strftime('%H:%M')}) ##########", flush=True)
     t0 = time.time()
-    r = subprocess.run([PY, str(ROOT / "round.py"), "--round", str(n)],
+    r = subprocess.run([PY, str(ROOT / "rounds" / "round.py"), "--round", str(n)],
                        cwd=str(ROOT), capture_output=True, text=True,
                        errors="replace")
     print(r.stdout[-1500:], flush=True)
