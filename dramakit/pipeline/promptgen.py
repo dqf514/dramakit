@@ -14,6 +14,7 @@ from pathlib import Path
 from ..models import Shot, Status, is_narration
 from ..prompts import templates as T
 from . import frame as _frame
+from . import h3text as _h3text
 from .base import (Context, build_timeline, llm_pool, run_jobs,
                    write_workers)
 from .refs import _is_face
@@ -413,17 +414,18 @@ def _gen_image_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
 
 # The rules that stop the drift, written at the end of the prompt where the
 # official guide says they work best.
+# What the frame holds, said as what it holds.  The sampler has no
+# negative branch, so everything said here goes into the picture: a
+# sentence about what is there is worth more than a sentence about what
+# is not.
 H3_CONSTRAINTS = (
-    "Keep the identity of every person exactly as in the reference pictures - "
-    "the face, the hair and the clothes. No new text appears anywhere in the "
-    "frame, no captions and no watermark. No extra people, no extra limbs and "
-    "no malformed hands. The camera does not shake, the picture does not jump "
-    "and there is no slow motion. Do not cut to another room or to another "
-    "camera position inside this shot. The proportions of every face stay "
-    "the same: the face does not lengthen, narrow or fatten, and the shape of "
-    "the eyes and the mouth does not change. The people move little - small "
-    "expressions, glances and breaths, no large turns, no walking, no violent "
-    "action. The camera moves smoothly: no sudden acceleration and no whip.")
+    "The frame contains exactly the people in the first frame, the room "
+    "around them and the light on them. Every face is the face in the "
+    "reference picture, with the same hair and the same clothes, and the "
+    "eyes and the mouth keep their shape throughout. The people move with "
+    "small expressions, glances and breaths. The camera travels in one "
+    "smooth move from where it starts to where it ends, and the picture "
+    "moves at the speed of the scene.")
 
 
 def _shot_seconds(shot) -> float:
@@ -734,13 +736,23 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
             timeline=_shot_timeline(shot, lines),
             segment_shots=_segment_plan(
                 shot, bool(ctx.cfg.comfyui.segment_cuts)),
-            constraints=H3_CONSTRAINTS + _loader.for_stage(ctx, "promptgen"),
+            constraints=H3_CONSTRAINTS,
+            # the craft notes are for the writer, not for the text it
+            # writes: appended to the description they are taken as
+            # something to copy, and the old ones said to copy a list of
+            # forbidden things
+            craft_notes=_loader.for_stage(ctx, "promptgen"),
             **_frame.prompt_frame(ctx))
         h3 = llm.complete_json(
             T.render(T.H3_VIDEO_SYSTEM, **_frame.prompt_frame(ctx)), h3_user)
         if isinstance(h3, list):
             h3 = h3[0] if h3 else {}
         desc = str(h3.get("integrated_multimodal_description") or "").strip()
+        # the model ends its description with a Chinese paragraph of
+        # constraints, and every word in it goes into the picture - so the
+        # Chinese that is not the dialogue is taken out, and the
+        # constraints are put on the end ourselves
+        desc = _h3text.english_only(desc)
         soundscape = str(h3.get("overall_soundscape") or "").strip()
         music = str(h3.get("non_diegetic_music") or "").strip()
         # The tags have to be the shot's own words.  The model that writes
@@ -786,6 +798,9 @@ def _gen_h3_prompt(ctx: Context, llm, shot: Shot, sc, visuals: str,
         if desc:
             # the look, even if the model left it out of the description
             desc = _ensure_look(ctx, desc)
+            # the constraints go on the end here, in our words, so that
+            # they are the same every time and nothing else sneaks in
+            desc = desc.rstrip() + "\n" + H3_CONSTRAINTS
             if ctx.cfg.comfyui.native_audio:
                 # the sound comes with the picture: the clip carries the
                 # voice, the room and the music, and nothing is laid
