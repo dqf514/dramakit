@@ -269,6 +269,10 @@ def run(ctx: Context) -> dict:
     def _one(job):
         ep, block, seconds, budget_chars, budget_lines = job
         try:
+            # The stop is asked for between the episodes, not between the
+            # stages: a stage that writes thirty episodes would otherwise
+            # keep going for an hour after the button was pressed.
+            ctx.check_stop()
             return _write_episode(job)
         except Exception:  # noqa: BLE001
             # a failure with no traceback is a failure nobody can find

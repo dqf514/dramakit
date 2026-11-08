@@ -157,7 +157,13 @@ class State:
             return self.project_locks.setdefault(project, threading.RLock())
 
     def _launch_job(self, kind: str, fn, project: str = "",
-                    with_progress: bool = False) -> str:
+                    with_progress: bool = False, keep: bool = True) -> str:
+        """Start a job.
+
+        `keep` says whether the job is a record: a run is, a reading of
+        the machine is not - and a list of a hundred and fifty readings
+        of the machine is not a list of what was done.
+        """
         jid = uuid.uuid4().hex[:12]
         self._prune_jobs()
         # The event is what makes a run stoppable: the thread runs the
@@ -170,7 +176,8 @@ class State:
                           "status": "queued", "result": None, "error": None,
                           "progress": {}, "created_at": now, "started_at": None,
                           "finished_at": None, "stop": stop}
-        self.job_store.save(self.jobs[jid])
+        if keep:
+            self.job_store.save(self.jobs[jid])
 
         def _execute():
             if stop.is_set():
@@ -209,8 +216,9 @@ class State:
         threading.Thread(target=_wrap, daemon=True).start()
         return jid
 
-    def start_job(self, kind: str, fn, project: str = "") -> str:
-        return self._launch_job(kind, fn, project)
+    def start_job(self, kind: str, fn, project: str = "",
+                  keep: bool = True) -> str:
+        return self._launch_job(kind, fn, project, keep=keep)
 
     def get_job(self, jid: str) -> Optional[dict]:
         job = self.jobs.get(jid) or self.job_store.get(jid)
@@ -1024,7 +1032,9 @@ def _make_handler(state: State):
                 from ..ai import autoconfig
                 rep = autoconfig.probe(state.cfg)
                 return {"probe": _slim_probe(rep), "brain": state.brain().probe()}
-            jid = state.start_job("health", _job)
+            # the check is a reading of the machine, not a task: it is
+            # not kept, and it does not fill the task list
+            jid = state.start_job("health", _job, keep=False)
             return {"ok": True, "job": jid}
 
         def _api_search(self, q: str, slug: str) -> dict:

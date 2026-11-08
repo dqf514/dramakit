@@ -69,3 +69,5 @@ _tmp_*.json
 # 本机的质检台（路径是这台机器的）
 qa.py
 round.py
+# JS 语法检查拆出来的临时块
+rounds/tools/_js_check_tmp/

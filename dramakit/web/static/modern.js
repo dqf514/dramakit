@@ -121,14 +121,18 @@
 
   function renderJobs() {
     if (S.activePage !== "workbench" || S.wbTab !== "jobs") return;
-    const active = jobsRows.filter(j => ["queued", "running"].includes(j.status)).length;
-    const stalled = jobsRows.filter(j => {
+    // The counts are about the work, not about the checks: a hundred
+    // and forty-four finished checks are not a hundred and forty-four
+    // things that were made.
+    const work = jobsRows.filter(j => j.kind !== "health");
+    const active = work.filter(j => ["queued", "running"].includes(j.status)).length;
+    const stalled = work.filter(j => {
       const label = displayJobStatus(j)[0];
       // "needs attention" means anything that did not finish cleanly:
       // a failure, a half-done result, a stop, or a run a restart left behind.
       return label === "失败" || label === "部分失败" || label === "已中断" || label === "已取消";
     }).length;
-    const done = jobsRows.filter(j => j.status === "done").length;
+    const done = work.filter(j => j.status === "done").length;
     if (!jobsShell) {
       // The frame is drawn once. Redrawing it on every poll closed the
       // log panel the user had just opened and dropped the scroll
@@ -166,10 +170,27 @@
       <div class="job-stat"><b>${active}</b><span>等待或运行中</span></div>
       <div class="job-stat"><b>${done}</b><span>已完成</span></div>
       <div class="job-stat"><b>${stalled}</b><span>需要处理</span></div>
-      <div class="job-stat"><b>${jobsRows.length}</b><span>最近任务</span></div>`;
+      <div class="job-stat"><b>${work.length}</b><span>最近任务</span></div>`;
     const list = document.getElementById("jobList");
-    list.innerHTML = jobsRows.length ? jobsRows.map(jobRow).join("")
+    // What is running comes first: the person came here to see it.
+    const running = jobsRows.filter(j => ["queued", "running"].includes(j.status));
+    const checks = jobsRows.filter(j => j.kind === "health");
+    const rest = jobsRows.filter(j => !["queued", "running"].includes(j.status)
+      && j.kind !== "health");
+    const byTime = (a, b) => (b.created_at || 0) - (a.created_at || 0);
+    const main = [...running.sort(byTime), ...rest.sort(byTime)];
+    list.innerHTML = main.length ? main.map(jobRow).join("")
       : '<div class="empty">还没有任务记录<button class="btn confirm empty-action" id="jobToStudio">去制作</button></div>';
+    // The environment check runs every few minutes and fills the list
+    // with rows that say nothing; it keeps its own place at the bottom.
+    if (checks.length) {
+      const box = document.createElement("details");
+      box.className = "fold";
+      box.style.marginTop = "12px";
+      box.innerHTML = `<summary>环境自检（${checks.length} 条）</summary>`
+        + `<div class="inner">${checks.map(jobRow).join("")}</div>`;
+      list.appendChild(box);
+    }
     document.getElementById("jobToStudio")?.addEventListener("click", () => {
       switchPage("workbench"); S.wbTab = "flow"; showWbTab("flow");
     });
