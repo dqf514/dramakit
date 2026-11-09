@@ -234,8 +234,14 @@ def resolve_voice(cfg: TTSConfig, speaker: str, gender: str = "未知",
 
 
 def _ffmpeg() -> str:
-    import shutil
-    return shutil.which("ffmpeg") or "ffmpeg"
+    """The ffmpeg to use - the same one the rest of the pipeline uses.
+
+    Looking only at PATH is how the console ended up without ffmpeg: it
+    is started as SYSTEM, whose PATH is the machine's alone, and ffmpeg
+    lives in the user's PATH. The shared resolver looks there too.
+    """
+    from ..media.ffmpeg import ffmpeg_bin
+    return ffmpeg_bin()
 
 
 def _write_atomic(out_path: str | Path, data: bytes) -> None:

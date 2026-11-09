@@ -117,5 +117,35 @@ class FfmpegLookupTests(unittest.TestCase):
         self.assertEqual(ff.ffprobe_bin(), str(self.bin / "ffprobe.exe"))
 
 
+class OneLookupTests(unittest.TestCase):
+    """Every call site must go through the one resolver.
+
+    The console is started as SYSTEM, whose PATH is the machine's alone.
+    A call site that looks only at PATH finds nothing there and every
+    voice line and every fitted reference fails with "file not found" -
+    which is what happened, twice over: once in the media helpers and
+    once in the voice provider's own copy of the lookup.
+    """
+
+    def test_no_module_looks_for_ffmpeg_on_its_own(self):
+        root = pathlib.Path(r"E:\dramakit\dramakit")
+        offenders = []
+        for p in root.rglob("*.py"):
+            if p.name == "ffmpeg.py":
+                continue          # this is the resolver itself
+            text = p.read_text(encoding="utf-8", errors="replace")
+            if 'which("ffmpeg")' in text or "which('ffmpeg')" in text:
+                offenders.append(p.relative_to(root).as_posix())
+        self.assertEqual(offenders, [], "这些地方自己找 ffmpeg：%s" % offenders)
+
+    def test_the_voice_and_music_providers_use_the_shared_one(self):
+        from dramakit.providers import music, tts
+        for mod in (tts, music):
+            path = mod._ffmpeg()
+            self.assertTrue(path, f"{mod.__name__} 找不到 ffmpeg")
+            if path != "ffmpeg":
+                self.assertTrue(pathlib.Path(path).exists(), path)
+
+
 if __name__ == "__main__":
     unittest.main()

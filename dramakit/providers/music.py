@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 import random
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -44,7 +43,14 @@ MOOD_PROMPT = {
 
 
 def _ffmpeg() -> str:
-    return shutil.which("ffmpeg") or "ffmpeg"
+    """The ffmpeg to use - the same one the rest of the pipeline uses.
+
+    Looking only at PATH is how the console ended up without ffmpeg: it
+    is started as SYSTEM, whose PATH is the machine's alone, and ffmpeg
+    lives in the user's PATH. The shared resolver looks there too.
+    """
+    from ..media.ffmpeg import ffmpeg_bin
+    return ffmpeg_bin()
 
 
 def _normalize_mood(mood: str) -> str:
