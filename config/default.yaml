@@ -321,24 +321,24 @@ comfyui:
     positive: "104"      # CLIPTextEncode（写 text）
     negative: "105"      # CLIPTextEncode（写 text，FLUX 3 留空）
     seed: "107"          # KSampler（写 seed / noise_seed）
-    width: 1024 # EmptyFlux2LatentImage（写 width，普通版用）
-    height: 576 # EmptyFlux2LatentImage（写 height，普通版用）
-    steps: 25 # KSampler（写 steps）
-    cfg: 6.5 # KSampler（写 cfg）
+    width: "106"         # EmptyLatentImage（写 width）
+    height: "106"        # EmptyLatentImage（写 height）
+    steps: "107"         # KSampler（写 steps）
+    cfg: "107"           # KSampler（写 cfg）
     sampler: "107"       # KSampler（写 sampler_name / scheduler）
     checkpoint: "101"      # UNETLoader（写 unet_name）
     clip: "102"          # CLIPLoader（写 clip_name）
     vae: "103"           # VAELoader（写 vae_name）
     sampling: ""   # Krea-2 无 ModelSamplingFlux，留空=不写
-    ref_image: "201"     # LoadImage：角色参考图（第二个槽位=场景参考图，自动推断）
+    ref_image: "201"     # LoadImage：角色参考图（只在带参考图的那份工作流里有）
   i2v_nodes:
     image: "137"   # LoadImage（ref_image_0），首帧落这里
     last_image: ""       # 尾帧：本工作流不接（ref_videos 需 LoadVideo，管线未用）
     positive: "136"   # MiniMaxH3ReferenceToVideo 节点写 prompt
     negative: ""   # H3 无负向提示词
     seed: "129"   # RandomNoise 节点写 noise_seed
-    frames: 32 # 节点写 length
-    fps: 16 # CreateVideo 节点写 fps
+    frames: "136"    # MiniMaxH3ReferenceToVideo 节点写 length
+    fps: "130"   # CreateVideo 节点写 fps
     width: "136"   # 节点写 width
     height: "136"   # 节点写 height
   # ---- 节点池：额外的 ComfyUI 机器（方案B 的调度对象）----

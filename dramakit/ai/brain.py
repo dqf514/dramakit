@@ -15,6 +15,7 @@ console and CLI stay usable while the user is still setting things up.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Optional
 
 from ..config import AIConfig, Config, LLMConfig
@@ -57,6 +58,14 @@ class Brain:
         return None if self.cfg.models.entries else fallback
 
     # ---------------------------------------------------------------- health
+    # A reasoning model spends its first tokens thinking, so the answer to
+    # "reply with OK" only starts after the thinking is done. A budget of a
+    # handful of tokens is therefore spent on the reasoning alone: the model
+    # answers, but the answer is cut off and the endpoint looks broken when
+    # it is working perfectly. 64 tokens leaves room for a short thought and
+    # the answer, and the probe still costs a fraction of a cent.
+    PROBE_MAX_TOKENS = 64
+
     def probe(self) -> dict:
         """Cheap liveness check of the default and tagging models."""
         def _ok(role: str) -> tuple[bool, str]:
@@ -64,7 +73,8 @@ class Brain:
             if key not in self._ok:
                 try:
                     r = self.llm(role, fast=True).complete(
-                        "You are a health probe.", "Reply with: OK", max_tokens=5)
+                        "You are a health probe.", "Reply with: OK",
+                        max_tokens=self.PROBE_MAX_TOKENS)
                     self._ok[key] = (True, (r.text or "").strip()[:20])
                 except Exception as e:  # noqa: BLE001
                     self._ok[key] = (False, str(e)[:120])

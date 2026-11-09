@@ -74,6 +74,11 @@ def _put_ref_slots(node: dict, key: str, slots: dict, shape: str) -> None:
         inputs[f"{key}.{name}"] = link
 
 
+_OPTIONAL_SEMANTICS = {
+    "ref_image", "last_image", "negative", "sampling", "clip", "vae",
+}
+
+
 def sage_node(graph: dict) -> str:
     """The attention patch in this graph, or "" when there is none.
 
@@ -351,9 +356,22 @@ class ComfyUIClient(BaseImageVideo):
             if not nid:
                 continue
             if str(nid) not in graph:
-                if self.cfg.auto_map and resolved.get(sem):
+                if not self.cfg.auto_map:
+                    # the ids were asked for by hand: a missing one is a fault
+                    report["problems"].append(f"配置项 {sem}->节点'{nid}' 在工作流里不存在")
+                    report["ok"] = False
+                elif resolved.get(sem):
                     report["warnings"].append(
                         f"配置项 {sem}->节点'{nid}' 不存在，已自动识别为 {resolved[sem]}")
+                elif sem in _OPTIONAL_SEMANTICS:
+                    # The same node map serves every file of a kind: the id
+                    # belongs to a sibling file (the reference-stills variant
+                    # has the LoadImage node, the plain one does not). This
+                    # file has no such slot, so the write is skipped at
+                    # render time - a note, not a fault.
+                    report["warnings"].append(
+                        f"配置项 {sem}->节点'{nid}' 在这个工作流里不存在"
+                        f"（这个工作流没有这一类节点，渲染时自动跳过）")
                 else:
                     report["problems"].append(f"配置项 {sem}->节点'{nid}' 在工作流里不存在")
                     report["ok"] = False
