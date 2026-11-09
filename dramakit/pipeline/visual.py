@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..config import Config
 from ..media import ffmpeg as ff
-from ..models import Shot, Status
+from ..models import Shot, Status, is_narration
 from ..project import ProjectStore
 from .base import Context, build_timeline
 
@@ -439,6 +439,26 @@ def _wait_for_still(ctx: Context, shot: Shot, sc, minutes: float = 30.0) -> list
     return missing
 
 
+def _is_voice_over(ctx: Context, sc, index: int) -> bool:
+    """True when the line at this index is a voice over, not spoken dialogue.
+
+    A voice over is the story told over the picture: it is shown as a
+    caption card and nobody says it, so it is deliberately kept out of
+    the model's prompt.  Counting it as a line the model has to speak
+    sent every shot that carries one to the failed pile.
+    """
+    lines = getattr(sc, "lines", None) or []
+    if not (0 < index <= len(lines)):
+        return False
+    line = lines[index - 1]
+    # the line may be a plain model or a timeline wrapper around one
+    inner = getattr(line, "line", line)
+    try:
+        return is_narration(inner)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0,
                ep=None) -> tuple[str, bool, str]:
     """Render only the video for one shot."""
@@ -469,8 +489,11 @@ def _gen_video(ctx: Context, sc, shot: Shot, duration: float = 0.0,
             return shot.id, False, msg
         # A shot whose words are not in its prompt comes out without the
         # line, and the card is spent.  So it is checked here, before the
-        # job is sent.
-        need = len([n for n in (shot.line_indices or []) if n > 0])
+        # job is sent.  A voice over is not spoken by anyone, so it is
+        # not in the prompt and does not count: it is shown as a caption
+        # card of its own.
+        need = len([n for n in (shot.line_indices or [])
+                    if n > 0 and not _is_voice_over(ctx, sc, n)])
         have = (shot.video_prompt or "").count("<d>")
         if need and have < need:
             msg = (f"提示词里的台词标签 {have} 个，这一镜要 {need} 句"
