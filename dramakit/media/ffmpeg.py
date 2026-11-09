@@ -25,12 +25,10 @@ log = logging.getLogger("dramakit.ffmpeg")
 
 # Where ffmpeg is looked for when PATH does not have it.
 #
-# The console is started two ways: by the scheduled task (as SYSTEM) and
-# by the desktop shortcut (as the person at the machine). SYSTEM's PATH
-# is the machine's alone, and ffmpeg is not installed there - it lives in
-# the user's PATH, which SYSTEM never sees. So the places ffmpeg is
-# usually installed are searched directly, and the user's own PATH is
-# read out of the registry for the hives that are loaded.
+# The console is started as SYSTEM by the scheduled task, and SYSTEM's PATH
+# is the machine's alone - ffmpeg lives in the user's PATH (the winget
+# links folder), so a plain PATH lookup finds nothing there. The folders
+# ffmpeg is usually installed into are checked by name.
 _FALLBACK_DIRS = (
     r"C:\Program Files\ffmpeg\bin",
     r"C:\Program Files (x86)\ffmpeg\bin",
@@ -39,101 +37,35 @@ _FALLBACK_DIRS = (
 )
 
 
-def _user_profile_dirs() -> list[Path]:
-    """Every user profile on this machine (C:\\Users\\*)."""
-    root = Path(os.environ.get("SystemDrive", "C:") + "\\Users")
-    if not root.is_dir():
-        return []
-    out = []
-    try:
-        for p in root.iterdir():
-            if p.is_dir():
-                out.append(p)
-    except OSError:  # noqa: BLE001
-        pass
-    return out
-
-
-def _winget_link_dirs() -> list[Path]:
-    """The WinGet link folders - where winget puts the .exe shortcuts."""
-    out = []
-    for prof in _user_profile_dirs():
-        out.append(prof / "AppData" / "Local" / "Microsoft" / "WinGet" / "Links")
-    return out
-
-
 def _candidate_dirs() -> list[Path]:
     """Every folder that might hold the binaries, in the order to try."""
     dirs: list[Path] = []
-    for d in _winget_link_dirs():
-        dirs.append(d)
-    for prof in _user_profile_dirs():
-        # scoop and the winget packages folder (the real file the link
-        # points at)
-        dirs.append(prof / "scoop" / "shims")
-        packages = prof / "AppData" / "Local" / "Microsoft" / "WinGet" / "Packages"
-        if packages.is_dir():
-            try:
-                for pkg in packages.iterdir():
-                    if not pkg.is_dir():
-                        continue
-                    for sub in pkg.glob("ffmpeg*/bin"):
-                        dirs.append(sub)
-            except OSError:  # noqa: BLE001
-                pass
+    users = Path(os.environ.get("SystemDrive", "C:") + "\\Users")
+    if users.is_dir():
+        try:
+            for prof in users.iterdir():
+                if prof.is_dir():
+                    # where winget puts the .exe shortcuts
+                    dirs.append(prof / "AppData" / "Local" / "Microsoft"
+                                / "WinGet" / "Links")
+                    # and where scoop puts them
+                    dirs.append(prof / "scoop" / "shims")
+        except OSError:  # noqa: BLE001
+            pass
     for d in _FALLBACK_DIRS:
         dirs.append(Path(d))
     return dirs
 
 
-def _registry_user_paths() -> list[str]:
-    """The PATH entries of every user profile whose hive is loaded.
-
-    A program started as SYSTEM does not inherit the user's PATH, but the
-    user's PATH is written down in their registry hive - and reading it
-    there finds the tools that were installed for that person.
-    """
-    if os.name != "nt":
-        return []
-    try:
-        import winreg
-    except ImportError:  # pragma: no cover - Windows only
-        return []
-
-    out: list[str] = []
-    try:
-        hives: list[tuple] = [(winreg.HKEY_CURRENT_USER, "Environment")]
-        with winreg.OpenKey(winreg.HKEY_USERS, "") as users:
-            i = 0
-            while True:
-                try:
-                    sid = winreg.EnumKey(users, i)
-                except OSError:
-                    break
-                i += 1
-                hives.append((winreg.HKEY_USERS, sid + "\\Environment"))
-        for base, sub in hives:
-            try:
-                with winreg.OpenKey(base, sub) as k:
-                    raw, _ = winreg.QueryValueEx(k, "Path")
-            except OSError:
-                continue
-            out.extend(p.strip().strip('"') for p in str(raw).split(";") if p.strip())
-    except Exception:  # noqa: BLE001
-        log.debug("读注册表里的 PATH 失败", exc_info=True)
-    return out
-
-
-# The answer is the same for every call, and the search touches the disk
-# and the registry: it is looked up once.
+# The answer is the same for every call, and the search touches the disk:
+# it is looked up once.
 _RESOLVED: dict[str, Optional[str]] = {}
 
 
 def _resolve(name: str) -> Optional[str]:
     """The full path of an executable, or None when it is not on this machine.
 
-    PATH first, then the usual places, then the PATH of the users whose
-    registry hives are loaded.
+    PATH first, then the folders ffmpeg is usually installed into.
     """
     if name in _RESOLVED:
         return _RESOLVED[name]
@@ -157,20 +89,10 @@ def _resolve(name: str) -> Optional[str]:
                 answer = str(p)
                 break
 
-    if answer is None:
-        for part in _registry_user_paths():
-            try:
-                p = Path(part) / exe
-            except OSError:  # noqa: BLE001
-                continue
-            if p.is_file():
-                answer = str(p)
-                break
-
     # A hit is remembered: the answer is the same for every call, and the
-    # search touches the disk and the registry. A miss is not - the tool
-    # can be installed while the console is running, and a cached "not
-    # here" would keep saying so after it arrived.
+    # search touches the disk. A miss is not - the tool can be installed
+    # while the console is running, and a cached "not here" would keep
+    # saying so after it arrived.
     if answer:
         _RESOLVED[name] = answer
         log.debug("%s 找到了: %s", name, answer)

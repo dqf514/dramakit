@@ -107,8 +107,7 @@ Picture 3+  每人两张：人脸图 + 三视图
 ## ffmpeg 只有一处找
 
 `dramakit/media/ffmpeg.py` 里的 `_resolve` 是唯一找 ffmpeg 的地方：
-先看 PATH，再看安装目录（WinGet Links、scoop、chocolatey），再看注册表里
-各用户自己的 PATH。
+PATH 里有就直接用，没有就找安装目录（winget 的链接目录、scoop、chocolatey）。
 
 **只看 PATH 会漏**。控制台由计划任务以 SYSTEM 身份起，SYSTEM 的 PATH 只有
 机器的，而 ffmpeg 装在用户的 PATH 里。配音、配乐、参考图适配都靠 ffmpeg，
@@ -123,7 +122,7 @@ Picture 3+  每人两张：人脸图 + 三视图
 | 面板说的 | 实际是 | 原因 |
 |---|---|---|
 | 大模型挂了 | 好的 | 探针只给 5 个 token。推理模型先把 token 花在思考上，正文还没开始就被截断，`finish_reason=length`，看着像模型坏了。改成 64 个 token。 |
-| 缺 ffmpeg | 好的 | 控制台由计划任务以 SYSTEM 身份起，SYSTEM 的 PATH 只有机器的；ffmpeg 装在用户的 PATH 里（WinGet Links），SYSTEM 看不见。现在除了 PATH，还找安装目录和注册表里各用户自己的 PATH。 |
+| 缺 ffmpeg | 好的 | 控制台由计划任务以 SYSTEM 身份起，SYSTEM 的 PATH 只有机器的；ffmpeg 装在用户的 PATH 里（winget 链接目录），SYSTEM 看不见。现在 PATH 之外还找安装目录。 |
 | 出图工作流坏了 | 好的 | 校验把「这一份工作流没有这类节点」当成故障。带参考图那份有 LoadImage 节点，普通那份没有，而**一份节点表要同时服务两份文件**——节点号属于兄弟文件，不是错误，只是这一份渲染时会跳过那次写入。 |
 
 **节点表里放的是节点号，不是要塞进去的值**。`t2i_nodes.width` 是「写 width 的那个节点」，

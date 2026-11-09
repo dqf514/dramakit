@@ -63,17 +63,14 @@ class FfmpegLookupTests(unittest.TestCase):
         self.saved_path = os.environ.get("PATH", "")
         self.saved_resolved = dict(ff._RESOLVED)
         self.saved_candidates = ff._candidate_dirs
-        self.saved_registry = ff._registry_user_paths
         ff._RESOLVED.clear()
         # the machine's own copies must not answer for the test
         ff._candidate_dirs = lambda: []
-        ff._registry_user_paths = lambda: []
 
     def tearDown(self):
         os.environ["PATH"] = self.saved_path
         os.environ.pop("FFMPEG_BIN", None)
         ff._candidate_dirs = self.saved_candidates
-        ff._registry_user_paths = self.saved_registry
         ff._RESOLVED.clear()
         ff._RESOLVED.update(self.saved_resolved)
         self.dir.cleanup()
