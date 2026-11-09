@@ -100,6 +100,20 @@ Picture 3+  每人两张：人脸图 + 三视图
 2. 台词标签不够 → 不抽卡
 3. 只有静帧没有视频 → precheck 拦下合成
 
+**第二道闸只数真有人说的台词**。旁白是压在画面上的字幕卡片，没有人念它，
+提示词里本来就不该有它（让模型念旁白，它就会自己编一句）。算进去的话，
+每一镜带旁白的都会被判成「缺台词标签」而白白扔掉。
+
+## ffmpeg 只有一处找
+
+`dramakit/media/ffmpeg.py` 里的 `_resolve` 是唯一找 ffmpeg 的地方：
+先看 PATH，再看安装目录（WinGet Links、scoop、chocolatey），再看注册表里
+各用户自己的 PATH。
+
+**只看 PATH 会漏**。控制台由计划任务以 SYSTEM 身份起，SYSTEM 的 PATH 只有
+机器的，而 ffmpeg 装在用户的 PATH 里。配音、配乐、参考图适配都靠 ffmpeg，
+漏了就满屏 `[WinError 2] 系统找不到指定的文件`。
+
 ## 自检面板说的和做的一致
 
 控制台的「环境自检」是**照着真话说**的：它说能用，就是能用。
@@ -115,5 +129,4 @@ Picture 3+  每人两张：人脸图 + 三视图
 **节点表里放的是节点号，不是要塞进去的值**。`t2i_nodes.width` 是「写 width 的那个节点」，
 不是宽度 1024。写错了自动映射每次都得修一遍——现在表里就是节点号。
 
-找不到 ffmpeg 时可以指名：`FFMPEG_BIN` / `FFPROBE_BIN` 环境变量（或
-`dramakit.media.ffmpeg` 的 `_resolve` 里 `FFMPEG_BIN`）。
+找不到 ffmpeg 时可以指名：`FFMPEG_BIN` / `FFPROBE_BIN` 环境变量。
