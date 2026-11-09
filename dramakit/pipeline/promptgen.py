@@ -134,6 +134,7 @@ def _r2v_header(plan: list[tuple[str, str, str]]) -> str:
     first_char = ""
     room = ""
     frame = ""
+    handoff = ""
     for i, (_path, role, kind) in enumerate(plan, 1):
         if kind == "character":
             if not first_char:
@@ -154,6 +155,18 @@ def _r2v_header(plan: list[tuple[str, str, str]]) -> str:
             keep.append(f"<Picture {i}> (the frame this shot continues from): "
                         f"fully_preserved - the framing, the blocking, the "
                         f"clothes, the faces and the light are kept.")
+        elif kind == "handoff":
+            # The frame the shot before this one ended on. It is the frame
+            # the cut lands on, so it has to be said what it is: a picture
+            # of where the people and the props were left. Calling it a prop
+            # (which is what the leftover branch did) tells the model to
+            # keep the shape and the material of a thing, and the shot
+            # before it lands somewhere else entirely.
+            handoff = str(i)
+            keep.append(f"<Picture {i}> (the frame the shot before this one "
+                        f"ended on): fully_preserved - the people and the "
+                        f"props are exactly where that shot left them, so "
+                        f"the cut lands on the same picture.")
         else:
             keep.append(f"<Picture {i}> (the prop): fully_preserved - the "
                         f"shape, the colour and the material are kept.")
@@ -175,6 +188,15 @@ def _r2v_header(plan: list[tuple[str, str, str]]) -> str:
                f"which <Subject 1> speaks, using the voice timbre referenced "
                f"from <Audio 1>. The person is the one in the reference sheet, "
                f"not somebody who looks like them.")
+    if handoff:
+        # The shot before this one ended on this picture, and the cut lands
+        # on it. Said in the summary, not only in the retention list: the
+        # model has to start from it, and a picture it is only told to
+        # "keep" is a picture it may place anywhere.
+        how += (f" The shot before this one ended on <Picture {handoff}>: "
+                f"the people and the props are exactly where that shot left "
+                f"them, and this shot starts from that same picture, so the "
+                f"cut lands on it.")
     return ("subject_definitions:\n"
             f"{subject}"
             "<Audio 1> is the voice-timbre reference for <Subject 1> (S1), "
